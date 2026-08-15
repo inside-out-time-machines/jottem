@@ -7,7 +7,7 @@
           <p>Beste {{ ontvangerNaam }},</p>
           <p>Er {% if aantalNieuw == 1 %}is <strong>1 nieuwe annotatie of reactie</strong>{% else %}zijn
           <strong>{{ aantalNieuw }} nieuwe annotaties of reacties</strong>{% endif %} geplaatst
-          bij je jottem <strong>"{{ jottemTitel }}"</strong> — iemand heeft een herinnering,
+          bij je jottem <strong>"{{ jottemTitel }}"</strong> - iemand heeft een herinnering,
           aanvulling of herkenning gedeeld.</p>
         </mj-text>
         <mj-button href="{{ jottemUrl }}" background-color="{{ organisatie.kleurPrimair }}" font-size="15px">Bekijk de reacties</mj-button>

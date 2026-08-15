@@ -10,7 +10,7 @@
           {{ organisatie.naam }}:</p>
           <ul>
           {% for jottem in wachtrij %}
-            <li>"{{ jottem.titel }}" — {{ jottem.projectNaam }}, ingediend {{ jottem.ingediendOp }}</li>
+            <li>"{{ jottem.titel }}" - {{ jottem.projectNaam }}, ingediend {{ jottem.ingediendOp }}</li>
           {% endfor %}
           </ul>
         </mj-text>

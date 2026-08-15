@@ -2,7 +2,7 @@
 
 Monorepo van het **Jottem-platform**: het participatieve digitale erfgoedplatform van
 [Inside Out Time Machines](https://www.iotm.nl/) waarmee inwoners foto's, documenten en
-herinneringen delen binnen projecten van erfgoedorganisaties — te beginnen met de pilot
+herinneringen delen binnen projecten van erfgoedorganisaties - te beginnen met de pilot
 *Smaak van Gouda* (Streekarchief Midden-Holland).
 
 ## Structuur (voorzien)

@@ -7,7 +7,7 @@
           <p>Beste {{ ontvangerNaam }},</p>
           <p>{{ uitnodigerNaam }} nodigt je uit als <strong>moderator</strong> van
           {{ organisatie.naam }} op Jottem. Als moderator beoordeel je bijdragen van inwoners
-          vóór publicatie: je let op kwaliteit, auteursrecht en privacy — de
+          vóór publicatie: je let op kwaliteit, auteursrecht en privacy - de
           <a href="{{ handreikingUrl }}">handreiking moderatie</a> helpt je daarbij.</p>
           <p>Lees eerst de <a href="{{ spelregelsUrl }}">spelregels</a>. Met de knop hieronder
           bevestig je de uitnodiging en stel je je wachtwoord en tweestapsverificatie (of passkey) in.</p>

@@ -3,7 +3,7 @@ Beste {{ ontvangerNaam }},
 Er {% if aantalWachtend == 1 %}wacht 1 jottem{% else %}wachten {{ aantalWachtend }} jottems{% endif %} op beoordeling bij {{ organisatie.naam }}:
 
 {% for jottem in wachtrij %}
-- "{{ jottem.titel }}" — {{ jottem.projectNaam }}, ingediend {{ jottem.ingediendOp }}
+- "{{ jottem.titel }}" - {{ jottem.projectNaam }}, ingediend {{ jottem.ingediendOp }}
 {% endfor %}
 
 Naar de moderatiewachtrij: {{ wachtrijUrl }}

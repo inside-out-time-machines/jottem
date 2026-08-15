@@ -11,7 +11,7 @@
         </mj-text>
         <mj-button href="{{ jottemUrl }}" background-color="{{ organisatie.kleurPrimair }}" font-size="15px">Bekijk je jottem</mj-button>
         <mj-text font-size="15px" line-height="1.6">
-          <p>Deel de link met familie, vrienden en oud-bekenden — hoe meer mensen je jottem
+          <p>Deel de link met familie, vrienden en oud-bekenden - hoe meer mensen je jottem
           zien, hoe meer herinneringen en aanvullingen erbij komen.</p>
         </mj-text>
       </mj-column>
