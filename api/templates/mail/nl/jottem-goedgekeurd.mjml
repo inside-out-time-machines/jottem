@@ -1,0 +1,21 @@
+<mjml>
+  <mj-body background-color="#f4f4f2">
+    <mj-include path="../partials/header.mjml" />
+    <mj-section background-color="#ffffff" padding="16px 24px 8px">
+      <mj-column>
+        <mj-text font-size="15px" line-height="1.6">
+          <p>Beste {{ ontvangerNaam }},</p>
+          <p>Goed nieuws: je bijdrage <strong>"{{ jottemTitel }}"</strong> is goedgekeurd en
+          staat online in het project <strong>{{ projectNaam }}</strong> van
+          {{ organisatie.naam }}. Je jottem heeft een blijvende link gekregen:</p>
+        </mj-text>
+        <mj-button href="{{ jottemUrl }}" background-color="{{ organisatie.kleurPrimair }}" font-size="15px">Bekijk je jottem</mj-button>
+        <mj-text font-size="15px" line-height="1.6">
+          <p>Deel de link met familie, vrienden en oud-bekenden — hoe meer mensen je jottem
+          zien, hoe meer herinneringen en aanvullingen erbij komen.</p>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-include path="../partials/footer.mjml" />
+  </mj-body>
+</mjml>

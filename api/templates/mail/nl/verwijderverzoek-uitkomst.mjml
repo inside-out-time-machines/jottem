@@ -1,0 +1,26 @@
+<mjml>
+  <mj-body background-color="#f4f4f2">
+    <mj-include path="../partials/header.mjml" />
+    <mj-section background-color="#ffffff" padding="16px 24px 8px">
+      <mj-column>
+        <mj-text font-size="15px" line-height="1.6">
+          <p>Beste lezer,</p>
+          {% if uitkomst == "gehonoreerd" %}
+          <p>Je verwijderverzoek over <strong>"{{ jottemTitel }}"</strong>
+          (kenmerk {{ verzoekNummer }}) is <strong>gehonoreerd</strong>: de jottem is van het
+          platform gehaald en de blijvende link toont voortaan een melding dat het materiaal
+          is verwijderd.</p>
+          {% else %}
+          <p>Je verwijderverzoek over <strong>"{{ jottemTitel }}"</strong>
+          (kenmerk {{ verzoekNummer }}) is <strong>afgewezen</strong>. De toelichting van de
+          moderator:</p>
+          <p style="border-left: 3px solid {{ organisatie.kleurPrimair }}; padding-left: 12px; color: #555555;">{{ toelichting }}</p>
+          <p>Ben je het niet eens met dit besluit, neem dan contact op met
+          {{ organisatie.naam }}.</p>
+          {% endif %}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-include path="../partials/footer.mjml" />
+  </mj-body>
+</mjml>

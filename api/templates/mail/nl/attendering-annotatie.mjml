@@ -1,0 +1,17 @@
+<mjml>
+  <mj-body background-color="#f4f4f2">
+    <mj-include path="../partials/header.mjml" />
+    <mj-section background-color="#ffffff" padding="16px 24px 8px">
+      <mj-column>
+        <mj-text font-size="15px" line-height="1.6">
+          <p>Beste {{ ontvangerNaam }},</p>
+          <p>Er {% if aantalNieuw == 1 %}is <strong>1 reactie</strong>{% else %}zijn
+          <strong>{{ aantalNieuw }} reacties</strong>{% endif %} geplaatst op jouw annotatie bij
+          <strong>"{{ jottemTitel }}"</strong>.</p>
+        </mj-text>
+        <mj-button href="{{ annotatieUrl }}" background-color="{{ organisatie.kleurPrimair }}" font-size="15px">Bekijk de reacties</mj-button>
+      </mj-column>
+    </mj-section>
+    <mj-include path="../partials/footer.mjml" />
+  </mj-body>
+</mjml>

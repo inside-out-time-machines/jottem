@@ -1,0 +1,9 @@
+<mj-section background-color="#ffffff" padding="8px 24px 24px">
+  <mj-column>
+    <mj-divider border-width="1px" border-color="#e0e0e0" padding="0 0 12px" />
+    <mj-text font-size="12px" color="#777777" line-height="1.5">
+      Je ontvangt dit bericht van {{ organisatie.naam }} via <a href="{{ platformUrl }}">Jottem</a>.
+      {% if uitschakelUrl %}<br/>Wil je deze attenderingen niet meer ontvangen? <a href="{{ uitschakelUrl }}">Schakel ze uit</a>.{% endif %}
+    </mj-text>
+  </mj-column>
+</mj-section>

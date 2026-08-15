@@ -1,0 +1,19 @@
+<mjml>
+  <mj-body background-color="#f4f4f2">
+    <mj-include path="../partials/header.mjml" />
+    <mj-section background-color="#ffffff" padding="16px 24px 8px">
+      <mj-column>
+        <mj-text font-size="15px" line-height="1.6">
+          <p>Beste {{ ontvangerNaam }},</p>
+          <p>Bedankt voor je bijdrage <strong>"{{ jottemTitel }}"</strong>. De moderator van
+          {{ organisatie.naam }} kan deze nog niet plaatsen. De reden:</p>
+          <p style="border-left: 3px solid {{ organisatie.kleurPrimair }}; padding-left: 12px; color: #555555;">{{ afkeurReden }}</p>
+          <p>Je kunt je bijdrage aanpassen of aanvullen en opnieuw indienen — vaak is een
+          kleine toevoeging (bijv. een toestemmingsverklaring of extra informatie) al genoeg.</p>
+        </mj-text>
+        <mj-button href="{{ herindienUrl }}" background-color="{{ organisatie.kleurPrimair }}" font-size="15px">Aanpassen en opnieuw indienen</mj-button>
+      </mj-column>
+    </mj-section>
+    <mj-include path="../partials/footer.mjml" />
+  </mj-body>
+</mjml>

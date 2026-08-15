@@ -1,0 +1,5 @@
+<mj-section background-color="{{ organisatie.kleurPrimair }}" padding="16px 24px">
+  <mj-column vertical-align="middle">
+    <mj-image src="{{ organisatie.logoUrl }}" alt="{{ organisatie.naam }}" align="left" width="140px" padding="0" />
+  </mj-column>
+</mj-section>

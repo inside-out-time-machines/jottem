@@ -1,0 +1,23 @@
+<mjml>
+  <mj-body background-color="#f4f4f2">
+    <mj-include path="../partials/header.mjml" />
+    <mj-section background-color="#ffffff" padding="16px 24px 8px">
+      <mj-column>
+        <mj-text font-size="15px" line-height="1.6">
+          <p>Beste {{ ontvangerNaam }},</p>
+          <p>Er {% if aantalWachtend == 1 %}wacht <strong>1 jottem</strong>{% else %}wachten
+          <strong>{{ aantalWachtend }} jottems</strong>{% endif %} op beoordeling bij
+          {{ organisatie.naam }}:</p>
+          <ul>
+          {% for jottem in wachtrij %}
+            <li>"{{ jottem.titel }}" — {{ jottem.projectNaam }}, ingediend {{ jottem.ingediendOp }}</li>
+          {% endfor %}
+          </ul>
+        </mj-text>
+        <mj-button href="{{ wachtrijUrl }}" background-color="{{ organisatie.kleurPrimair }}" font-size="15px">Naar de moderatiewachtrij</mj-button>
+        <mj-text font-size="13px" color="#777777">Je ontvangt deze samenvatting maximaal één keer per dag, alleen als er iets wacht.</mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-include path="../partials/footer.mjml" />
+  </mj-body>
+</mjml>

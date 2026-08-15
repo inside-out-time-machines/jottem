@@ -1,0 +1,17 @@
+Beste lezer,
+
+{% if uitkomst == "gehonoreerd" %}
+Je verwijderverzoek over "{{ jottemTitel }}" (kenmerk {{ verzoekNummer }}) is GEHONOREERD:
+de jottem is van het platform gehaald en de blijvende link toont voortaan een melding dat
+het materiaal is verwijderd.
+{% else %}
+Je verwijderverzoek over "{{ jottemTitel }}" (kenmerk {{ verzoekNummer }}) is AFGEWEZEN.
+De toelichting van de moderator:
+
+  {{ toelichting }}
+
+Ben je het niet eens met dit besluit, neem dan contact op met {{ organisatie.naam }}.
+{% endif %}
+
+--
+Je ontvangt dit bericht van {{ organisatie.naam }} via Jottem ({{ platformUrl }}).

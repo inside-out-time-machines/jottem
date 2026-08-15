@@ -1,0 +1,17 @@
+<mjml>
+  <mj-body background-color="#f4f4f2">
+    <mj-include path="../partials/header.mjml" />
+    <mj-section background-color="#ffffff" padding="16px 24px 8px">
+      <mj-column>
+        <mj-text font-size="15px" line-height="1.6">
+          <p>Beste lezer,</p>
+          <p>We hebben je verwijderverzoek over <strong>"{{ jottemTitel }}"</strong> in goede
+          orde ontvangen (kenmerk {{ verzoekNummer }}).</p>
+          <p>Een moderator van {{ organisatie.naam }} beoordeelt je verzoek. Je ontvangt de
+          uitkomst per e-mail, uiterlijk binnen <strong>{{ termijnDagen }} dagen</strong>.</p>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-include path="../partials/footer.mjml" />
+  </mj-body>
+</mjml>

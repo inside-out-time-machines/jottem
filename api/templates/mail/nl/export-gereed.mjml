@@ -1,0 +1,18 @@
+<mjml>
+  <mj-body background-color="#f4f4f2">
+    <mj-include path="../partials/header.mjml" />
+    <mj-section background-color="#ffffff" padding="16px 24px 8px">
+      <mj-column>
+        <mj-text font-size="15px" line-height="1.6">
+          <p>Beste {{ ontvangerNaam }},</p>
+          <p>Het e-depot-exportpakket van het project <strong>{{ projectNaam }}</strong> is
+          gereed: een BagIt-zip met alle originelen, metadata, annotaties en de RDF-datadump,
+          beschreven met RO-Crate.</p>
+        </mj-text>
+        <mj-button href="{{ downloadUrl }}" background-color="{{ organisatie.kleurPrimair }}" font-size="15px">Download het pakket</mj-button>
+        <mj-text font-size="13px" color="#777777">De downloadlink blijft {{ bewaartermijnDagen }} dagen geldig; daarna wordt het pakket verwijderd (opnieuw aanmaken kan altijd).</mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-include path="../partials/footer.mjml" />
+  </mj-body>
+</mjml>

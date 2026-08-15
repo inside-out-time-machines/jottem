@@ -1,0 +1,19 @@
+<mjml>
+  <mj-body background-color="#f4f4f2">
+    <mj-include path="../partials/header.mjml" />
+    <mj-section background-color="#ffffff" padding="16px 24px 8px">
+      <mj-column>
+        <mj-text font-size="15px" line-height="1.6">
+          <p>Beste {{ ontvangerNaam }},</p>
+          <p>Er is een <strong>verwijderverzoek</strong> ingediend voor
+          "{{ jottemTitel }}" (kenmerk {{ verzoekNummer }}). Opgegeven reden:</p>
+          <p style="border-left: 3px solid {{ organisatie.kleurPrimair }}; padding-left: 12px; color: #555555;">{{ reden }}</p>
+          <p>Let op: voor verwijderverzoeken geldt een afhandeltermijn van
+          {{ termijnDagen }} dagen (AVG). Handel het verzoek tijdig af.</p>
+        </mj-text>
+        <mj-button href="{{ afhandelUrl }}" background-color="{{ organisatie.kleurPrimair }}" font-size="15px">Verzoek beoordelen</mj-button>
+      </mj-column>
+    </mj-section>
+    <mj-include path="../partials/footer.mjml" />
+  </mj-body>
+</mjml>
