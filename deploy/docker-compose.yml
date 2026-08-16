@@ -145,6 +145,8 @@ services:
       SOCIAL_FACEBOOK_CLIENT_SECRET: ${SOCIAL_FACEBOOK_CLIENT_SECRET:-}
     volumes:
       - ./authentik-blueprints:/blueprints/custom:ro
+      # Jottem-woordmerk in de accountmails (cid:logo; override-pad uit email/utils.py)
+      - ./authentik-assets/icon_left_brand.png:/web/icons/icon_left_brand.png:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -161,6 +163,7 @@ services:
     environment: *authentik-env
     volumes:
       - ./authentik-blueprints:/blueprints/custom:ro
+      - ./authentik-assets/icon_left_brand.png:/web/icons/icon_left_brand.png:ro
     depends_on:
       postgres:
         condition: service_healthy
