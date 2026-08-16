@@ -122,6 +122,20 @@ table.lijst th { font-size: .82rem; letter-spacing: .1em; text-transform: upperc
 .polaroid img { max-width: 100%; height: auto; display: block; }
 .polaroid figcaption { font-family: var(--kop); font-style: italic; color: var(--grijs); font-size: .95rem; padding-top: .5rem; text-align: center; }
 
+/* profielfoto's */
+.avatar {
+    width: 1.6rem; height: 1.6rem; border-radius: 50%; object-fit: cover;
+    border: 1px solid rgba(250, 246, 241, .5); vertical-align: middle;
+}
+.avatar-groot {
+    width: 4.5rem; height: 4.5rem; border-color: var(--kartonrand);
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.avatar-leeg {
+    background: var(--karton); color: var(--roest); font-family: var(--kop);
+    font-weight: 700; font-size: 1.8rem;
+}
+
 /* dialoog (popup) - huisstijlelement, zie de merkgids */
 dialog.dialoog {
     /* margin: auto expliciet: de globale reset (*{margin:0}) zou anders de

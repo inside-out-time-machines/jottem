@@ -2,16 +2,29 @@
 
 import { useEffect, useState } from "react";
 import { accessToken, ingelogdeNaam, startLogin, uitloggen } from "@/lib/oidc";
-import { DEV_AUTH } from "@/lib/api";
+import { API_PUBLIEK, DEV_AUTH } from "@/lib/api";
 
 export default function InlogKnop() {
   const [naam, setNaam] = useState<string | null>(null);
+  const [foto, setFoto] = useState<string | null>(null);
   const [ingelogd, setIngelogd] = useState(false);
 
   useEffect(() => {
     const token = accessToken();
     setIngelogd(Boolean(token));
     setNaam(ingelogdeNaam());
+    if (token) {
+      // profiel ophalen voor de actuele naam en de profielfoto in de balk
+      fetch(`${API_PUBLIEK}/mijn/profiel`, { headers: { Authorization: `Bearer ${token}` } })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((profiel) => {
+          if (profiel) {
+            setNaam(profiel.naam);
+            setFoto(profiel.afbeeldingUrl);
+          }
+        })
+        .catch(() => {});
+    }
 
     // SSO-handoff: wie vanaf Authentik binnenkomt (app-tegel met ?sso=1, of via de
     // referrer) heeft daar al een sessie maar hier nog geen token; start dan direct
@@ -28,11 +41,14 @@ export default function InlogKnop() {
     }
   }, []);
 
-  if (DEV_AUTH) return <span style={{ opacity: 0.7 }}>dev-login</span>;
+  if (DEV_AUTH) return <a href="/profiel" style={{ opacity: 0.7 }}>dev-login</a>;
   if (ingelogd) {
     return (
       <span style={{ display: "inline-flex", gap: ".6rem", alignItems: "center" }}>
-        {naam && <span style={{ opacity: 0.85 }}>{naam}</span>}
+        <a href="/profiel" style={{ display: "inline-flex", gap: ".45rem", alignItems: "center" }}>
+          {foto && <img src={foto} alt="" className="avatar" />}
+          {naam ?? "Mijn profiel"}
+        </a>
         <a href="#" onClick={(e) => { e.preventDefault(); uitloggen(); }}>Uitloggen</a>
       </span>
     );
