@@ -1,0 +1,146 @@
+{% load authentik_stages_email %}
+{% comment %}
+Jottem-huisstijl voor alle Authentik-mails. Schaduwt de ingebouwde email/base.html
+(deze map staat via /templates vóór de app-dirs in de Django-zoekvolgorde).
+Zelfde blocks als het origineel (logo_url, content, sub_content) zodat ook de
+niet-overriden templates (setup.html, event_notification.html) blijven renderen.
+Kleuren uit de merkgids; systeemfonts, want webfonts zijn in mailclients onbetrouwbaar.
+{% endcomment %}
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width">
+
+    <style type="text/css">
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 15px;
+        color: #1f1e1c;
+        background-color: #f4f4f2;
+        margin: 0;
+      }
+
+      h1, h2 {
+        font-family: Georgia, 'Times New Roman', serif;
+        color: #1f1e1c;
+        line-height: 125%;
+        margin: 0;
+        padding-top: 10px;
+        padding-bottom: 10px;
+      }
+
+      h1 { font-size: 26px; font-weight: 700; }
+      h2 { display: inline-block; font-size: 24px; font-weight: 700; }
+
+      a { color: #a2401f; }
+
+      .flexibleImage {
+        height: auto;
+      }
+
+      img.logo {
+        max-width: 100%;
+        max-height: 40px;
+      }
+
+      .properties-table {
+        width: 100%;
+        text-align: left;
+        font-size: 14px;
+        font-weight: 400;
+        font-family: Arial, Helvetica, sans-serif;
+        border-collapse: collapse;
+      }
+
+      .properties-table tr:first-child {
+        border-top: 1px solid #e8d9c4;
+      }
+
+      .properties-table tr:first-child>td {
+        padding-top: 24px;
+      }
+
+      .properties-table tr:last-child {
+        border-bottom: 1px solid #e8d9c4;
+      }
+
+      .properties-table tr:last-child>td {
+        padding-bottom: 24px;
+      }
+
+      .properties-table td {
+        line-height: 24px;
+        vertical-align: top;
+        padding: 4px 15px;
+      }
+
+      .td-right {
+        text-align: right;
+        white-space: nowrap;
+      }
+
+      .btn-primary {
+        text-decoration: none;
+        color: #ffffff;
+        background-color: #d85a30;
+        border: solid #d85a30;
+        border-radius: 6px;
+        width: 100%;
+        line-height: 2.4em;
+        font-weight: bold;
+        text-align: center;
+        cursor: pointer;
+        display: inline-block;
+      }
+      .btn-primary a {
+        color: #ffffff;
+        text-decoration: none;
+        display: block;
+      }
+    </style>
+  </head>
+
+  <body style="background-color: #f4f4f2;">
+    <div class="wrapper">
+      <center>
+        <div style="-ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%; table-layout: fixed; width: 100%; max-width: 448px; padding: 60px 20px; font-size: 15px;">
+          <table border="0" align="center" width="100%">
+            <tr>
+              <td style="padding: 20px; background-color: #ffffff; border: 1px solid #e8d9c4; border-top: 4px solid #d85a30; border-radius: 6px;">
+                <table width="100%" style="background-color: #ffffff; border-spacing: 0; margin-top: 15px;">
+                  <tr height="80">
+                    <td align="center" style="padding: 20px 0;">
+                      <img src="{% block logo_url %}cid:logo{% endblock %}" border="0" alt="Jottem" class="flexibleImage logo">
+                    </td>
+                  </tr>
+                  {% block content %}
+                  {% endblock %}
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <table border="0" style="margin-top: 10px;" width="100%">
+                  <tr>
+                    <td style="background: #faf6f1; border-radius: 6px;">
+                      <table style="width: 100%;">
+                        {% block sub_content %}
+                        {% endblock %}
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding-top: 12px; font-size: 12px; color: #665245;">
+                Je ontvangt dit bericht van <a rel="noopener noreferrer" target="_blank" href="https://dev.iotm.nl/" style="color: #a2401f;">Jottem</a>.
+              </td>
+            </tr>
+          </table>
+        </div>
+      </center>
+    </div>
+  </body>
+</html>

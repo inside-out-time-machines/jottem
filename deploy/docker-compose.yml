@@ -147,6 +147,8 @@ services:
       - ./authentik-blueprints:/blueprints/custom:ro
       # Jottem-woordmerk in de accountmails (cid:logo; override-pad uit email/utils.py)
       - ./authentik-assets/icon_left_brand.png:/web/icons/icon_left_brand.png:ro
+      # mailtemplates in Jottem-huisstijl; /templates staat vóór de ingebouwde templates
+      - ./authentik-templates:/templates:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -164,6 +166,7 @@ services:
     volumes:
       - ./authentik-blueprints:/blueprints/custom:ro
       - ./authentik-assets/icon_left_brand.png:/web/icons/icon_left_brand.png:ro
+      - ./authentik-templates:/templates:ro
     depends_on:
       postgres:
         condition: service_healthy
