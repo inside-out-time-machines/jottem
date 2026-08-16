@@ -1,6 +1,8 @@
 # secrets horen nooit in git
 .env
+.env.*
 *.env
+!.env.example
 !*.env.example
 
 # python
