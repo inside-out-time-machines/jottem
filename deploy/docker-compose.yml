@@ -73,7 +73,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.http.routers.s3.rule=Host(`s3.dev.iotm.nl`)
-      - traefik.http.routers.s3.tls.certresolver=letsencrypt
+      - traefik.http.routers.s3.tls=true
       - traefik.http.services.s3.loadbalancer.server.port=9000
 
   minio-init:
@@ -111,7 +111,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.http.routers.auth.rule=Host(`auth.dev.iotm.nl`)
-      - traefik.http.routers.auth.tls.certresolver=letsencrypt
+      - traefik.http.routers.auth.tls=true
       - traefik.http.services.auth.loadbalancer.server.port=9000
 
   authentik-worker:
@@ -148,7 +148,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.http.routers.api.rule=Host(`api.dev.iotm.nl`)
-      - traefik.http.routers.api.tls.certresolver=letsencrypt
+      - traefik.http.routers.api.tls=true
       - traefik.http.services.api.loadbalancer.server.port=8000
 
   worker:
@@ -196,7 +196,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.http.routers.mail.rule=Host(`mail.dev.iotm.nl`)
-      - traefik.http.routers.mail.tls.certresolver=letsencrypt
+      - traefik.http.routers.mail.tls=true
       - traefik.http.services.mail.loadbalancer.server.port=8025
 
 volumes:
