@@ -1,9 +1,12 @@
 # Jottem API - EUPL-1.2
 # Fase 1: mail-templates compileren (MJML -> Jinja2-klare HTML)
+# build.sh vereist bash en python3 (partial-expansie); een gefaalde build moet de
+# imagebuild breken, anders vallen alle mails stilletjes terug op tekst-only
 FROM node:22-alpine AS mail
+RUN apk add --no-cache bash python3
 WORKDIR /bouw
 COPY templates/mail/ templates/mail/
-RUN cd templates/mail && sh build.sh || echo "mjml-build overgeslagen (dist blijft leeg; tekstmail volstaat)"
+RUN cd templates/mail && bash build.sh && test -s dist/nl/uitnodiging-organisatiebeheerder.html.j2
 
 # Fase 2: Python-runtime
 FROM python:3.12-slim
