@@ -20,7 +20,11 @@ class Settings(BaseSettings):
     s3_access_key: str = "jottem"
     s3_secret_key: str = "wijzig-mij"
     s3_bucket_originals: str = "originals"
+    s3_bucket_derivaten: str = "derivatives"
     s3_bucket_thumbs: str = "thumbs"
+
+    # IIIF (Cantaloupe achter Varnish)
+    iiif_basis_url: str = "https://iiif.dev.iotm.nl"
 
     # authenticatie (Authentik OIDC)
     oidc_issuer: str = "https://auth.dev.iotm.nl/application/o/jottem/"

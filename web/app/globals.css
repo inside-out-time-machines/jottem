@@ -104,6 +104,21 @@ table.lijst th { font-size: .82rem; letter-spacing: .1em; text-transform: upperc
     background: var(--wit); border: 1px solid #eee2d3; padding: .7rem .7rem 1rem;
     box-shadow: var(--schaduw); display: inline-block; max-width: 100%;
 }
+.iiif-kader {
+    background: var(--wit); border: 1px solid #eee2d3; padding: .7rem;
+    box-shadow: var(--schaduw); margin-top: 1.4rem; max-width: 52rem; position: relative;
+}
+.iiif-viewer { height: min(68vh, 620px); background: var(--inkt); }
+.iiif-viewer:fullscreen { height: 100vh; }
+.iiif-knoppen {
+    position: absolute; top: 1.2rem; right: 1.2rem; display: flex; flex-direction: column;
+    gap: .35rem; z-index: 5;
+}
+.iiif-knoppen .knop { padding: .25rem .7rem; font-size: 1.1rem; background: var(--papier); }
+.iiif-kader figcaption {
+    font-family: var(--kop); font-style: italic; color: var(--grijs);
+    font-size: .95rem; padding-top: .55rem; text-align: center;
+}
 .polaroid img { max-width: 100%; height: auto; display: block; }
 .polaroid figcaption { font-family: var(--kop); font-style: italic; color: var(--grijs); font-size: .95rem; padding-top: .5rem; text-align: center; }
 

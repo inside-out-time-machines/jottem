@@ -10,6 +10,10 @@ FROM python:3.12-slim
 WORKDIR /srv/api
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 
+# libvips voor de derivatenpipeline (pyramidal TIFF voor Cantaloupe)
+RUN apt-get update && apt-get install -y --no-install-recommends libvips42 \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 

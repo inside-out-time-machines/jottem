@@ -4,6 +4,8 @@ Celery beat pollt elke 10 seconden onverwerkte regels; per regel wordt (nu) de m
 verstuurd en verwerktOp gezet. Latere iteraties haken hier de zoekindex-, RDF- en
 cache-purge-synchronisatie aan, plus de nachtelijke reconciliatiejob.
 """
+import uuid
+
 from celery import Celery
 from sqlalchemy import select
 
@@ -34,6 +36,12 @@ def verwerk_outbox() -> int:
         ).all()
         for regel in regels:
             payload = regel.payload or {}
+            # 1. derivaat (idempotent) - vóór de mail, zodat een falende beeldbewerking
+            #    geen dubbele mails veroorzaakt bij een retry
+            if regel.type == "jottem.goedgekeurd" and payload.get("mediaId"):
+                from .derivaten import maak_derivaat
+                maak_derivaat(uuid.UUID(payload["mediaId"]))
+            # 2. mail
             mail = payload.get("mail")
             if mail:
                 context = basis_context(db, regel.organisatieId, regel.projectId)

@@ -77,11 +77,43 @@ services:
         condition: service_healthy
     entrypoint: >
       sh -c "mc alias set lokaal http://minio:9000 $S3_ACCESS_KEY $S3_SECRET_KEY &&
-             mc mb --ignore-existing lokaal/originals lokaal/thumbs &&
+             mc mb --ignore-existing lokaal/originals lokaal/derivatives lokaal/thumbs &&
              echo buckets-klaar"
     environment:
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}
+
+  cantaloupe:
+    image: uclalibrary/cantaloupe:5.0.7
+    restart: unless-stopped
+    environment:
+      CANTALOUPE_BASE_URI: https://iiif.dev.iotm.nl
+      CANTALOUPE_SOURCE_STATIC: S3Source
+      CANTALOUPE_S3SOURCE_ENDPOINT: http://minio:9000
+      CANTALOUPE_S3SOURCE_REGION: eu-central-1
+      CANTALOUPE_S3SOURCE_ACCESS_KEY_ID: ${S3_ACCESS_KEY}
+      CANTALOUPE_S3SOURCE_SECRET_KEY: ${S3_SECRET_KEY}
+      CANTALOUPE_S3SOURCE_BASICLOOKUPSTRATEGY_BUCKET_NAME: derivatives
+      CANTALOUPE_ENDPOINT_IIIF_3_ENABLED: "true"
+      JAVA_OPTS: "-Xmx1g"
+    depends_on:
+      minio:
+        condition: service_healthy
+
+  varnish:
+    image: varnish:7.6
+    restart: unless-stopped
+    environment:
+      VARNISH_SIZE: 512M
+    volumes:
+      - ./varnish/default.vcl:/etc/varnish/default.vcl:ro
+    depends_on:
+      - cantaloupe
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.iiif.rule=Host(`iiif.dev.iotm.nl`)
+      - traefik.http.routers.iiif.tls.certresolver=letsencrypt
+      - traefik.http.services.iiif.loadbalancer.server.port=80
 
   authentik-server:
     image: ghcr.io/goauthentik/server:2025.6
@@ -144,6 +176,7 @@ services:
       JOTTEM_OIDC_ISSUER: https://auth.dev.iotm.nl/application/o/jottem/
       JOTTEM_DEV_AUTH: ${DEV_AUTH:-0}
       JOTTEM_AMR_VERPLICHT: ${AMR_VERPLICHT:-1}
+      JOTTEM_IIIF_BASIS_URL: ${IIIF_PUBLIEK:-https://iiif.dev.iotm.nl}
       JOTTEM_SMTP_HOST: mailpit
       JOTTEM_SMTP_PORT: 1025
     depends_on:
@@ -168,6 +201,7 @@ services:
       JOTTEM_S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       JOTTEM_S3_SECRET_KEY: ${S3_SECRET_KEY}
       JOTTEM_PUBLIEKE_BASIS_URL: ${WEB_PUBLIEK:-https://dev.iotm.nl}
+      JOTTEM_IIIF_BASIS_URL: ${IIIF_PUBLIEK:-https://iiif.dev.iotm.nl}
       JOTTEM_SMTP_HOST: mailpit
       JOTTEM_SMTP_PORT: 1025
     depends_on:

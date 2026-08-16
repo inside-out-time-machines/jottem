@@ -57,5 +57,7 @@ class JottemDetail(BaseModel):
     project: str
     metadata: dict[str, str]
     afbeeldingUrl: str | None
+    iiifService: str | None = None      # IIIF Image API-basis zodra het derivaat er is
+    iiifManifest: str | None = None
     publicatieDatum: datetime | None
     wijzigingsDatum: datetime

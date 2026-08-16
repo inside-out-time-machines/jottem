@@ -1,4 +1,5 @@
 import { apiServer } from "@/lib/api";
+import Viewer from "./viewer";
 
 type Detail = {
   mediaId: string;
@@ -11,6 +12,8 @@ type Detail = {
   project: string;
   metadata: Record<string, string>;
   afbeeldingUrl: string | null;
+  iiifService: string | null;
+  iiifManifest: string | null;
   publicatieDatum: string | null;
 };
 
@@ -41,11 +44,20 @@ export default async function JottemPagina({
       <p style={{ marginTop: ".3rem" }}>
         <span className={`status-pil status-${jottem.status}`}>{jottem.status}</span>
       </p>
-      {jottem.afbeeldingUrl && (
-        <figure className="polaroid" style={{ marginTop: "1.4rem", maxWidth: "36rem" }}>
-          <img src={jottem.afbeeldingUrl} alt={jottem.titel} />
-          <figcaption>{jottem.titel}</figcaption>
-        </figure>
+      {jottem.iiifService ? (
+        <Viewer service={jottem.iiifService} titel={jottem.titel} />
+      ) : (
+        jottem.afbeeldingUrl && (
+          <figure className="polaroid" style={{ marginTop: "1.4rem", maxWidth: "36rem" }}>
+            <img src={jottem.afbeeldingUrl} alt={jottem.titel} />
+            <figcaption>{jottem.titel}</figcaption>
+          </figure>
+        )
+      )}
+      {jottem.iiifManifest && (
+        <p style={{ fontSize: ".85rem", color: "var(--grijs)", marginTop: ".5rem" }}>
+          Open data: <a href={jottem.iiifManifest}>IIIF-manifest</a>
+        </p>
       )}
       {jottem.beschrijving && <p style={{ marginTop: "1.2rem", maxWidth: "42rem" }}>{jottem.beschrijving}</p>}
       <table className="lijst" style={{ maxWidth: "36rem" }}>
