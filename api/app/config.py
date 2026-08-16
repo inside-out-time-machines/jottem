@@ -1,0 +1,44 @@
+"""Configuratie via omgevingsvariabelen (.env buiten git, zie deploy/.env.example)."""
+from functools import lru_cache
+
+from pydantic_settings import BaseSettings
+
+
+class Settings(BaseSettings):
+    # basis
+    omgeving: str = "dev"                      # dev | productie
+    publieke_basis_url: str = "https://dev.iotm.nl"
+    api_basis_url: str = "https://api.dev.iotm.nl"
+
+    # database / cache
+    database_url: str = "postgresql+psycopg://jottem:jottem@postgres:5432/jottem"
+    valkey_url: str = "redis://valkey:6379/0"
+
+    # object storage (S3; tijdelijk MinIO, later externe dienst - zelfde protocol)
+    s3_endpoint: str = "http://minio:9000"
+    s3_endpoint_publiek: str = "https://s3.dev.iotm.nl"
+    s3_access_key: str = "jottem"
+    s3_secret_key: str = "wijzig-mij"
+    s3_bucket_originals: str = "originals"
+    s3_bucket_thumbs: str = "thumbs"
+
+    # authenticatie (Authentik OIDC)
+    oidc_issuer: str = "https://auth.dev.iotm.nl/application/o/jottem/"
+    oidc_client_id: str = "jottem-web"
+    # dev-bypass: alleen actief als dev_auth=1; NOOIT in productie
+    dev_auth: bool = False
+
+    # mail
+    smtp_host: str = "mailpit"
+    smtp_port: int = 1025
+    mail_afzender: str = "noreply@iotm.nl"
+
+    # autorisatie-cache
+    rollen_cache_ttl: int = 60
+
+    model_config = {"env_prefix": "JOTTEM_", "env_file": ".env", "extra": "ignore"}
+
+
+@lru_cache
+def settings() -> Settings:
+    return Settings()

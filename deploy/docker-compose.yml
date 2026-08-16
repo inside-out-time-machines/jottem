@@ -1,0 +1,203 @@
+# Jottem dev-stack (MVP-fundament) - draait op de dev-server achter Traefik.
+# Tijdelijke afwijkingen t.o.v. het design: dev.iotm.nl i.p.v. www, MinIO als losstaande
+# S3-object-storage. Secrets in .env (zie .env.example), nooit in git.
+name: jottem
+
+services:
+  traefik:
+    image: traefik:v3.3
+    restart: unless-stopped
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}
+      - --certificatesresolvers.letsencrypt.acme.storage=/acme/acme.json
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge=true
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=transip
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge.propagation.delayBeforeChecks=240s
+    environment:
+      TRANSIP_ACCOUNT_NAME: ${TRANSIP_ACCOUNT_NAME}
+      TRANSIP_PRIVATE_KEY_PATH: /run/secrets/transip.key
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - acme:/acme
+      - ${TRANSIP_KEY_BESTAND:-./transip.key}:/run/secrets/transip.key:ro
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: jottem
+      POSTGRES_PASSWORD: ${POSTGRES_WACHTWOORD}
+      POSTGRES_DB: jottem
+      AUTHENTIK_DB_WACHTWOORD: ${AUTHENTIK_DB_WACHTWOORD}   # voor het init-script
+    volumes:
+      - postgres:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jottem"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
+    volumes:
+      - valkey:/data
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
+    volumes:
+      - minio:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.s3.rule=Host(`s3.dev.iotm.nl`)
+      - traefik.http.routers.s3.tls.certresolver=letsencrypt
+      - traefik.http.services.s3.loadbalancer.server.port=9000
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "mc alias set lokaal http://minio:9000 $S3_ACCESS_KEY $S3_SECRET_KEY &&
+             mc mb --ignore-existing lokaal/originals lokaal/thumbs &&
+             echo buckets-klaar"
+    environment:
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+
+  authentik-server:
+    image: ghcr.io/goauthentik/server:2025.6
+    restart: unless-stopped
+    command: server
+    environment: &authentik-env
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
+      AUTHENTIK_POSTGRESQL__HOST: postgres
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${AUTHENTIK_DB_WACHTWOORD}
+      AUTHENTIK_REDIS__HOST: valkey
+      AUTHENTIK_BOOTSTRAP_PASSWORD: ${AUTHENTIK_BOOTSTRAP_WACHTWOORD}
+      AUTHENTIK_BOOTSTRAP_EMAIL: ${ACME_EMAIL}
+      AUTHENTIK_EMAIL__HOST: mailpit
+      AUTHENTIK_EMAIL__PORT: 1025
+      AUTHENTIK_EMAIL__FROM: noreply@iotm.nl
+    depends_on:
+      postgres:
+        condition: service_healthy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.auth.rule=Host(`auth.dev.iotm.nl`)
+      - traefik.http.routers.auth.tls.certresolver=letsencrypt
+      - traefik.http.services.auth.loadbalancer.server.port=9000
+
+  authentik-worker:
+    image: ghcr.io/goauthentik/server:2025.6
+    restart: unless-stopped
+    command: worker
+    environment: *authentik-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build: ../api
+    restart: unless-stopped
+    command: sh -c "alembic upgrade head && python -m app.seed && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    environment:
+      JOTTEM_DATABASE_URL: postgresql+psycopg://jottem:${POSTGRES_WACHTWOORD}@postgres:5432/jottem
+      JOTTEM_VALKEY_URL: redis://valkey:6379/0
+      JOTTEM_S3_ENDPOINT: http://minio:9000
+      JOTTEM_S3_ENDPOINT_PUBLIEK: ${S3_PUBLIEK:-https://s3.dev.iotm.nl}
+      JOTTEM_S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      JOTTEM_S3_SECRET_KEY: ${S3_SECRET_KEY}
+      JOTTEM_PUBLIEKE_BASIS_URL: ${WEB_PUBLIEK:-https://dev.iotm.nl}
+      JOTTEM_API_BASIS_URL: ${API_PUBLIEK:-https://api.dev.iotm.nl}
+      JOTTEM_OIDC_ISSUER: https://auth.dev.iotm.nl/application/o/jottem/
+      JOTTEM_DEV_AUTH: ${DEV_AUTH:-0}
+      JOTTEM_SMTP_HOST: mailpit
+      JOTTEM_SMTP_PORT: 1025
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.api.rule=Host(`api.dev.iotm.nl`)
+      - traefik.http.routers.api.tls.certresolver=letsencrypt
+      - traefik.http.services.api.loadbalancer.server.port=8000
+
+  worker:
+    build: ../api
+    restart: unless-stopped
+    command: celery -A app.worker worker --beat --loglevel=info
+    environment:
+      JOTTEM_DATABASE_URL: postgresql+psycopg://jottem:${POSTGRES_WACHTWOORD}@postgres:5432/jottem
+      JOTTEM_VALKEY_URL: redis://valkey:6379/0
+      JOTTEM_S3_ENDPOINT: http://minio:9000
+      JOTTEM_S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      JOTTEM_S3_SECRET_KEY: ${S3_SECRET_KEY}
+      JOTTEM_PUBLIEKE_BASIS_URL: ${WEB_PUBLIEK:-https://dev.iotm.nl}
+      JOTTEM_SMTP_HOST: mailpit
+      JOTTEM_SMTP_PORT: 1025
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ../web
+      args:
+        NEXT_PUBLIC_API_URL: ${API_PUBLIEK:-https://api.dev.iotm.nl}
+        NEXT_PUBLIC_DEV_AUTH: ${DEV_AUTH:-0}
+    restart: unless-stopped
+    environment:
+      JOTTEM_API_INTERN: http://api:8000
+    depends_on:
+      - api
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.web.rule=Host(`dev.iotm.nl`)
+      - traefik.http.routers.web.tls.certresolver=letsencrypt
+      # één wildcard-certificaat voor dev.iotm.nl + *.dev.iotm.nl
+      - traefik.http.routers.web.tls.domains[0].main=dev.iotm.nl
+      - traefik.http.routers.web.tls.domains[0].sans=*.dev.iotm.nl
+      - traefik.http.services.web.loadbalancer.server.port=3000
+
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    environment:
+      MP_UI_AUTH: ${MAILPIT_UI_AUTH:-}   # "gebruiker:wachtwoord" voor de web-UI
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.mail.rule=Host(`mail.dev.iotm.nl`)
+      - traefik.http.routers.mail.tls.certresolver=letsencrypt
+      - traefik.http.services.mail.loadbalancer.server.port=8025
+
+volumes:
+  acme:
+  postgres:
+  valkey:
+  minio:

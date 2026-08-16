@@ -1,0 +1,27 @@
+# Override voor lokale smoke-tests ZONDER Traefik: alles alleen op 127.0.0.1 (81xx-reeks,
+# botst niet met bestaande diensten op de host). Gebruik:
+#   docker compose -f docker-compose.yml -f compose.local.yml --env-file .env.local up -d
+services:
+  traefik:
+    profiles: ["server"]   # niet starten in de lokale variant
+
+  web:
+    ports:
+      - "127.0.0.1:8100:3000"
+
+  api:
+    ports:
+      - "127.0.0.1:8101:8000"
+
+  authentik-server:
+    ports:
+      - "127.0.0.1:8102:9000"
+
+  minio:
+    ports:
+      - "127.0.0.1:8103:9000"
+      - "127.0.0.1:8104:9001"
+
+  mailpit:
+    ports:
+      - "127.0.0.1:8105:8025"

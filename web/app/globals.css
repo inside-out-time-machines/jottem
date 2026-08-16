@@ -1,0 +1,115 @@
+/* Jottem-basislaag: design tokens en vormtaal uit de merkgids (brand.iotm.nl).
+   Organisatiekleuren komen per organisatiejottem over deze laag heen. */
+@font-face { font-family: 'Fraunces'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/fraunces-v38-latin-regular.woff2') format('woff2'); }
+@font-face { font-family: 'Fraunces'; font-style: italic; font-weight: 400; font-display: swap; src: url('/fonts/fraunces-v38-latin-italic.woff2') format('woff2'); }
+@font-face { font-family: 'Fraunces'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/fraunces-v38-latin-600.woff2') format('woff2'); }
+@font-face { font-family: 'Fraunces'; font-style: normal; font-weight: 700; font-display: swap; src: url('/fonts/fraunces-v38-latin-700.woff2') format('woff2'); }
+@font-face { font-family: 'Albert Sans'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/albert-sans-v4-latin-regular.woff2') format('woff2'); }
+@font-face { font-family: 'Albert Sans'; font-style: normal; font-weight: 500; font-display: swap; src: url('/fonts/albert-sans-v4-latin-500.woff2') format('woff2'); }
+@font-face { font-family: 'Albert Sans'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/albert-sans-v4-latin-600.woff2') format('woff2'); }
+@font-face { font-family: 'Albert Sans'; font-style: normal; font-weight: 700; font-display: swap; src: url('/fonts/albert-sans-v4-latin-700.woff2') format('woff2'); }
+
+:root {
+    --oranje: #d85a30;
+    --oranje-donker: #c04e28;
+    --roest: #a2401f;
+    --inkt: #1f1e1c;
+    --grijs: #6b625c;
+    --papier: #faf6f1;
+    --karton: #e8d9c4;
+    --kartonrand: #d3bfa3;
+    --geel: #fdf3c0;
+    --geelrand: #e5d489;
+    --wit: #ffffff;
+    --onderkant: #665245;
+    --kop: 'Fraunces', Georgia, 'Times New Roman', serif;
+    --body: 'Albert Sans', 'Segoe UI', system-ui, Helvetica, Arial, sans-serif;
+    --schaduw: 0 3px 10px rgba(31, 30, 28, .14);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: var(--body);
+    font-size: 1.125rem;
+    line-height: 1.65;
+    color: var(--inkt);
+    background: var(--papier);
+}
+
+h1, h2, h3 { font-family: var(--kop); text-wrap: balance; }
+h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; line-height: 1.08; }
+h2 { font-size: 1.6rem; font-weight: 700; }
+h3 { font-size: 1.25rem; font-weight: 600; }
+a { color: var(--roest); text-decoration-color: var(--oranje); text-underline-offset: 2px; }
+a:hover { color: var(--oranje); }
+:focus-visible { outline: 3px solid var(--oranje); outline-offset: 2px; border-radius: 2px; }
+
+.topbar { background: var(--inkt); color: var(--papier); }
+.topbar-binnen {
+    max-width: 68rem; margin: 0 auto; padding: .6rem 1.5rem;
+    display: flex; align-items: center; gap: .7rem;
+}
+.topbar img { height: 1.6rem; width: auto; }
+.topbar a { color: var(--papier); text-decoration: none; font-weight: 600; }
+.topbar nav { margin-left: auto; display: flex; gap: 1.1rem; font-size: .95rem; }
+.topbar .proto { font-size: .7rem; letter-spacing: .1em; text-transform: uppercase;
+    border: 1px solid rgba(250,246,241,.4); border-radius: 999px; padding: .15rem .6rem; }
+
+main { max-width: 68rem; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
+
+.kaart {
+    background: var(--wit); border: 1px solid var(--kartonrand);
+    border-top: 4px solid var(--oranje); border-radius: .45rem;
+    padding: 1.3rem 1.4rem; box-shadow: var(--schaduw);
+}
+.kaarten { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1.2rem; margin-top: 1.4rem; }
+
+.knop, button.knop {
+    display: inline-block; font-family: var(--body); font-weight: 600; font-size: 1rem;
+    padding: .65rem 1.3rem; border-radius: .4rem; text-decoration: none;
+    border: 2px solid transparent; cursor: pointer;
+}
+.knop-primair { background: var(--oranje); color: var(--wit); }
+.knop-primair:hover { background: var(--oranje-donker); color: var(--wit); }
+.knop-secundair { background: transparent; color: var(--roest); border-color: var(--oranje); }
+
+.memo {
+    background: var(--geel); border: 1px solid var(--geelrand);
+    padding: .8rem 1rem; font-family: var(--kop); font-style: italic;
+    transform: rotate(-1deg); box-shadow: var(--schaduw); display: inline-block;
+}
+
+form.formulier { display: grid; gap: .9rem; max-width: 34rem; margin-top: 1.5rem; }
+form.formulier label { font-weight: 600; font-size: .95rem; }
+form.formulier input[type="text"], form.formulier textarea, form.formulier select {
+    font: inherit; padding: .55rem .7rem; border: 1px solid var(--kartonrand);
+    border-radius: .35rem; background: var(--wit); width: 100%;
+}
+.veld { display: grid; gap: .25rem; }
+.status-pil {
+    display: inline-block; font-size: .8rem; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; padding: .15rem .6rem; border-radius: 999px;
+}
+.status-nieuw { background: var(--geel); border: 1px solid var(--geelrand); }
+.status-goedgekeurd { background: #e3efe6; border: 1px solid #9dc3a8; color: #2c5e3c; }
+.status-afgekeurd { background: #f6e0d8; border: 1px solid #d8a08a; color: var(--roest); }
+.status-gedepubliceerd { background: var(--karton); border: 1px solid var(--kartonrand); color: var(--grijs); }
+
+table.lijst { border-collapse: collapse; width: 100%; margin-top: 1.2rem; font-size: 1rem; }
+table.lijst th, table.lijst td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--kartonrand); vertical-align: top; }
+table.lijst th { font-size: .82rem; letter-spacing: .1em; text-transform: uppercase; }
+
+.polaroid {
+    background: var(--wit); border: 1px solid #eee2d3; padding: .7rem .7rem 1rem;
+    box-shadow: var(--schaduw); display: inline-block; max-width: 100%;
+}
+.polaroid img { max-width: 100%; height: auto; display: block; }
+.polaroid figcaption { font-family: var(--kop); font-style: italic; color: var(--grijs); font-size: .95rem; padding-top: .5rem; text-align: center; }
+
+footer { background: var(--onderkant); color: #e8ddd2; padding: 2rem 1.5rem; font-size: .95rem; margin-top: 3rem; }
+footer .binnen { max-width: 68rem; margin: 0 auto; }
+footer strong { color: var(--papier); }
+footer a { color: var(--papier); text-decoration-color: var(--oranje); }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

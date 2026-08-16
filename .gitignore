@@ -1,0 +1,20 @@
+# secrets horen nooit in git
+.env
+*.env
+!*.env.example
+
+# python
+__pycache__/
+*.pyc
+.venv/
+
+# node / next
+node_modules/
+.next/
+next-env.d.ts
+
+# mail-templates: dist wordt gegenereerd door build.sh
+api/templates/mail/dist/
+
+# lokaal
+*.log
