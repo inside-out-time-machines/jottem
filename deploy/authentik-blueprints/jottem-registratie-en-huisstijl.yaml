@@ -95,11 +95,11 @@ entries:
       name: jottem-registratie-gegevens
     attrs:
       fields:
-        - !KeyOf prompt-naam
-        - !KeyOf prompt-email
-        - !KeyOf prompt-username
-        - !KeyOf prompt-wachtwoord
-        - !KeyOf prompt-wachtwoord-herhaal
+        - !Find [authentik_stages_prompt.prompt, [name, jottem-registratie-naam]]
+        - !Find [authentik_stages_prompt.prompt, [name, jottem-registratie-email]]
+        - !Find [authentik_stages_prompt.prompt, [name, jottem-registratie-gebruikersnaam]]
+        - !Find [authentik_stages_prompt.prompt, [name, jottem-registratie-wachtwoord]]
+        - !Find [authentik_stages_prompt.prompt, [name, jottem-registratie-wachtwoord-herhaal]]
 
   - model: authentik_stages_user_write.userwritestage
     id: stage-aanmaken
@@ -140,28 +140,28 @@ entries:
 
   - model: authentik_flows.flowstagebinding
     identifiers:
-      target: !KeyOf flow-registratie
+      target: !Find [authentik_flows.flow, [slug, jottem-registratie]]
       order: 10
     attrs:
-      stage: !KeyOf stage-gegevens
+      stage: !Find [authentik_stages_prompt.promptstage, [name, jottem-registratie-gegevens]]
   - model: authentik_flows.flowstagebinding
     identifiers:
-      target: !KeyOf flow-registratie
+      target: !Find [authentik_flows.flow, [slug, jottem-registratie]]
       order: 20
     attrs:
-      stage: !KeyOf stage-aanmaken
+      stage: !Find [authentik_stages_user_write.userwritestage, [name, jottem-registratie-aanmaken]]
   - model: authentik_flows.flowstagebinding
     identifiers:
-      target: !KeyOf flow-registratie
+      target: !Find [authentik_flows.flow, [slug, jottem-registratie]]
       order: 30
     attrs:
-      stage: !KeyOf stage-verificatie
+      stage: !Find [authentik_stages_email.emailstage, [name, jottem-registratie-verificatie]]
   - model: authentik_flows.flowstagebinding
     identifiers:
-      target: !KeyOf flow-registratie
+      target: !Find [authentik_flows.flow, [slug, jottem-registratie]]
       order: 40
     attrs:
-      stage: !KeyOf stage-inloggen
+      stage: !Find [authentik_stages_user_login.userloginstage, [name, jottem-registratie-inloggen]]
 
   # ---------- registratielink op de loginpagina ----------
   - model: authentik_stages_identification.identificationstage
@@ -169,4 +169,4 @@ entries:
       name: default-authentication-identification
     state: present
     attrs:
-      enrollment_flow: !KeyOf flow-registratie
+      enrollment_flow: !Find [authentik_flows.flow, [slug, jottem-registratie]]
