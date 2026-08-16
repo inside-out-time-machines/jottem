@@ -65,6 +65,9 @@ entries:
           --pf-global--active-color--100: var(--jottem-oranje);
           --pf-global--link--Color: var(--jottem-roest);
           --pf-global--link--Color--hover: var(--jottem-oranje-donker);
+          /* link-knoppen (o.a. social login) lezen hun kleur uit deze component-var */
+          --pf-c-button--m-link--Color: var(--jottem-roest);
+          --pf-c-button--m-link--hover--Color: var(--jottem-oranje-donker);
         }
         body, .pf-c-form, .pf-c-form-control, .pf-c-button, input, button, select, textarea {
           font-family: 'Albert Sans', Arial, sans-serif;
