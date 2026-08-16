@@ -10,14 +10,24 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from .. import s3
+from .. import herkenbaar, s3
 from ..auth import Principal, principal
 from ..db import get_db
 from ..models import Media, MediaMetadata, MediaStatus, Project, Toestemming
 from ..outbox import log
-from ..schemas import TOEGESTANE_TYPES, JottemIndienen, UploadUrlAntwoord, UploadUrlVraag
+from ..schemas import (
+    TOEGESTANE_TYPES, HerkenbaarCheckAntwoord, HerkenbaarCheckVraag,
+    JottemIndienen, UploadUrlAntwoord, UploadUrlVraag,
+)
 
 router = APIRouter(tags=["Uploaden"])
+
+
+def _object_key_voor(media_id: uuid.UUID) -> str | None:
+    inhoud = s3.intern().list_objects_v2(
+        Bucket=s3.settings().s3_bucket_originals, Prefix=f"{media_id}/"
+    ).get("Contents") or []
+    return inhoud[0]["Key"] if inhoud else None
 
 
 @router.post("/upload-url", response_model=UploadUrlAntwoord)
@@ -34,6 +44,17 @@ async def upload_url(vraag: UploadUrlVraag, p: Principal = Depends(principal)):
     )
 
 
+@router.post("/herkenbaar-check", response_model=HerkenbaarCheckAntwoord)
+async def herkenbaar_check(vraag: HerkenbaarCheckVraag, p: Principal = Depends(principal)):
+    """Directe controle op herkenbare personen, na de upload en vóór het indienen
+    (Herkenbaar API); bij "ja" vraagt de frontend om de toestemmingsverklaring."""
+    object_key = _object_key_voor(vraag.mediaId)
+    if not object_key:
+        raise HTTPException(409, "Bestand niet gevonden; upload eerst via de upload-URL")
+    gevonden, score = herkenbaar.check_object(object_key)
+    return HerkenbaarCheckAntwoord(herkenbaar=gevonden, betrouwbaarheid=score)
+
+
 @router.post("/jottem", status_code=201)
 async def jottem_indienen(
     vraag: JottemIndienen,
@@ -45,18 +66,24 @@ async def jottem_indienen(
         raise HTTPException(404, "Project onbekend; de projectkeuze is verplicht")
     if not vraag.licentieBevestigd:
         raise HTTPException(422, "Bevestig de licentie van het project")
-    object_key = f"{vraag.mediaId}/"
     # het bestand moet al geupload zijn via de presigned URL
-    sleutels = s3.intern().list_objects_v2(
-        Bucket=s3.settings().s3_bucket_originals, Prefix=str(vraag.mediaId) + "/"
-    )
-    inhoud = sleutels.get("Contents") or []
-    if not inhoud:
+    object_key = _object_key_voor(vraag.mediaId)
+    if not object_key:
         raise HTTPException(409, "Bestand niet gevonden; upload eerst via de upload-URL")
-    object_key = inhoud[0]["Key"]
 
+    # gezaghebbende Herkenbaar-check op de server (de frontend-check is alleen UX):
+    # bij herkenbare personen is een expliciete keuze van de uploader verplicht
+    gevonden, score = herkenbaar.check_object(object_key)
     toestemming = Toestemming.nvt
-    if vraag.toestemming in ("ja", "nee"):
+    if gevonden:
+        if vraag.toestemming not in ("ja", "nee"):
+            raise HTTPException(
+                422,
+                "Er zijn mogelijk herkenbare personen gedetecteerd; geef aan of je hun "
+                "toestemming hebt (toestemming: ja of nee)",
+            )
+        toestemming = Toestemming(vraag.toestemming)
+    elif vraag.toestemming in ("ja", "nee"):
         toestemming = Toestemming(vraag.toestemming)
 
     media = Media(
@@ -70,6 +97,8 @@ async def jottem_indienen(
         licentie=project.datasetLicentie,   # bevestigde projectlicentie
         objectKey=object_key,
         status=MediaStatus.nieuw,
+        herkenbaar=gevonden,
+        herkenbaarScore=score,
         toestemming=toestemming,
     )
     db.add(media)

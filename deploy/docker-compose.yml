@@ -83,6 +83,11 @@ services:
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}
 
+  herkenbaar:
+    # detectie van herkenbare personen (portretrecht) - aparte AGPL-dienst, eigen repo
+    build: https://github.com/inside-out-time-machines/herkenbaar-api.git
+    restart: unless-stopped
+
   cantaloupe:
     image: uclalibrary/cantaloupe:5.0.7-0
     restart: unless-stopped
@@ -177,6 +182,7 @@ services:
       JOTTEM_DEV_AUTH: ${DEV_AUTH:-0}
       JOTTEM_AMR_VERPLICHT: ${AMR_VERPLICHT:-1}
       JOTTEM_IIIF_BASIS_URL: ${IIIF_PUBLIEK:-https://iiif.dev.iotm.nl}
+      JOTTEM_HERKENBAAR_URL: http://herkenbaar:4050
       JOTTEM_SMTP_HOST: mailpit
       JOTTEM_SMTP_PORT: 1025
     depends_on:

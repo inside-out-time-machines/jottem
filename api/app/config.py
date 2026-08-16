@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     # IIIF (Cantaloupe achter Varnish)
     iiif_basis_url: str = "https://iiif.dev.iotm.nl"
 
+    # Herkenbaar API (interne container)
+    herkenbaar_url: str = "http://herkenbaar:4050"
+
     # authenticatie (Authentik OIDC)
     oidc_issuer: str = "https://auth.dev.iotm.nl/application/o/jottem/"
     oidc_client_id: str = "jottem-web"

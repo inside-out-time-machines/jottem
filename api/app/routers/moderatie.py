@@ -43,6 +43,7 @@ async def wachtrij(
             mediaId=m.mediaId, titel=m.titel, status=m.status.value, genre=m.genre,
             creatieDatum=m.creatieDatum, afkeurReden=m.afkeurReden,
             duurzameUrl=duurzame_url(m.mediaId) if m.status == MediaStatus.goedgekeurd else None,
+            herkenbaar=m.herkenbaar, toestemming=m.toestemming.value,
         )
         for m in db.scalars(vraag.order_by(Media.creatieDatum))
     ]

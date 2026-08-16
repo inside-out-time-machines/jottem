@@ -39,6 +39,17 @@ class JottemKort(BaseModel):
     creatieDatum: datetime
     afkeurReden: str | None = None
     duurzameUrl: str | None = None
+    herkenbaar: bool | None = None      # Herkenbaar API-signaal (None = niet bepaald)
+    toestemming: str | None = None      # nvt | ja | nee
+
+
+class HerkenbaarCheckVraag(BaseModel):
+    mediaId: uuid.UUID
+
+
+class HerkenbaarCheckAntwoord(BaseModel):
+    herkenbaar: bool | None             # None = dienst niet beschikbaar
+    betrouwbaarheid: float | None
 
 
 class ModeratieBesluit(BaseModel):

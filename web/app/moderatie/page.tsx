@@ -12,6 +12,8 @@ type Jottem = {
   creatieDatum: string;
   afkeurReden: string | null;
   duurzameUrl: string | null;
+  herkenbaar: boolean | null;
+  toestemming: string | null;
 };
 
 const ORGANISATIE = "samh"; // fundament: één organisatie; later uit de ingelogde rol
@@ -97,6 +99,16 @@ export default function ModeratiePagina() {
             <tr key={jottem.mediaId}>
               <td>
                 <a href={`/jottem/${jottem.mediaId}`}>{jottem.titel}</a>
+                {jottem.herkenbaar && (
+                  <div>
+                    <span
+                      className={`status-pil ${jottem.toestemming === "ja" ? "status-goedgekeurd" : "status-afgekeurd"}`}
+                      title="Signaal van de Herkenbaar API plus de verklaring van de uploader"
+                    >
+                      herkenbaar · toestemming: {jottem.toestemming}
+                    </span>
+                  </div>
+                )}
                 {jottem.afkeurReden && (
                   <div style={{ fontSize: ".85rem", color: "var(--grijs)" }}>
                     reden: {jottem.afkeurReden}
