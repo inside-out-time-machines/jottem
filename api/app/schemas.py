@@ -43,6 +43,44 @@ class JottemKort(BaseModel):
     toestemming: str | None = None      # nvt | ja | nee
 
 
+class OrganisatieIn(BaseModel):
+    naam: str = Field(min_length=1, max_length=200)
+    slug: str = Field(min_length=2, max_length=80, pattern="^[a-z0-9-]+$")
+    beschrijving: str | None = None
+    website: str | None = None
+    kleurPrimair: str | None = Field(default=None, pattern="^#[0-9a-fA-F]{6}$")
+    kleurSecundair: str | None = Field(default=None, pattern="^#[0-9a-fA-F]{6}$")
+    kleurAchtergrond: str | None = Field(default=None, pattern="^#[0-9a-fA-F]{6}$")
+    logo: str | None = None      # S3-sleutel in de thumbs-bucket (huisstijl/<slug>/...)
+    favicon: str | None = None
+
+
+class OrganisatieUit(OrganisatieIn):
+    organisatieId: int
+    logoUrl: str | None = None
+    faviconUrl: str | None = None
+
+
+class HuisstijlUploadVraag(BaseModel):
+    soort: str = Field(pattern="^(logo|favicon)$")
+    bestandsnaam: str
+    contentType: str = Field(pattern="^image/")
+
+
+class UitnodigingIn(BaseModel):
+    naam: str = Field(min_length=1, max_length=200)
+    email: str = Field(max_length=320)
+    rol: str = Field(pattern="^(organisatiebeheerder|moderator)$")
+
+
+class GebruikerRolUit(BaseModel):
+    gebruikersId: int
+    naam: str
+    email: str
+    rol: str
+    gekoppeld: bool              # False zolang de uitgenodigde nog niet heeft ingelogd
+
+
 class HerkenbaarCheckVraag(BaseModel):
     mediaId: uuid.UUID
 

@@ -41,7 +41,9 @@ async def mijn_jottems(p: Principal = Depends(principal), db: Session = Depends(
 
 @router.get("/organisaties")
 async def organisaties(db: Session = Depends(get_db)):
-    """Publiek: organisaties met hun actieve projecten (voor home en uploadformulier)."""
+    """Publiek: organisaties met huisstijl en actieve projecten (home en uploadformulier)."""
+    from .. import s3
+
     resultaat = []
     for organisatie in db.scalars(select(Organisatie).order_by(Organisatie.naam)):
         projecten = db.scalars(
@@ -52,6 +54,10 @@ async def organisaties(db: Session = Depends(get_db)):
             "slug": organisatie.slug,
             "naam": organisatie.naam,
             "beschrijving": organisatie.beschrijving,
+            "website": organisatie.website,
+            "kleurPrimair": organisatie.kleurPrimair,
+            "logoUrl": s3.presigned_get(organisatie.logo, bucket=settings().s3_bucket_thumbs)
+                       if organisatie.logo else None,
             "projecten": [
                 {"projectId": str(pr.projectId), "naam": pr.naam, "slug": pr.slug,
                  "oproep": pr.oproep, "datasetLicentie": pr.datasetLicentie}

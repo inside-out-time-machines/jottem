@@ -11,6 +11,8 @@ type Organisatie = {
   slug: string;
   naam: string;
   beschrijving: string | null;
+  kleurPrimair: string | null;
+  logoUrl: string | null;
   projecten: Project[];
 };
 
@@ -41,11 +43,25 @@ export default async function Home() {
 
       {organisaties.map((organisatie) => (
         <section key={organisatie.slug} style={{ marginTop: "2.5rem" }}>
-          <h2>{organisatie.naam}</h2>
+          {/* PB-2: de organisatiehuisstijl (kleur + logo) over de Jottem-basislaag */}
+          <h2 style={organisatie.kleurPrimair ? { color: organisatie.kleurPrimair } : undefined}>
+            {organisatie.logoUrl && (
+              <img
+                src={organisatie.logoUrl}
+                alt=""
+                style={{ height: "1.6rem", width: "auto", marginRight: ".6rem", verticalAlign: "-0.2rem" }}
+              />
+            )}
+            {organisatie.naam}
+          </h2>
           {organisatie.beschrijving && <p>{organisatie.beschrijving}</p>}
           <div className="kaarten">
             {organisatie.projecten.map((project) => (
-              <article className="kaart" key={project.projectId}>
+              <article
+                className="kaart"
+                key={project.projectId}
+                style={organisatie.kleurPrimair ? { borderTopColor: organisatie.kleurPrimair } : undefined}
+              >
                 <h3>{project.naam}</h3>
                 {project.oproep && <p style={{ fontSize: "1rem" }}>{project.oproep}</p>}
                 <p style={{ marginTop: ".9rem" }}>

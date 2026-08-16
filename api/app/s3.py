@@ -25,13 +25,15 @@ def intern():
     return _client(settings().s3_endpoint)
 
 
-def presigned_put(object_key: str, content_type: str, verloop_seconden: int = 900) -> str:
+def presigned_put(
+    object_key: str, content_type: str, verloop_seconden: int = 900, bucket: str | None = None
+) -> str:
     """Presigned PUT op het publieke endpoint, zodat de browser direct kan uploaden."""
     client = _client(settings().s3_endpoint_publiek)
     return client.generate_presigned_url(
         "put_object",
         Params={
-            "Bucket": settings().s3_bucket_originals,
+            "Bucket": bucket or settings().s3_bucket_originals,
             "Key": object_key,
             "ContentType": content_type,
         },
@@ -39,11 +41,11 @@ def presigned_put(object_key: str, content_type: str, verloop_seconden: int = 90
     )
 
 
-def presigned_get(object_key: str, verloop_seconden: int = 3600) -> str:
+def presigned_get(object_key: str, verloop_seconden: int = 3600, bucket: str | None = None) -> str:
     client = _client(settings().s3_endpoint_publiek)
     return client.generate_presigned_url(
         "get_object",
-        Params={"Bucket": settings().s3_bucket_originals, "Key": object_key},
+        Params={"Bucket": bucket or settings().s3_bucket_originals, "Key": object_key},
         ExpiresIn=verloop_seconden,
     )
 

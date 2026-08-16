@@ -38,6 +38,15 @@ def seed() -> None:
         bestaande = db.scalar(select(Organisatie).where(Organisatie.slug == "samh"))
         if bestaande:
             zet_beheerder_klaar(db, bestaande.organisatieId, "bob.coret@gmail.com")
+            # testaccount platformbeheerder (dev-bypass) ook op bestaande omgevingen
+            piet = db.scalar(select(Gebruiker).where(Gebruiker.sub == "dev-piet"))
+            if not piet:
+                piet = Gebruiker(sub="dev-piet", naam="Piet Platformbeheerder", email="piet@dev.local")
+                db.add(piet)
+                db.flush()
+                db.add(GebruikerRol(gebruikersId=piet.gebruikersId, organisatieId=None, rol=Rol.platformbeheerder))
+                db.commit()
+                print("seed: dev-piet (platformbeheerder) toegevoegd")
             print("seed: basisdata al aanwezig")
             return
         samh = Organisatie(
@@ -64,11 +73,13 @@ def seed() -> None:
         moderator = Gebruiker(sub="dev-mona", naam="Mona Moderator", email="mona@dev.local")
         beheerder = Gebruiker(sub="dev-otto", naam="Otto Organisatiebeheerder", email="otto@dev.local")
         uploader = Gebruiker(sub="dev-anna", naam="Anna Uploader", email="anna@dev.local")
-        db.add_all([moderator, beheerder, uploader])
+        platformbeheerder = Gebruiker(sub="dev-piet", naam="Piet Platformbeheerder", email="piet@dev.local")
+        db.add_all([moderator, beheerder, uploader, platformbeheerder])
         db.flush()
         db.add_all([
             GebruikerRol(gebruikersId=moderator.gebruikersId, organisatieId=samh.organisatieId, rol=Rol.moderator),
             GebruikerRol(gebruikersId=beheerder.gebruikersId, organisatieId=samh.organisatieId, rol=Rol.organisatiebeheerder),
+            GebruikerRol(gebruikersId=platformbeheerder.gebruikersId, organisatieId=None, rol=Rol.platformbeheerder),
         ])
         db.commit()
         print(f"seed: organisatie '{samh.naam}' + project '{project.naam}' + 3 testaccounts")

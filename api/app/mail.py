@@ -10,6 +10,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy.orm import Session
 
+from . import s3
 from .config import settings
 from .models import Organisatie, Project
 
@@ -27,10 +28,16 @@ def basis_context(db: Session, organisatie_id: int | None, project_id=None) -> d
     if organisatie_id:
         organisatie = db.get(Organisatie, organisatie_id)
         if organisatie:
+            logo_url = None
+            if organisatie.logo:
+                logo_url = s3.presigned_get(
+                    organisatie.logo, verloop_seconden=7 * 24 * 3600,
+                    bucket=settings().s3_bucket_thumbs,
+                )
             context["organisatie"] = {
                 "naam": organisatie.naam,
                 "kleurPrimair": organisatie.kleurPrimair or "#d85a30",
-                "logoUrl": organisatie.logo,
+                "logoUrl": logo_url,
             }
     if project_id:
         project = db.get(Project, project_id)
