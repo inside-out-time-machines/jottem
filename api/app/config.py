@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     oidc_client_id: str = "jottem-web"
     # dev-bypass: alleen actief als dev_auth=1; NOOIT in productie
     dev_auth: bool = False
+    # sterke factor (amr) afdwingen voor beheer-/moderatierollen; alleen in dev tijdelijk
+    # uitzetbaar zolang TOTP/passkey-enrollment in Authentik nog niet is ingericht
+    amr_verplicht: bool = True
 
     # mail
     smtp_host: str = "mailpit"

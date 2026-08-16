@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { API_PUBLIEK, devHeaders } from "@/lib/api";
+import { API_PUBLIEK, authHeaders, isIngelogd } from "@/lib/api";
+import { startLogin } from "@/lib/oidc";
 
 type Project = { projectId: string; naam: string; datasetLicentie: string | null };
 type Organisatie = { naam: string; projecten: Project[] };
@@ -15,6 +16,11 @@ export default function UploadPagina() {
   const [licentieAkkoord, setLicentieAkkoord] = useState(false);
   const [melding, setMelding] = useState<string | null>(null);
   const [bezig, setBezig] = useState(false);
+  const [ingelogd, setIngelogd] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    setIngelogd(isIngelogd());
+  }, []);
 
   useEffect(() => {
     fetch(`${API_PUBLIEK}/organisaties`)
@@ -37,7 +43,7 @@ export default function UploadPagina() {
     setBezig(true);
     setMelding(null);
     try {
-      const headers = { "Content-Type": "application/json", ...devHeaders("dev-anna", "Anna Uploader") };
+      const headers = { "Content-Type": "application/json", ...authHeaders("dev-anna", "Anna Uploader") };
       const urlAntwoord = await fetch(`${API_PUBLIEK}/upload-url`, {
         method: "POST",
         headers,
@@ -81,6 +87,26 @@ export default function UploadPagina() {
     } finally {
       setBezig(false);
     }
+  }
+
+  if (ingelogd === null) {
+    return <main><h1>Deel je materiaal</h1></main>;
+  }
+  if (!ingelogd) {
+    return (
+      <main>
+        <h1>Deel je materiaal</h1>
+        <p style={{ marginTop: "1rem", maxWidth: "40rem" }}>
+          Om te uploaden heb je een account nodig. Zo weten we wie er bij een
+          bijdrage hoort en kunnen we je een berichtje sturen zodra hij online staat.
+        </p>
+        <p style={{ marginTop: "1.2rem" }}>
+          <button className="knop knop-primair" onClick={() => void startLogin("/upload")}>
+            Inloggen of registreren
+          </button>
+        </p>
+      </main>
+    );
   }
 
   return (

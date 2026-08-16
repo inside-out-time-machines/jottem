@@ -8,11 +8,37 @@ from .db import SessionLocal
 from .models import Gebruiker, GebruikerRol, Organisatie, Project, Rol
 
 
+def zet_beheerder_klaar(db, organisatie_id: int, email: str) -> None:
+    """Uitnodigingspatroon: rij zonder sub; de eerste OIDC-login koppelt op e-mail."""
+    beheerder = db.scalar(select(Gebruiker).where(Gebruiker.email == email))
+    if not beheerder:
+        beheerder = Gebruiker(sub=None, naam=email.split("@")[0], email=email)
+        db.add(beheerder)
+        db.flush()
+    for rol in (Rol.platformbeheerder, Rol.organisatiebeheerder, Rol.moderator):
+        bestaand = db.scalar(
+            select(GebruikerRol).where(
+                GebruikerRol.gebruikersId == beheerder.gebruikersId,
+                GebruikerRol.rol == rol,
+            )
+        )
+        if not bestaand:
+            db.add(GebruikerRol(
+                gebruikersId=beheerder.gebruikersId,
+                organisatieId=None if rol == Rol.platformbeheerder else organisatie_id,
+                rol=rol,
+            ))
+    db.commit()
+    print(f"seed: rollen klaargezet voor {email}")
+
+
 def seed() -> None:
     db = SessionLocal()
     try:
-        if db.scalar(select(Organisatie).where(Organisatie.slug == "samh")):
-            print("seed: al aanwezig, niets te doen")
+        bestaande = db.scalar(select(Organisatie).where(Organisatie.slug == "samh"))
+        if bestaande:
+            zet_beheerder_klaar(db, bestaande.organisatieId, "bob.coret@gmail.com")
+            print("seed: basisdata al aanwezig")
             return
         samh = Organisatie(
             naam="Streekarchief Midden-Holland",
@@ -46,6 +72,7 @@ def seed() -> None:
         ])
         db.commit()
         print(f"seed: organisatie '{samh.naam}' + project '{project.naam}' + 3 testaccounts")
+        zet_beheerder_klaar(db, samh.organisatieId, "bob.coret@gmail.com")
     finally:
         db.close()
 

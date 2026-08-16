@@ -25,7 +25,7 @@ from .models import Gebruiker, GebruikerRol, Rol
 _valkey = redis.Redis.from_url(settings().valkey_url, decode_responses=True)
 _jwks_client: jwt.PyJWKClient | None = None
 
-STERKE_FACTOREN = {"mfa", "otp", "totp", "webauthn", "hwk", "swk", "user"}
+STERKE_FACTOREN = {"mfa", "otp", "totp", "webauthn", "hwk", "swk"}
 
 
 @dataclass
@@ -137,7 +137,7 @@ def eis_rol(rol: Rol):
     async def controle(p: Principal = Depends(principal), organisatieId: int | None = None) -> Principal:
         if not p.heeft_rol(rol, organisatieId):
             raise HTTPException(403, f"Rol '{rol.value}' vereist")
-        if not set(a.lower() for a in p.amr) & STERKE_FACTOREN:
+        if settings().amr_verplicht and not set(a.lower() for a in p.amr) & STERKE_FACTOREN:
             raise HTTPException(403, "Sterke factor (TOTP of passkey) vereist voor deze rol")
         return p
     return controle

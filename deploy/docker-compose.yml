@@ -99,6 +99,8 @@ services:
       AUTHENTIK_EMAIL__HOST: mailpit
       AUTHENTIK_EMAIL__PORT: 1025
       AUTHENTIK_EMAIL__FROM: noreply@iotm.nl
+    volumes:
+      - ./authentik-blueprints:/blueprints/custom:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -113,6 +115,8 @@ services:
     restart: unless-stopped
     command: worker
     environment: *authentik-env
+    volumes:
+      - ./authentik-blueprints:/blueprints/custom:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -132,6 +136,7 @@ services:
       JOTTEM_API_BASIS_URL: ${API_PUBLIEK:-https://api.dev.iotm.nl}
       JOTTEM_OIDC_ISSUER: https://auth.dev.iotm.nl/application/o/jottem/
       JOTTEM_DEV_AUTH: ${DEV_AUTH:-0}
+      JOTTEM_AMR_VERPLICHT: ${AMR_VERPLICHT:-1}
       JOTTEM_SMTP_HOST: mailpit
       JOTTEM_SMTP_PORT: 1025
     depends_on:

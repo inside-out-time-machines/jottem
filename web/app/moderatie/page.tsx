@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { API_PUBLIEK, devHeaders } from "@/lib/api";
+import { API_PUBLIEK, authHeaders, isIngelogd } from "@/lib/api";
+import { startLogin } from "@/lib/oidc";
 
 type Jottem = {
   mediaId: string;
@@ -18,10 +19,16 @@ const ORGANISATIE = "samh"; // fundament: één organisatie; later uit de ingelo
 export default function ModeratiePagina() {
   const [jottems, setJottems] = useState<Jottem[]>([]);
   const [melding, setMelding] = useState<string | null>(null);
+  const [ingelogd, setIngelogd] = useState<boolean | null>(null);
 
-  const headers = { "Content-Type": "application/json", ...devHeaders("dev-mona", "Mona Moderator") };
+  useEffect(() => {
+    setIngelogd(isIngelogd());
+  }, []);
+
+  const headers = { "Content-Type": "application/json", ...authHeaders("dev-mona", "Mona Moderator") };
 
   const laden = useCallback(() => {
+    if (!isIngelogd()) return;
     fetch(`${API_PUBLIEK}/organisatie/${ORGANISATIE}/moderatie/jottems`, { headers })
       .then(async (r) => {
         if (!r.ok) throw new Error((await r.json()).detail ?? r.statusText);
@@ -51,6 +58,22 @@ export default function ModeratiePagina() {
     }
     setMelding(besluit === "goedgekeurd" ? "Goedgekeurd en gepubliceerd." : "Afgekeurd; de uploader krijgt een mail met de reden.");
     laden();
+  }
+
+  if (ingelogd === null) {
+    return <main><h1>Moderatie</h1></main>;
+  }
+  if (!ingelogd) {
+    return (
+      <main>
+        <h1>Moderatie</h1>
+        <p style={{ marginTop: "1.2rem" }}>
+          <button className="knop knop-primair" onClick={() => void startLogin("/moderatie")}>
+            Log in als moderator
+          </button>
+        </p>
+      </main>
+    );
   }
 
   return (

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import InlogKnop from "./inlog-knop";
 
 export const metadata: Metadata = {
   title: "Jottem",
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <nav>
               <a href="/upload">Uploaden</a>
               <a href="/moderatie">Moderatie</a>
+              <InlogKnop />
             </nav>
           </div>
         </header>

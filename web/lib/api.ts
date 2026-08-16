@@ -11,6 +11,21 @@ export function devHeaders(sub: string, naam?: string): Record<string, string> {
   return { "X-Dev-Sub": sub, ...(naam ? { "X-Dev-Naam": naam } : {}) };
 }
 
+// Auth-headers voor browser-calls: dev-bypass in dev, anders het OIDC-access-token.
+export function authHeaders(devSub: string, devNaam?: string): Record<string, string> {
+  if (DEV_AUTH) return devHeaders(devSub, devNaam);
+  if (typeof window !== "undefined") {
+    const token = sessionStorage.getItem("oidc_access_token");
+    if (token) return { Authorization: `Bearer ${token}` };
+  }
+  return {};
+}
+
+export function isIngelogd(): boolean {
+  if (DEV_AUTH) return true;
+  return typeof window !== "undefined" && Boolean(sessionStorage.getItem("oidc_access_token"));
+}
+
 export async function apiServer<T>(pad: string, init?: RequestInit): Promise<T> {
   const antwoord = await fetch(`${API_INTERN}${pad}`, { cache: "no-store", ...init });
   if (!antwoord.ok) throw new Error(`API ${pad}: ${antwoord.status}`);
