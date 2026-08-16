@@ -1,0 +1,167 @@
+# Self-service-registratie (met e-mailverificatie, conform het design: accountmails via
+# Authentik) en de Jottem-huisstijl op de publieke Authentik-pagina's (Brand).
+version: 1
+metadata:
+  name: jottem-registratie-en-huisstijl
+  labels:
+    blueprints.goauthentik.io/description: "Registratieflow + Jottem-branding"
+entries:
+  # ---------- huisstijl (Brand) ----------
+  - model: authentik_brands.brand
+    identifiers:
+      domain: authentik-default
+    state: present
+    attrs:
+      branding_title: Jottem
+      branding_logo: https://dev.iotm.nl/logo/jottem-woordmerk.svg
+      branding_favicon: https://dev.iotm.nl/favicon.ico
+      branding_custom_css: |
+        .pf-c-background-image { background: #faf6f1 !important; background-image: none !important; }
+        .pf-c-login__main { border-top: 4px solid #d85a30; border-radius: 6px; }
+        .pf-c-button.pf-m-primary { background-color: #d85a30; }
+        .pf-c-button.pf-m-primary:hover { background-color: #c04e28; }
+        .pf-c-login__main-footer-band { background: #faf6f1; }
+        a { color: #a2401f; }
+
+  # ---------- prompts voor de registratie ----------
+  - model: authentik_stages_prompt.prompt
+    id: prompt-naam
+    identifiers:
+      field_key: name
+      name: jottem-registratie-naam
+    attrs:
+      label: Naam
+      type: text
+      required: true
+      placeholder: "Je naam (zoals anderen die zien)"
+      order: 10
+
+  - model: authentik_stages_prompt.prompt
+    id: prompt-email
+    identifiers:
+      field_key: email
+      name: jottem-registratie-email
+    attrs:
+      label: E-mailadres
+      type: email
+      required: true
+      placeholder: "naam@voorbeeld.nl"
+      order: 20
+
+  - model: authentik_stages_prompt.prompt
+    id: prompt-username
+    identifiers:
+      field_key: username
+      name: jottem-registratie-gebruikersnaam
+    attrs:
+      label: Gebruikersnaam
+      type: text
+      required: true
+      placeholder: "Voor het inloggen"
+      order: 30
+
+  - model: authentik_stages_prompt.prompt
+    id: prompt-wachtwoord
+    identifiers:
+      field_key: password
+      name: jottem-registratie-wachtwoord
+    attrs:
+      label: Wachtwoord
+      type: password
+      required: true
+      placeholder: Wachtwoord
+      order: 40
+
+  - model: authentik_stages_prompt.prompt
+    id: prompt-wachtwoord-herhaal
+    identifiers:
+      field_key: password_repeat
+      name: jottem-registratie-wachtwoord-herhaal
+    attrs:
+      label: Wachtwoord (nog een keer)
+      type: password
+      required: true
+      placeholder: Wachtwoord herhalen
+      order: 50
+
+  # ---------- stages ----------
+  - model: authentik_stages_prompt.promptstage
+    id: stage-gegevens
+    identifiers:
+      name: jottem-registratie-gegevens
+    attrs:
+      fields:
+        - !KeyOf prompt-naam
+        - !KeyOf prompt-email
+        - !KeyOf prompt-username
+        - !KeyOf prompt-wachtwoord
+        - !KeyOf prompt-wachtwoord-herhaal
+
+  - model: authentik_stages_user_write.userwritestage
+    id: stage-aanmaken
+    identifiers:
+      name: jottem-registratie-aanmaken
+    attrs:
+      user_creation_mode: always_create
+      create_users_as_inactive: true
+
+  - model: authentik_stages_email.emailstage
+    id: stage-verificatie
+    identifiers:
+      name: jottem-registratie-verificatie
+    attrs:
+      use_global_settings: true
+      activate_user_on_success: true
+      subject: "Bevestig je Jottem-account"
+      template: email/account_confirmation.html
+      token_expiry: minutes=30
+
+  - model: authentik_stages_user_login.userloginstage
+    id: stage-inloggen
+    identifiers:
+      name: jottem-registratie-inloggen
+    attrs: {}
+
+  # ---------- de flow zelf ----------
+  - model: authentik_flows.flow
+    id: flow-registratie
+    identifiers:
+      slug: jottem-registratie
+    attrs:
+      name: Jottem-registratie
+      title: "Maak je Jottem-account"
+      designation: enrollment
+      authentication: require_unauthenticated
+
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !KeyOf flow-registratie
+      order: 10
+    attrs:
+      stage: !KeyOf stage-gegevens
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !KeyOf flow-registratie
+      order: 20
+    attrs:
+      stage: !KeyOf stage-aanmaken
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !KeyOf flow-registratie
+      order: 30
+    attrs:
+      stage: !KeyOf stage-verificatie
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !KeyOf flow-registratie
+      order: 40
+    attrs:
+      stage: !KeyOf stage-inloggen
+
+  # ---------- registratielink op de loginpagina ----------
+  - model: authentik_stages_identification.identificationstage
+    identifiers:
+      name: default-authentication-identification
+    state: present
+    attrs:
+      enrollment_flow: !KeyOf flow-registratie
