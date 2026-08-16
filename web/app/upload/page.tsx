@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { API_PUBLIEK, authHeaders, isIngelogd } from "@/lib/api";
+import { licentieInfo } from "@/lib/licenties";
 import { startLogin } from "@/lib/oidc";
+import CameraOpname from "./camera-opname";
 import LocatieKiezer from "./locatie-kiezer";
 
-type Project = { projectId: string; naam: string; datasetLicentie: string | null };
-type Organisatie = { naam: string; projecten: Project[] };
+type Project = { projectId: string; naam: string; slug: string; datasetLicentie: string | null };
+type Organisatie = { naam: string; slug: string; projecten: Project[] };
 
 // CHT-waardelijst (platformconfiguratie, zie de data-architectuur; audio volgt in fase 2)
 const GENRES = ["foto", "menukaart", "advertentie", "folder", "krantenartikel", "vergunning", "overig"];
@@ -26,14 +28,20 @@ export default function UploadPagina() {
   const [bezig, setBezig] = useState(false);
   const [ingelogd, setIngelogd] = useState<boolean | null>(null);
   const [heeftCamera, setHeeftCamera] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const [toestemmingsVraag, setToestemmingsVraag] = useState<{
     mediaId: string;
     betrouwbaarheid: number | null;
   } | null>(null);
-  const cameraInput = useRef<HTMLInputElement>(null);
+  const bestandInput = useRef<HTMLInputElement>(null);
+  const licentieDialoog = useRef<HTMLDialogElement>(null);
+
+  const [projectParam, setProjectParam] = useState<string | null>(null);
 
   useEffect(() => {
     setIngelogd(isIngelogd());
+    // projectkeuze vanaf de homepage: ?project=<organisatieslug>/<projectslug>
+    setProjectParam(new URLSearchParams(window.location.search).get("project"));
     // cameradetectie: toon "Maak een foto" alleen als er echt een camera is
     navigator.mediaDevices?.enumerateDevices?.()
       .then((apparaten) => setHeeftCamera(apparaten.some((a) => a.kind === "videoinput")))
@@ -48,9 +56,13 @@ export default function UploadPagina() {
   }, []);
 
   const projecten = organisaties.flatMap((o) =>
-    o.projecten.map((p) => ({ ...p, organisatie: o.naam })),
+    o.projecten.map((p) => ({ ...p, organisatie: o.naam, pad: `${o.slug}/${p.slug}` })),
   );
-  const gekozen = projecten.find((p) => p.projectId === projectId);
+  const vastProject = projectParam
+    ? projecten.find((p) => p.pad === projectParam || p.projectId === projectParam)
+    : undefined;
+  const gekozen = vastProject ?? projecten.find((p) => p.projectId === projectId);
+  const licentie = licentieInfo(gekozen?.datasetLicentie ?? null);
   const headers = { "Content-Type": "application/json", ...authHeaders("dev-anna", "Anna Uploader") };
 
   async function indienen(mediaId: string, toestemming: "ja" | "nee" | null) {
@@ -64,7 +76,7 @@ export default function UploadPagina() {
       headers,
       body: JSON.stringify({
         mediaId,
-        projectId,
+        projectId: gekozen?.projectId,
         titel,
         beschrijving: beschrijving || null,
         genre,
@@ -87,7 +99,7 @@ export default function UploadPagina() {
 
   async function versturen(e: React.FormEvent) {
     e.preventDefault();
-    if (!bestand || !projectId || !titel || !licentieAkkoord) {
+    if (!bestand || !gekozen || !titel || !licentieAkkoord) {
       setMelding("Vul alles in en bevestig de licentie.");
       return;
     }
@@ -211,45 +223,50 @@ export default function UploadPagina() {
       </p>
       <form className="formulier" onSubmit={versturen}>
         <div className="veld">
-          <label htmlFor="bestand">Bestand</label>
+          <label>Je foto</label>
           <input
-            id="bestand"
+            ref={bestandInput}
             type="file"
             accept="image/jpeg,image/png,image/tiff"
+            style={{ display: "none" }}
             onChange={(e) => setBestand(e.target.files?.[0] ?? null)}
           />
-          {heeftCamera && (
-            <>
-              <input
-                ref={cameraInput}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                style={{ display: "none" }}
-                onChange={(e) => setBestand(e.target.files?.[0] ?? null)}
-              />
+          <div className="bestand-knoppen">
+            <button
+              type="button"
+              className="knop knop-secundair"
+              onClick={() => bestandInput.current?.click()}
+            >
+              <span className="icoon" aria-hidden="true">📁</span> Kies een bestand
+            </button>
+            {heeftCamera && (
               <button
                 type="button"
                 className="knop knop-secundair"
-                style={{ justifySelf: "start" }}
-                onClick={() => cameraInput.current?.click()}
+                onClick={() => setCameraOpen(true)}
               >
-                📷 Of maak nu een foto
+                <span className="icoon" aria-hidden="true">📷</span> Of maak nu een foto
               </button>
-            </>
-          )}
+            )}
+          </div>
           {bestand && <span style={{ fontSize: ".9rem", color: "var(--grijs)" }}>Gekozen: {bestand.name || "camera-foto"}</span>}
         </div>
         <div className="veld">
           <label htmlFor="project">Project</label>
-          <select id="project" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-            <option value="">Kies een project</option>
-            {projecten.map((p) => (
-              <option key={p.projectId} value={p.projectId}>
-                {p.organisatie}: {p.naam}
-              </option>
-            ))}
-          </select>
+          {gekozen ? (
+            <p style={{ fontWeight: 600 }}>
+              {gekozen.organisatie}: {gekozen.naam}
+            </p>
+          ) : (
+            <select id="project" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+              <option value="">Kies een project</option>
+              {projecten.map((p) => (
+                <option key={p.projectId} value={p.projectId}>
+                  {p.organisatie}: {p.naam}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
         <div className="veld">
           <label htmlFor="titel">Titel</label>
@@ -273,7 +290,7 @@ export default function UploadPagina() {
           />
         </div>
         <div className="veld">
-          <label htmlFor="steekwoorden">Steekwoorden (gescheiden door komma&apos;s)</label>
+          <label htmlFor="steekwoorden">Steekwoorden (mag, gescheiden door komma&apos;s)</label>
           <input
             id="steekwoorden"
             type="text"
@@ -283,7 +300,7 @@ export default function UploadPagina() {
           />
         </div>
         <div className="veld">
-          <label>Waar was dit?</label>
+          <label>Waar was dit? (mag)</label>
           {toonKaart ? (
             <>
               <LocatieKiezer onKies={(lat, lon) => setLocatie({ lat, lon })} />
@@ -310,14 +327,59 @@ export default function UploadPagina() {
             checked={licentieAkkoord}
             onChange={(e) => setLicentieAkkoord(e.target.checked)}
           />{" "}
-          Ik ga akkoord met de licentie van het project
-          {gekozen?.datasetLicentie ? ` (${gekozen.datasetLicentie})` : ""}
+          Ik ga akkoord met de licentie van dit project
+          {licentie && (
+            <>
+              :{" "}
+              <a
+                href={gekozen?.datasetLicentie ?? "#"}
+                onClick={(e) => {
+                  e.preventDefault();
+                  licentieDialoog.current?.showModal();
+                }}
+              >
+                {licentie.naam}
+              </a>
+            </>
+          )}
         </label>
         <button className="knop knop-primair" type="submit" disabled={bezig}>
           {bezig ? "Bezig..." : "Verstuur je jottem"}
         </button>
       </form>
       {melding && <p className="memo" style={{ marginTop: "1.2rem" }}>{melding}</p>}
+
+      {licentie && (
+        <dialog ref={licentieDialoog} className="dialoog">
+          <h2>Wat betekent {licentie.naam}?</h2>
+          <p>{licentie.uitleg}</p>
+          <p style={{ marginTop: ".8rem", fontSize: ".95rem" }}>
+            De volledige regels lees je in{" "}
+            <a href={gekozen?.datasetLicentie ?? "#"} target="_blank" rel="noreferrer">
+              de licentietekst ({licentie.naam})
+            </a>.
+          </p>
+          <div className="dialoog-knoppen">
+            <button
+              type="button"
+              className="knop knop-primair"
+              onClick={() => licentieDialoog.current?.close()}
+            >
+              Duidelijk
+            </button>
+          </div>
+        </dialog>
+      )}
+
+      {cameraOpen && (
+        <CameraOpname
+          onFoto={(foto) => {
+            setBestand(foto);
+            setCameraOpen(false);
+          }}
+          onSluit={() => setCameraOpen(false)}
+        />
+      )}
     </main>
   );
 }

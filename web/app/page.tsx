@@ -49,7 +49,7 @@ export default async function Home() {
                 <h3>{project.naam}</h3>
                 {project.oproep && <p style={{ fontSize: "1rem" }}>{project.oproep}</p>}
                 <p style={{ marginTop: ".9rem" }}>
-                  <a className="knop knop-primair" href="/upload">
+                  <a className="knop knop-primair" href={`/upload?project=${organisatie.slug}/${project.slug}`}>
                     Doe mee: upload je materiaal
                   </a>
                 </p>
