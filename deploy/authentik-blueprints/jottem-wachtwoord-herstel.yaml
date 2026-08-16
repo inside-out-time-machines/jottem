@@ -1,0 +1,100 @@
+# Wachtwoord-vergeten-flow: reset via e-mail (resetlink 30 minuten geldig).
+# Enumeratiebescherming: pretend_user_exists laat de flow voor een onbekend adres
+# exact dezelfde stappen en boodschap tonen, alleen zonder mail te versturen.
+# Alfabetisch na de andere blueprints, zodat de Find-verwijzingen resolven.
+version: 1
+metadata:
+  name: jottem-wachtwoord-herstel
+  labels:
+    blueprints.goauthentik.io/description: "Wachtwoordreset per e-mail"
+entries:
+  - model: authentik_stages_identification.identificationstage
+    identifiers:
+      name: jottem-herstel-identificatie
+    state: present
+    attrs:
+      user_fields: [email, username]
+      pretend_user_exists: true
+
+  - model: authentik_stages_email.emailstage
+    identifiers:
+      name: jottem-herstel-mail
+    state: present
+    attrs:
+      use_global_settings: true
+      subject: "Stel een nieuw wachtwoord in voor Jottem"
+      template: email/password_reset.html
+      token_expiry: minutes=30
+      activate_user_on_success: true
+
+  - model: authentik_stages_prompt.promptstage
+    identifiers:
+      name: jottem-herstel-wachtwoord
+    state: present
+    attrs:
+      fields:
+        - !Find [authentik_stages_prompt.prompt, [name, jottem-registratie-wachtwoord]]
+        - !Find [authentik_stages_prompt.prompt, [name, jottem-registratie-wachtwoord-herhaal]]
+
+  - model: authentik_stages_user_write.userwritestage
+    identifiers:
+      name: jottem-herstel-schrijven
+    state: present
+    attrs:
+      user_creation_mode: never_create
+
+  - model: authentik_flows.flow
+    identifiers:
+      slug: jottem-wachtwoord-herstel
+    state: present
+    attrs:
+      name: Jottem wachtwoordherstel
+      title: "Stel een nieuw wachtwoord in"
+      designation: recovery
+      authentication: require_unauthenticated
+      background: https://dev.iotm.nl/papier.png
+
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !Find [authentik_flows.flow, [slug, jottem-wachtwoord-herstel]]
+      order: 10
+    attrs:
+      stage: !Find [authentik_stages_identification.identificationstage, [name, jottem-herstel-identificatie]]
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !Find [authentik_flows.flow, [slug, jottem-wachtwoord-herstel]]
+      order: 20
+    attrs:
+      stage: !Find [authentik_stages_email.emailstage, [name, jottem-herstel-mail]]
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !Find [authentik_flows.flow, [slug, jottem-wachtwoord-herstel]]
+      order: 30
+    attrs:
+      stage: !Find [authentik_stages_prompt.promptstage, [name, jottem-herstel-wachtwoord]]
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !Find [authentik_flows.flow, [slug, jottem-wachtwoord-herstel]]
+      order: 40
+    attrs:
+      stage: !Find [authentik_stages_user_write.userwritestage, [name, jottem-herstel-schrijven]]
+
+  # "wachtwoord vergeten"-link op de loginpagina (serializer valideert het hele object,
+  # dus alle relevante attrs opnieuw meegeven)
+  - model: authentik_stages_identification.identificationstage
+    identifiers:
+      name: default-authentication-identification
+    state: present
+    attrs:
+      user_fields: [email, username]
+      enrollment_flow: !Find [authentik_flows.flow, [slug, jottem-registratie]]
+      recovery_flow: !Find [authentik_flows.flow, [slug, jottem-wachtwoord-herstel]]
+      show_source_labels: true
+
+  # de recoveryflow ook op de Brand (voor herstel-links elders in Authentik)
+  - model: authentik_brands.brand
+    identifiers:
+      domain: authentik-default
+    state: present
+    attrs:
+      flow_recovery: !Find [authentik_flows.flow, [slug, jottem-wachtwoord-herstel]]
