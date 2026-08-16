@@ -37,12 +37,6 @@ entries:
         a { color: var(--jottem-roest); }
         .pf-c-page { --pf-c-page--BackgroundColor: var(--jottem-papier); }
         .pf-c-nav__link.pf-m-current { border-left-color: var(--jottem-oranje); }
-        /* tone of voice: tutoyeren; Authentiks eigen NL-vertaling zegt hier "u" */
-        .pf-c-login__main-footer-band-item { font-size: 0; }
-        .pf-c-login__main-footer-band-item a::after {
-          content: "Heb je nog geen account? Meld je dan nu aan.";
-          font-size: 1rem;
-        }
 
   # Nederlandse titel + papieren achtergrond op de bestaande loginflow
   - model: authentik_flows.flow
