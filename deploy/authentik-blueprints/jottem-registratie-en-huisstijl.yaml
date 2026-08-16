@@ -15,6 +15,7 @@ entries:
       branding_title: Jottem
       branding_logo: https://dev.iotm.nl/logo/jottem-woordmerk.svg
       branding_favicon: https://dev.iotm.nl/favicon.ico
+      default_locale: nl
       # branding_custom_css wordt door deze Authentik-versie niet ondersteund;
       # de warme achtergrond komt via de flow-backgrounds hieronder
 
@@ -108,6 +109,8 @@ entries:
     attrs:
       user_creation_mode: always_create
       create_users_as_inactive: true
+      # interne gebruikers: externe gebruikers mogen het Authentik-portaal niet in
+      user_type: internal
 
   - model: authentik_stages_email.emailstage
     id: stage-verificatie
