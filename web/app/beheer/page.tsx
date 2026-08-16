@@ -44,7 +44,10 @@ export default function BeheerPagina() {
         setMagBeheren(true);
         return r.json();
       })
-      .then(setOrganisaties)
+      .then((lijst: Organisatie[]) => {
+        setOrganisaties(lijst);
+        lijst.forEach((organisatie) => ledenLaden(organisatie.slug));
+      })
       .catch((f) => setMelding(`Laden mislukt: ${f.message}`));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -55,7 +58,7 @@ export default function BeheerPagina() {
   }, [laden]);
 
   async function ledenLaden(slug: string) {
-    const r = await fetch(`${API_PUBLIEK}/organisatie/${slug}/gebruikers`, { headers });
+    const r = await fetch(`${API_PUBLIEK}/organisatie/${slug}/gebruikers?rol=organisatiebeheerder`, { headers });
     if (r.ok) {
       const lijst = await r.json();
       setLeden((oud) => ({ ...oud, [slug]: lijst }));
@@ -244,7 +247,7 @@ export default function BeheerPagina() {
                   }} />
                 )}
               </p>
-              <p style={{ marginTop: ".7rem", display: "flex", gap: ".6rem", flexWrap: "wrap" }}>
+              <p style={{ marginTop: ".7rem" }}>
                 <button
                   className="knop knop-secundair"
                   onClick={() => {
@@ -262,28 +265,27 @@ export default function BeheerPagina() {
                 >
                   Bewerken
                 </button>
-                <button className="knop knop-secundair" onClick={() => ledenLaden(organisatie.slug)}>
-                  Beheerders
-                </button>
               </p>
-              {leden[organisatie.slug] && (
-                <div style={{ marginTop: ".8rem", fontSize: ".92rem" }}>
-                  {leden[organisatie.slug].map((lid) => (
-                    <p key={`${lid.gebruikersId}-${lid.rol}`} style={{ display: "flex", gap: ".5rem", alignItems: "center" }}>
-                      <span>
-                        {lid.naam} ({lid.email}) - {lid.rol}
-                        {!lid.gekoppeld && <em style={{ color: "var(--grijs)" }}> · wacht op eerste login</em>}
-                      </span>
-                      <a href="#" onClick={(e) => { e.preventDefault(); trekIn(organisatie.slug, lid); }}>intrekken</a>
-                    </p>
-                  ))}
-                  <form onSubmit={(e) => nodigUit(organisatie.slug, e)} style={{ display: "flex", gap: ".5rem", flexWrap: "wrap", marginTop: ".6rem" }}>
-                    <input name="naam" type="text" placeholder="Naam" required style={{ font: "inherit", padding: ".35rem .5rem", border: "1px solid var(--kartonrand)", borderRadius: ".3rem", flex: "1 1 8rem" }} />
-                    <input name="email" type="email" placeholder="E-mailadres" required style={{ font: "inherit", padding: ".35rem .5rem", border: "1px solid var(--kartonrand)", borderRadius: ".3rem", flex: "2 1 12rem" }} />
-                    <button className="knop knop-primair" type="submit">Nodig beheerder uit</button>
-                  </form>
-                </div>
-              )}
+              <div style={{ marginTop: ".8rem", fontSize: ".92rem" }}>
+                <strong>Organisatiebeheerders</strong>
+                {(leden[organisatie.slug] ?? []).map((lid) => (
+                  <p key={`${lid.gebruikersId}-${lid.rol}`} style={{ display: "flex", gap: ".5rem", alignItems: "center" }}>
+                    <span>
+                      {lid.naam} ({lid.email})
+                      {!lid.gekoppeld && <em style={{ color: "var(--grijs)" }}> · wacht op eerste login</em>}
+                    </span>
+                    <a href="#" onClick={(e) => { e.preventDefault(); trekIn(organisatie.slug, lid); }}>intrekken</a>
+                  </p>
+                ))}
+                {(leden[organisatie.slug] ?? []).length === 0 && (
+                  <p style={{ color: "var(--grijs)" }}>Nog geen organisatiebeheerders benoemd.</p>
+                )}
+                <form onSubmit={(e) => nodigUit(organisatie.slug, e)} style={{ display: "flex", gap: ".5rem", flexWrap: "wrap", marginTop: ".6rem" }}>
+                  <input name="naam" type="text" placeholder="Naam" required style={{ font: "inherit", padding: ".35rem .5rem", border: "1px solid var(--kartonrand)", borderRadius: ".3rem", flex: "1 1 8rem" }} />
+                  <input name="email" type="email" placeholder="E-mailadres" required style={{ font: "inherit", padding: ".35rem .5rem", border: "1px solid var(--kartonrand)", borderRadius: ".3rem", flex: "2 1 12rem" }} />
+                  <button className="knop knop-primair" type="submit">Benoem organisatiebeheerder</button>
+                </form>
+              </div>
             </article>
           ))}
         </div>
