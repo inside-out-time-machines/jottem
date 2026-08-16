@@ -15,7 +15,9 @@ entries:
       branding_title: Jottem
       branding_logo: https://dev.iotm.nl/logo/jottem-woordmerk.svg
       branding_favicon: https://dev.iotm.nl/favicon.ico
-      default_locale: nl
+      attributes:
+        settings:
+          locale: nl
       # branding_custom_css wordt door deze Authentik-versie niet ondersteund;
       # de warme achtergrond komt via de flow-backgrounds hieronder
 
