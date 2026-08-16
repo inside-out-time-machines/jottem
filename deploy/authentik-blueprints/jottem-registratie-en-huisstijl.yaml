@@ -79,6 +79,7 @@ entries:
           color: var(--jottem-roest);
           border: 1px solid var(--jottem-roest);
         }
+        .pf-c-button.pf-m-link { color: var(--jottem-roest); }
         .pf-c-login__main {
           border-top: 4px solid var(--jottem-oranje);
           border-radius: 6px;
