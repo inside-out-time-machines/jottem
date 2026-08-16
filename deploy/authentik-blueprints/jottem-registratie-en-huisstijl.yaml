@@ -169,4 +169,7 @@ entries:
       name: default-authentication-identification
     state: present
     attrs:
+      # user_fields expliciet meegeven: de serializer valideert het hele object en
+      # zou ze anders leegmaken ("at least one source must be selected")
+      user_fields: [email, username]
       enrollment_flow: !Find [authentik_flows.flow, [slug, jottem-registratie]]
