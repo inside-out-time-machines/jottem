@@ -8,7 +8,7 @@ annotatieschermen (Termennetwerk).
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from .. import s3
@@ -134,6 +134,9 @@ async def project_verwijderen(
     ) or 0
     if aantal_projecten <= 1:
         raise HTTPException(409, "Elke organisatie houdt minstens één project; dit is het laatste")
+    # het Gebeurtenislog overleeft mutaties: regels ontkoppelen in plaats van blokkeren
+    from ..models import Gebeurtenislog
+    db.execute(update(Gebeurtenislog).where(Gebeurtenislog.projectId == project.projectId).values(projectId=None))
     db.delete(project)
     log(db, "project.verwijderd", organisatie_id=organisatie.organisatieId,
         gebruikers_id=p.gebruiker.gebruikersId, payload={"slug": project.slug})
