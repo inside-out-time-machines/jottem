@@ -18,7 +18,10 @@ services:
       - --certificatesresolvers.letsencrypt.acme.storage=/acme/acme.json
       - --certificatesresolvers.letsencrypt.acme.dnschallenge=true
       - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=transip
+      # vaste wachttijd, geen eigen nameserver-checks: uitgaand UDP/53 naar externe
+      # authoritative NS is op de dev-server geblokkeerd; Let's Encrypt valideert zelf
       - --certificatesresolvers.letsencrypt.acme.dnschallenge.propagation.delayBeforeChecks=240s
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge.propagation.disableChecks=true
     environment:
       TRANSIP_ACCOUNT_NAME: ${TRANSIP_ACCOUNT_NAME}
       TRANSIP_PRIVATE_KEY_PATH: /run/secrets/transip.key
