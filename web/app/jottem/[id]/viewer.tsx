@@ -37,7 +37,11 @@ export default function Viewer({ service, titel }: { service: string; titel: str
   }
 
   function volledigScherm() {
-    houder.current?.parentElement?.requestFullscreen?.();
+    if (document.fullscreenElement) {
+      void document.exitFullscreen();
+    } else {
+      houder.current?.parentElement?.requestFullscreen?.();
+    }
   }
 
   return (
