@@ -7,7 +7,9 @@ from sqlalchemy import text
 from . import s3
 from .config import settings
 from .db import engine
-from .routers import jottem, mijn, moderatie, organisatiebeheer, upload
+from .routers import (
+    dataset, jottem, mijn, moderatie, organisatiebeheer, projectbeheer, termennetwerk, upload,
+)
 
 app = FastAPI(
     title="Jottem API",
@@ -26,6 +28,9 @@ app.add_middleware(
 
 app.include_router(upload.router)
 app.include_router(organisatiebeheer.router)
+app.include_router(projectbeheer.router)
+app.include_router(termennetwerk.router)
+app.include_router(dataset.router)
 app.include_router(moderatie.router)
 app.include_router(jottem.router)
 app.include_router(mijn.router)

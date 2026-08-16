@@ -43,6 +43,26 @@ class JottemKort(BaseModel):
     toestemming: str | None = None      # nvt | ja | nee
 
 
+class ProjectIn(BaseModel):
+    naam: str = Field(min_length=1, max_length=200)
+    slug: str = Field(min_length=2, max_length=80, pattern="^[a-z0-9-]+$")
+    beschrijving: str | None = None
+    oproep: str | None = None
+    periode: str | None = None
+    afbeelding: str | None = None          # S3-sleutel in de thumbs-bucket
+    datasetLicentie: str | None = None
+    status: str = Field(default="actief", pattern="^(actief|afgerond)$")
+    terminologiebronnen: list[str] = []
+
+
+class ProjectUit(ProjectIn):
+    projectId: uuid.UUID
+    organisatieSlug: str
+    afbeeldingUrl: str | None = None
+    datasetAangemeld: datetime | None = None
+    aantalJottems: int = 0
+
+
 class OrganisatieIn(BaseModel):
     naam: str = Field(min_length=1, max_length=200)
     slug: str = Field(min_length=2, max_length=80, pattern="^[a-z0-9-]+$")
@@ -61,10 +81,13 @@ class OrganisatieUit(OrganisatieIn):
     faviconUrl: str | None = None
 
 
-class HuisstijlUploadVraag(BaseModel):
-    soort: str = Field(pattern="^(logo|favicon)$")
+class AfbeeldingUploadVraag(BaseModel):
     bestandsnaam: str
     contentType: str = Field(pattern="^image/")
+
+
+class HuisstijlUploadVraag(AfbeeldingUploadVraag):
+    soort: str = Field(pattern="^(logo|favicon)$")
 
 
 class UitnodigingIn(BaseModel):

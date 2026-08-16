@@ -24,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <nav>
               <a href="/upload">Uploaden</a>
               <a href="/moderatie">Moderatie</a>
+              <a href="/organisatiebeheer">Organisatie</a>
               <a href="/beheer">Beheer</a>
               <InlogKnop />
             </nav>

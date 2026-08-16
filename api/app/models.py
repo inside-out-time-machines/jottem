@@ -73,6 +73,7 @@ class Project(Base):
     datasetLicentie: Mapped[str | None] = mapped_column(String(200))
     status: Mapped[str] = mapped_column(String(20), default="actief")  # actief | afgerond
     terminologiebronnen: Mapped[list | None] = mapped_column(JSON, default=list)
+    datasetAangemeld: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # NDE Datasetregister
 
     organisatie: Mapped[Organisatie] = relationship(back_populates="projecten")
 
