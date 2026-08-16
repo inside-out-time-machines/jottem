@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import InlogKnop from "./inlog-knop";
+import NavLinks from "./nav-links";
 
 export const metadata: Metadata = {
   title: "Jottem",
@@ -22,10 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <a href="/">jottem</a>
             <span className="proto">dev</span>
             <nav>
-              <a href="/upload">Uploaden</a>
-              <a href="/moderatie">Moderatie</a>
-              <a href="/organisatiebeheer">Organisatie</a>
-              <a href="/beheer">Platformbeheer</a>
+              <NavLinks />
               <InlogKnop />
             </nav>
           </div>
