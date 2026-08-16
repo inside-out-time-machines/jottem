@@ -30,6 +30,50 @@ entries:
       title: "Welkom bij Jottem"
       background: https://dev.iotm.nl/papier.png
 
+  # papieren achtergrond op alle overige flows die in de gebruikersreis voorbij kunnen
+  # komen (consent, social-login-terugkeer, uitloggen, wachtwoord, instellingen), zodat
+  # nergens de standaard Authentik-foto opduikt
+  - model: authentik_flows.flow
+    identifiers: {slug: default-provider-authorization-implicit-consent}
+    state: present
+    attrs: {background: https://dev.iotm.nl/papier.png}
+  - model: authentik_flows.flow
+    identifiers: {slug: default-provider-authorization-explicit-consent}
+    state: present
+    attrs: {background: https://dev.iotm.nl/papier.png}
+  - model: authentik_flows.flow
+    identifiers: {slug: default-source-authentication}
+    state: present
+    attrs: {background: https://dev.iotm.nl/papier.png}
+  - model: authentik_flows.flow
+    identifiers: {slug: default-source-enrollment}
+    state: present
+    attrs: {background: https://dev.iotm.nl/papier.png}
+  - model: authentik_flows.flow
+    identifiers: {slug: default-source-pre-authentication}
+    state: present
+    attrs: {background: https://dev.iotm.nl/papier.png}
+  - model: authentik_flows.flow
+    identifiers: {slug: default-invalidation-flow}
+    state: present
+    attrs: {background: https://dev.iotm.nl/papier.png}
+  - model: authentik_flows.flow
+    identifiers: {slug: default-provider-invalidation-flow}
+    state: present
+    attrs: {background: https://dev.iotm.nl/papier.png}
+  - model: authentik_flows.flow
+    identifiers: {slug: default-password-change}
+    state: present
+    attrs: {background: https://dev.iotm.nl/papier.png}
+  - model: authentik_flows.flow
+    identifiers: {slug: default-user-settings-flow}
+    state: present
+    attrs: {background: https://dev.iotm.nl/papier.png}
+  - model: authentik_flows.flow
+    identifiers: {slug: default-authenticator-static-setup}
+    state: present
+    attrs: {background: https://dev.iotm.nl/papier.png}
+
 # Nederlandse titels + papieren achtergrond op de MFA-setup-flows (TOTP en passkey);
   # de flows en stages zelf zijn Authentik-standaard en al gekoppeld (configure_flow)
   - model: authentik_flows.flow
