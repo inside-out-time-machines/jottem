@@ -38,6 +38,7 @@ entries:
     state: present
     attrs:
       name: Jottem
-      provider: !KeyOf jottem-provider
-      meta_launch_url: https://dev.iotm.nl/
+      provider: !Find [authentik_providers_oauth2.oauth2provider, [name, jottem-web]]
+      # ?sso=1 laat de frontend automatisch de OIDC-flow starten (sessie bestaat al)
+      meta_launch_url: https://dev.iotm.nl/?sso=1
       policy_engine_mode: any

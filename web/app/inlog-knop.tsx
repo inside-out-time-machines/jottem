@@ -9,8 +9,23 @@ export default function InlogKnop() {
   const [ingelogd, setIngelogd] = useState(false);
 
   useEffect(() => {
-    setIngelogd(Boolean(accessToken()));
+    const token = accessToken();
+    setIngelogd(Boolean(token));
     setNaam(ingelogdeNaam());
+
+    // SSO-handoff: wie vanaf Authentik binnenkomt (app-tegel met ?sso=1, of via de
+    // referrer) heeft daar al een sessie maar hier nog geen token; start dan direct
+    // de OIDC-flow, die zonder interactie meteen terugkeert. Eén poging per tab.
+    if (DEV_AUTH || token) return;
+    const params = new URLSearchParams(window.location.search);
+    const vanAuthentik =
+      params.get("sso") === "1" || document.referrer.startsWith("https://auth.");
+    if (vanAuthentik && !sessionStorage.getItem("oidc_auto_geprobeerd")) {
+      sessionStorage.setItem("oidc_auto_geprobeerd", "1");
+      params.delete("sso");
+      const terug = window.location.pathname + (params.size ? `?${params}` : "");
+      void startLogin(terug);
+    }
   }, []);
 
   if (DEV_AUTH) return <span style={{ opacity: 0.7 }}>dev-login</span>;
