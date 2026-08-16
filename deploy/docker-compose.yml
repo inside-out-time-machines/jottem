@@ -84,7 +84,7 @@ services:
       S3_SECRET_KEY: ${S3_SECRET_KEY}
 
   cantaloupe:
-    image: uclalibrary/cantaloupe:5.0.7
+    image: uclalibrary/cantaloupe:5.0.7-0
     restart: unless-stopped
     environment:
       CANTALOUPE_BASE_URI: https://iiif.dev.iotm.nl
