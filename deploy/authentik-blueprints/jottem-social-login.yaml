@@ -1,0 +1,77 @@
+# Social login (MVP: Google, Microsoft, Facebook; Apple en Instagram in fase 2).
+# De client-ids en secrets komen uit de omgeving (.env, zie .env.example); dit blueprint
+# wordt BEWUST niet automatisch toegepast (instantiate: false) - pas handmatig toe met
+#   docker compose exec authentik-worker ak apply_blueprint /blueprints/custom/jottem-social-login.yaml
+# nadat de drie provider-registraties zijn gedaan en de variabelen zijn ingevuld.
+version: 1
+metadata:
+  name: jottem-social-login
+  labels:
+    blueprints.goauthentik.io/description: "Social-login-sources Google/Microsoft/Facebook"
+    blueprints.goauthentik.io/instantiate: "false"
+entries:
+  - model: authentik_sources_oauth.oauthsource
+    identifiers:
+      slug: google
+    state: present
+    attrs:
+      name: Google
+      provider_type: google
+      consumer_key: !Env [SOCIAL_GOOGLE_CLIENT_ID, ""]
+      consumer_secret: !Env [SOCIAL_GOOGLE_CLIENT_SECRET, ""]
+      enabled: true
+      user_matching_mode: email_link   # koppelt op e-mail aan bestaand/uitgenodigd account
+      authentication_flow: !Find [authentik_flows.flow, [slug, default-source-authentication]]
+      enrollment_flow: !Find [authentik_flows.flow, [slug, default-source-enrollment]]
+
+  - model: authentik_sources_oauth.oauthsource
+    identifiers:
+      slug: microsoft
+    state: present
+    attrs:
+      name: Microsoft
+      provider_type: azuread
+      consumer_key: !Env [SOCIAL_MICROSOFT_CLIENT_ID, ""]
+      consumer_secret: !Env [SOCIAL_MICROSOFT_CLIENT_SECRET, ""]
+      enabled: true
+      user_matching_mode: email_link
+      authentication_flow: !Find [authentik_flows.flow, [slug, default-source-authentication]]
+      enrollment_flow: !Find [authentik_flows.flow, [slug, default-source-enrollment]]
+
+  - model: authentik_sources_oauth.oauthsource
+    identifiers:
+      slug: facebook
+    state: present
+    attrs:
+      name: Facebook
+      provider_type: facebook
+      consumer_key: !Env [SOCIAL_FACEBOOK_CLIENT_ID, ""]
+      consumer_secret: !Env [SOCIAL_FACEBOOK_CLIENT_SECRET, ""]
+      enabled: true
+      user_matching_mode: email_link
+      authentication_flow: !Find [authentik_flows.flow, [slug, default-source-authentication]]
+      enrollment_flow: !Find [authentik_flows.flow, [slug, default-source-enrollment]]
+
+  # via social login aangemaakte accounts moeten ook interne gebruikers zijn
+  # (externe gebruikers mogen het Authentik-portaal niet in)
+  - model: authentik_stages_user_write.userwritestage
+    identifiers:
+      name: default-source-enrollment-write
+    state: present
+    attrs:
+      user_type: internal
+
+  # de knoppen tonen op de loginpagina (het volledige attrs-blok herhalen: de serializer
+  # valideert het hele object, zie ook jottem-registratie-en-huisstijl.yaml)
+  - model: authentik_stages_identification.identificationstage
+    identifiers:
+      name: default-authentication-identification
+    state: present
+    attrs:
+      user_fields: [email, username]
+      enrollment_flow: !Find [authentik_flows.flow, [slug, jottem-registratie]]
+      sources:
+        - !Find [authentik_sources_oauth.oauthsource, [slug, google]]
+        - !Find [authentik_sources_oauth.oauthsource, [slug, microsoft]]
+        - !Find [authentik_sources_oauth.oauthsource, [slug, facebook]]
+      show_source_labels: true

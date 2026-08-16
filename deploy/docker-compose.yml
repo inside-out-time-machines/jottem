@@ -99,6 +99,13 @@ services:
       AUTHENTIK_EMAIL__HOST: mailpit
       AUTHENTIK_EMAIL__PORT: 1025
       AUTHENTIK_EMAIL__FROM: noreply@iotm.nl
+      # social login (client-ids/secrets uit .env; gebruikt door jottem-social-login.yaml)
+      SOCIAL_GOOGLE_CLIENT_ID: ${SOCIAL_GOOGLE_CLIENT_ID:-}
+      SOCIAL_GOOGLE_CLIENT_SECRET: ${SOCIAL_GOOGLE_CLIENT_SECRET:-}
+      SOCIAL_MICROSOFT_CLIENT_ID: ${SOCIAL_MICROSOFT_CLIENT_ID:-}
+      SOCIAL_MICROSOFT_CLIENT_SECRET: ${SOCIAL_MICROSOFT_CLIENT_SECRET:-}
+      SOCIAL_FACEBOOK_CLIENT_ID: ${SOCIAL_FACEBOOK_CLIENT_ID:-}
+      SOCIAL_FACEBOOK_CLIENT_SECRET: ${SOCIAL_FACEBOOK_CLIENT_SECRET:-}
     volumes:
       - ./authentik-blueprints:/blueprints/custom:ro
     depends_on:
