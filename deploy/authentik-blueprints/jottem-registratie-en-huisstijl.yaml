@@ -30,6 +30,23 @@ entries:
       title: "Welkom bij Jottem"
       background: https://dev.iotm.nl/papier.png
 
+# Nederlandse titels + papieren achtergrond op de MFA-setup-flows (TOTP en passkey);
+  # de flows en stages zelf zijn Authentik-standaard en al gekoppeld (configure_flow)
+  - model: authentik_flows.flow
+    identifiers:
+      slug: default-authenticator-totp-setup
+    state: present
+    attrs:
+      title: "Stel tweestapsverificatie in (authenticator-app)"
+      background: https://dev.iotm.nl/papier.png
+  - model: authentik_flows.flow
+    identifiers:
+      slug: default-authenticator-webauthn-setup
+    state: present
+    attrs:
+      title: "Stel je passkey in"
+      background: https://dev.iotm.nl/papier.png
+
   # ---------- prompts voor de registratie ----------
   - model: authentik_stages_prompt.prompt
     id: prompt-naam
