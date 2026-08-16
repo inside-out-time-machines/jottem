@@ -10,6 +10,8 @@
 @font-face { font-family: 'Albert Sans'; font-style: normal; font-weight: 700; font-display: swap; src: url('/fonts/albert-sans-v4-latin-700.woff2') format('woff2'); }
 
 :root {
+    /* formulier-elementen (checkboxes, keuzerondjes) kleuren mee met de huisstijl */
+    accent-color: var(--roest);
     --oranje: #d85a30;
     --oranje-donker: #c04e28;
     --roest: #a2401f;
@@ -80,9 +82,9 @@ main { max-width: 68rem; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
     transform: rotate(-1deg); box-shadow: var(--schaduw); display: inline-block;
 }
 
-form.formulier { display: grid; gap: .9rem; max-width: 34rem; margin-top: 1.5rem; }
-form.formulier label { font-weight: 600; font-size: .95rem; }
-form.formulier input[type="text"], form.formulier textarea, form.formulier select {
+.formulier { display: grid; gap: .9rem; max-width: 34rem; margin-top: 1.5rem; }
+.formulier label { font-weight: 600; font-size: .95rem; }
+.formulier input[type="text"], .formulier textarea, .formulier select {
     font: inherit; padding: .55rem .7rem; border: 1px solid var(--kartonrand);
     border-radius: .35rem; background: var(--wit); width: 100%;
 }

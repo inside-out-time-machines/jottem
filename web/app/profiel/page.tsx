@@ -111,7 +111,7 @@ export default function ProfielPagina() {
             <label htmlFor="naam">Naam (zoals anderen die zien)</label>
             <input id="naam" type="text" value={naam} onChange={(e) => setNaam(e.target.value)} />
           </div>
-          <p>
+          <p style={{ margin: ".5rem 0" }}>
             <button className="knop knop-primair" onClick={() => bijwerken({ naam }, "Je naam is bijgewerkt.")}>
               Naam opslaan
             </button>
