@@ -115,7 +115,11 @@ main { max-width: 68rem; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
 .knop-primair { background: var(--knop-vlak); color: var(--knop-op-vlak); }
 /* brightness werkt voor elke organisatiekleur, ook zonder aparte donkere variant */
 .knop-primair:hover { filter: brightness(.92); color: var(--knop-op-vlak); }
-.knop-secundair { background: transparent; color: var(--knop-tekst); border-color: var(--knop-vlak); }
+/* ook op button-elementen: `button.knop` zet de shorthand `border: 2px solid transparent`
+   en is even specifiek, dus de randkleur heeft dezelfde selectorvorm nodig */
+.knop-secundair, button.knop-secundair {
+    background: transparent; color: var(--knop-tekst); border-color: var(--knop-vlak);
+}
 
 .memo {
     background: var(--geel); border: 1px solid var(--geelrand);
@@ -252,7 +256,7 @@ dialog.dialoog {
     /* margin: auto expliciet: de globale reset (*{margin:0}) zou anders de
        native centrering van <dialog> uitschakelen (linksboven) */
     margin: auto;
-    border: 1px solid var(--kartonrand); border-top: 4px solid var(--oranje);
+    border: 1px solid var(--kartonrand); border-top: 4px solid var(--project-primair);
     border-radius: .45rem; box-shadow: 0 10px 40px rgba(31, 30, 28, .3);
     padding: 1.5rem 1.7rem; max-width: 28rem; width: calc(100% - 2rem);
     background: var(--wit); color: var(--inkt); font-family: var(--body);
