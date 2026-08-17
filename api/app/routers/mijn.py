@@ -110,9 +110,32 @@ async def mijn_jottems(p: Principal = Depends(principal), db: Session = Depends(
     ]
 
 
+def _aantal_annotaties(db: Session, project_id) -> int:
+    """Totaal aantal annotaties van een project (som van de AnnoRepo-containers),
+    met korte Valkey-cache zodat de open-data-pagina de annotatieserver niet belast."""
+    import redis
+
+    from .. import anno
+    valkey = redis.Redis.from_url(settings().valkey_url, decode_responses=True)
+    sleutel = f"annotaties:aantal:{project_id}"
+    gecached = valkey.get(sleutel)
+    if gecached is not None:
+        return int(gecached)
+    media_ids = db.scalars(
+        select(Media.mediaId).where(Media.projectId == project_id,
+                                    Media.status == MediaStatus.goedgekeurd)
+    ).all()
+    totaal = sum(len(anno.alle_annotaties(str(m))) for m in media_ids)
+    valkey.setex(sleutel, 300, totaal)
+    return totaal
+
+
 @router.get("/organisaties")
 async def organisaties(db: Session = Depends(get_db)):
-    """Publiek: organisaties met huisstijl en actieve projecten (home en uploadformulier)."""
+    """Publiek: organisaties met huisstijl en actieve projecten (home, uploadformulier
+    en de open-data-pagina op data.dev.iotm.nl)."""
+    from sqlalchemy import func
+
     from .. import s3
 
     resultaat = []
@@ -129,10 +152,17 @@ async def organisaties(db: Session = Depends(get_db)):
             "kleurPrimair": organisatie.kleurPrimair,
             "logoUrl": s3.presigned_get(organisatie.logo, bucket=settings().s3_bucket_thumbs)
                        if organisatie.logo else None,
+            "faviconUrl": s3.presigned_get(organisatie.favicon, bucket=settings().s3_bucket_thumbs)
+                          if organisatie.favicon else None,
             "projecten": [
                 {"projectId": str(pr.projectId), "naam": pr.naam, "slug": pr.slug,
                  "oproep": pr.oproep, "datasetLicentie": pr.datasetLicentie,
-                 "uploadWijzen": actieve_upload_wijzen(pr)}
+                 "uploadWijzen": actieve_upload_wijzen(pr),
+                 "aantalJottems": db.scalar(
+                     select(func.count()).select_from(Media).where(
+                         Media.projectId == pr.projectId,
+                         Media.status == MediaStatus.goedgekeurd)) or 0,
+                 "aantalAnnotaties": _aantal_annotaties(db, pr.projectId)}
                 for pr in projecten
             ],
         })

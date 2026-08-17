@@ -36,7 +36,8 @@ OPEN_DATA_EINDEN = ("/annotations", "/activity-stream", "/rss", "/datacatalog", 
 
 
 def _is_open_data(pad: str) -> bool:
-    return "/iiif/" in pad or pad.endswith(OPEN_DATA_EINDEN) or pad.startswith("/jottem/")
+    return ("/iiif/" in pad or pad.endswith(OPEN_DATA_EINDEN)
+            or pad.startswith("/jottem/") or pad == "/organisaties")
 
 
 @app.middleware("http")
