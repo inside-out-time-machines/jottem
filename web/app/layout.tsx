@@ -20,7 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <a href="/">
               <img src="/logo/jottem-o-wit.svg" alt="Jottem" />
             </a>
-            <a href="/">jottem</a>
+            <a href="/">Jottem</a>
             <span className="proto">dev</span>
             <nav>
               <NavLinks />
