@@ -51,6 +51,12 @@ class Organisatie(Base):
     website: Mapped[str | None] = mapped_column(String(400))
     # publiek contactadres van de organisatie als publisher (datasetbeschrijving)
     email: Mapped[str | None] = mapped_column(String(320))
+    # optionele organisatie-identificatie (bijv. ISIL of KvK-nummer) voor de publisher
+    identifier: Mapped[str | None] = mapped_column(String(200))
+    # optionele plaats (GeoNames-URI + label via het Termennetwerk) voor
+    # schema:spatialCoverage in de datasetbeschrijvingen van deze organisatie
+    spatialUri: Mapped[str | None] = mapped_column(String(400))
+    spatialNaam: Mapped[str | None] = mapped_column(String(200))
     favicon: Mapped[str | None] = mapped_column(String(400))
     logo: Mapped[str | None] = mapped_column(String(400))
     kleurPrimair: Mapped[str | None] = mapped_column(String(9))

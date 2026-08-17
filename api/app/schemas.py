@@ -93,6 +93,11 @@ class OrganisatieIn(BaseModel):
     website: str | None = None
     # publiek contactadres als publisher in de datasetbeschrijving (verplicht)
     email: str = Field(max_length=320, pattern=r"^\S+@\S+\.\S+$")
+    # optionele organisatie-identificatie (bijv. ISIL of KvK-nummer)
+    identifier: str | None = Field(default=None, max_length=200)
+    # optionele plaats (GeoNames via het Termennetwerk) voor schema:spatialCoverage
+    spatialUri: str | None = Field(default=None, max_length=400)
+    spatialNaam: str | None = Field(default=None, max_length=200)
     kleurPrimair: str | None = Field(default=None, pattern="^#[0-9a-fA-F]{6}$")
     kleurSecundair: str | None = Field(default=None, pattern="^#[0-9a-fA-F]{6}$")
     kleurAchtergrond: str | None = Field(default=None, pattern="^#[0-9a-fA-F]{6}$")

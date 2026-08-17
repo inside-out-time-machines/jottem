@@ -106,10 +106,22 @@ query Zoek($bronnen: [ID]!, $tekst: String!) {
 async def zoek(
     query: str = Query(min_length=2, max_length=200),
     project: uuid.UUID | None = None,
+    bron: str | None = Query(default=None, max_length=200),
     db: Session = Depends(get_db),
 ):
-    """Zoek termen (voor tags en identificaties), beperkt tot de projectbronnen."""
-    bronnen = _bron_uris(db, project)
+    """Zoek termen (voor tags en identificaties), beperkt tot de projectbronnen; met
+    `bron` wordt in één specifieke bron gezocht (bijv. GeoNames voor plaatsnamen)."""
+    if bron:
+        naald = bron.lower()
+        bronnen = [
+            b["uri"] for b in _haal_bronnen()
+            if any(naald in str(d).lower()
+                   for d in (b["uri"], b.get("naam") or "", b.get("alternatief") or ""))
+        ]
+        if not bronnen:
+            raise HTTPException(404, f"Bron '{bron}' onbekend in het Termennetwerk")
+    else:
+        bronnen = _bron_uris(db, project)
     sleutel = "termennetwerk:zoek:" + hashlib.sha1(
         (query.lower() + "|" + ",".join(sorted(bronnen))).encode()).hexdigest()
     try:

@@ -65,6 +65,7 @@ def _dataset_jsonld(db: Session, project: Project) -> dict:
             "@type": "Organization",
             "name": {"@value": organisatie.naam, "@language": "nl"},
             "email": organisatie.email,   # verplicht, gevuld via het beheer
+            "identifier": organisatie.identifier,   # optioneel, bijv. ISIL of KvK
             "contactPoint": {"@type": "ContactPoint",
                              "name": {"@value": organisatie.naam, "@language": "nl"},
                              "email": organisatie.email} if organisatie.email else None,
@@ -85,6 +86,12 @@ def _dataset_jsonld(db: Session, project: Project) -> dict:
         "dateModified": laatste_wijziging.strftime("%Y-%m-%dT%H:%M:%S") if laatste_wijziging else None,
         "datePublished": eerste_publicatie.strftime("%Y-%m-%dT%H:%M:%S") if eerste_publicatie else None,
         "temporalCoverage": project.periode,
+        # optionele plaats van de organisatie (GeoNames via het Termennetwerk;
+        # platformbeheer vult dit op organisatieniveau in)
+        "spatialCoverage": {sleutel: waarde for sleutel, waarde in {
+            "@id": organisatie.spatialUri,
+            "name": _nl(organisatie.spatialNaam) if organisatie.spatialNaam else None,
+        }.items() if waarde is not None} if organisatie.spatialUri else None,
         "includedInDataCatalog": {"@id": f"{cfg.data_basis_url}/datacatalog"},
         # alle toegangswegen tot de projectdata als distributie (aanbeveling in de
         # data-architectuur, sectie aanvullende distributies)
@@ -135,12 +142,11 @@ async def datasetbeschrijving(
     p: Principal = Depends(principal),
     db: Session = Depends(get_db),
 ):
-    project, organisatie = project_met_rechten(db, project_id, p)
+    project, _ = project_met_rechten(db, project_id, p)
     return {
         "dataset": _dataset_jsonld(db, project),
         "openbareJottems": _aantal_openbaar(db, project_id),
         "aangemeld": project.datasetAangemeld,
-        "publisherEmail": organisatie.email,
     }
 
 
@@ -148,8 +154,6 @@ class DatasetbeschrijvingIn(BaseModel):
     naam: str | None = None
     beschrijving: str | None = None
     datasetLicentie: str | None = None
-    # publisher-contactadres (Organisatie.email); verplicht in de beheer-GUI
-    publisherEmail: str | None = None
 
 
 @router.put("/project/{project_id}/datasetbeschrijving")
@@ -166,11 +170,6 @@ async def datasetbeschrijving_bewerken(
         project.beschrijving = vraag.beschrijving
     if vraag.datasetLicentie:
         project.datasetLicentie = vraag.datasetLicentie
-    if vraag.publisherEmail:
-        import re
-        if not re.match(r"^\S+@\S+\.\S+$", vraag.publisherEmail):
-            raise HTTPException(422, "Geen geldig e-mailadres voor de publisher")
-        organisatie.email = vraag.publisherEmail
     log(db, "dataset.bewerkt", organisatie_id=organisatie.organisatieId,
         project_id=project.projectId, gebruikers_id=p.gebruiker.gebruikersId, payload={})
     db.commit()

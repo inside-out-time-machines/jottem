@@ -17,8 +17,6 @@ export default function ProjectBewerkPagina() {
   const [project, setProject] = useState<ProjectUit | null>(null);
   const [dataset, setDataset] = useState<unknown | null>(null);
   const [melding, setMelding] = useState<string | null>(null);
-  // publisher-contactadres (Organisatie.email); verplicht in de datasetbeschrijving
-  const [publisherEmail, setPublisherEmail] = useState("");
 
   const headers = { "Content-Type": "application/json", ...authHeaders("dev-otto", "Otto Organisatiebeheerder") };
 
@@ -43,24 +41,6 @@ export default function ProjectBewerkPagina() {
     if (r.ok) setDataset((await r.json() as { dataset: unknown }).dataset);
   }
 
-  useEffect(() => {
-    if (!project) return;
-    fetch(`${API_PUBLIEK}/project/${project.projectId}/datasetbeschrijving`, { headers })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d) setPublisherEmail(d.publisherEmail ?? ""); })
-      .catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project?.projectId]);
-
-  async function emailOpslaan(e: React.FormEvent) {
-    e.preventDefault();
-    if (!project) return;
-    const r = await fetch(`${API_PUBLIEK}/project/${project.projectId}/datasetbeschrijving`, {
-      method: "PUT", headers, body: JSON.stringify({ publisherEmail }),
-    });
-    setMelding(r.ok ? "Publisher-e-mailadres opgeslagen." : `Opslaan mislukt: ${(await r.json()).detail ?? r.statusText}`);
-    if (dataset !== null) toonDataset();
-  }
 
   async function meldAan() {
     if (!project) return;
@@ -130,16 +110,6 @@ export default function ProjectBewerkPagina() {
             De beschrijving wordt gegenereerd uit de projectvelden hierboven en is
             {project.datasetAangemeld ? " aangemeld bij" : " nog niet aangemeld bij"} het NDE Datasetregister.
           </p>
-          <form className="formulier" onSubmit={emailOpslaan} style={{ marginTop: ".8rem", display: "flex", gap: ".5rem", flexWrap: "wrap", alignItems: "end", maxWidth: "34rem" }}>
-            <div className="veld" style={{ flex: "1 1 16rem" }}>
-              <label htmlFor="publisher-email">E-mailadres van de publisher (verplicht in de datasetbeschrijving)</label>
-              <input
-                id="publisher-email" type="email" required value={publisherEmail}
-                onChange={(e) => setPublisherEmail(e.target.value)}
-              />
-            </div>
-            <button className="knop knop-secundair" type="submit">Opslaan</button>
-          </form>
           <p style={{ marginTop: ".8rem", display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
             <button className="knop knop-secundair" onClick={toonDataset}>Toon de beschrijving</button>
             <button className="knop knop-primair" onClick={meldAan}>Valideer en meld aan</button>
