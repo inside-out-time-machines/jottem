@@ -48,6 +48,16 @@ def canvas_iri(media: Media) -> str:
     return f"{settings().api_basis_url}/jottem/{media.mediaId}/iiif/manifest/canvas/1"
 
 
+def iiif_rights(licentie: str | None) -> str | None:
+    """IIIF Presentation 3 eist in `rights` de canonieke URI van Creative Commons en
+    RightsStatements.org, en die is http://; elders (RDF, datasetbeschrijving, NDE)
+    gebruiken we bewust de https-vorm."""
+    if licentie and licentie.startswith(("https://creativecommons.org/",
+                                         "https://rightsstatements.org/")):
+        return "http://" + licentie.removeprefix("https://")
+    return licentie
+
+
 def _detail(db: Session, media: Media) -> JottemDetail:
     organisatie = db.get(Organisatie, media.organisatieId)
     project = db.get(Project, media.projectId)
@@ -139,7 +149,7 @@ async def iiif_manifest(media_id: uuid.UUID, db: Session = Depends(get_db)):
         "type": "Manifest",
         "label": {"nl": [media.titel]},
         "summary": {"nl": [media.beschrijving]} if media.beschrijving else None,
-        "rights": media.licentie,
+        "rights": iiif_rights(media.licentie),
         "requiredStatement": {
             "label": {"nl": ["Bron"]},
             "value": {"nl": [f"{organisatie.naam} · project {project.naam} · via Jottem"]},
