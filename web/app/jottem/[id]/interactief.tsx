@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { API_PUBLIEK, authHeaders, isIngelogd } from "@/lib/api";
 import { startLogin } from "@/lib/oidc";
-import LocatieKiezer from "../../upload/locatie-kiezer";
 import Viewer, { OsdAnnotator } from "./viewer";
+import ZichtveldKiezer from "./zichtveld-kiezer";
 
 type Verrijking = { sleutel: string; label: string; cta: string; motivation: string; doel: string };
 export type Detail = {
@@ -15,6 +15,7 @@ export type Detail = {
   annotatiesUrl: string | null;
   canvas: string | null;
   projectId: string;
+  metadata: Record<string, string>;
   verrijkingen: Verrijking[];
 };
 
@@ -60,8 +61,12 @@ function weergave(a: W3CAnnotatie, catalogus: Verrijking[]) {
         try {
           const geo = JSON.parse(b.value) as { geometry?: { coordinates?: [number, number] }; properties?: { bearing?: number } };
           const [lon, lat] = geo.geometry?.coordinates ?? [];
-          const richting = geo.properties?.bearing;
-          teksten.push(`Standpunt: ${lat?.toFixed(5)}, ${lon?.toFixed(5)}${richting !== undefined ? ` · kijkrichting ${richting}°` : ""}`);
+          const eig = geo.properties as { bearing?: number; fov?: number } | undefined;
+          teksten.push(
+            `Standpunt: ${lat?.toFixed(5)}, ${lon?.toFixed(5)}`
+            + (eig?.bearing !== undefined ? ` · kijkrichting ${eig.bearing}°` : "")
+            + (eig?.fov !== undefined ? ` · beeldhoek ${eig.fov}°` : ""),
+          );
         } catch { teksten.push(b.value); }
       } else if (sleutel === "periode" && /^[0-9X]{3,4}/.test(b.value)) {
         teksten.push(`Datering: ${b.value}`);
@@ -81,6 +86,9 @@ const LEEG_FORMULIER = {
   tekst: "", aard: "", termUri: "", termLabel: "", bronUrl: "", bronLabel: "",
   jaarVan: "", jaarTot: "", lat: null as number | null, lon: null as number | null,
   richting: null as number | null,
+  fov: null as number | null,
+  doelLat: null as number | null,
+  doelLon: null as number | null,
   vlak: null as { x: number; y: number; w: number; h: number } | null,
   doelAnnotatie: null as string | null,
   bewerkNaam: null as string | null,
@@ -219,8 +227,28 @@ export default function Interactief({ detail }: { detail: Detail }) {
     const alleBodies = bodies(a);
     const tekstBody = alleBodies.find((b) => b.type === "TextualBody" && b.format !== "application/geo+json");
     const bron = alleBodies.find((b) => b.type === "SpecificResource");
+    // zichtveld: de geo+json-body terugparsen zodat de camera op de kaart terugkomt
+    let geoVorm: Partial<typeof LEEG_FORMULIER> = {};
+    const geoBody = alleBodies.find((b) => b.format === "application/geo+json");
+    if (sleutel === "zichtveld" && geoBody?.value) {
+      try {
+        const geo = JSON.parse(geoBody.value) as {
+          geometry?: { coordinates?: [number, number] };
+          properties?: { bearing?: number; fov?: number; target?: [number, number] };
+        };
+        const [lon, lat] = geo.geometry?.coordinates ?? [];
+        geoVorm = {
+          lat: lat ?? null, lon: lon ?? null,
+          richting: geo.properties?.bearing ?? null,
+          fov: geo.properties?.fov ?? null,
+          doelLon: geo.properties?.target?.[0] ?? null,
+          doelLat: geo.properties?.target?.[1] ?? null,
+        };
+      } catch { /* zonder parsebare geo start de kaart op de standaardpositie */ }
+    }
     setVorm({
       ...LEEG_FORMULIER,
+      ...geoVorm,
       bewerkNaam: naamUitIri(a.id),
       doelAnnotatie: sleutel === "reactie" ? (a.target as string) : null,
       tekst: tekstBody?.value ?? "",
@@ -253,7 +281,13 @@ export default function Interactief({ detail }: { detail: Detail }) {
     if (vorm.bronUrl) { invoer.bronUrl = vorm.bronUrl; invoer.bronLabel = vorm.bronLabel; }
     if (vorm.jaarVan) { invoer.jaarVan = vorm.jaarVan; if (vorm.jaarTot) invoer.jaarTot = vorm.jaarTot; }
     if (vorm.lat !== null && vorm.lon !== null) {
-      invoer.geo = { lat: vorm.lat, lon: vorm.lon, richting: vorm.richting ?? undefined };
+      invoer.geo = {
+        lat: vorm.lat, lon: vorm.lon,
+        richting: vorm.richting ?? undefined,
+        fov: vorm.fov ?? undefined,
+        doelLat: vorm.doelLat ?? undefined,
+        doelLon: vorm.doelLon ?? undefined,
+      };
     }
     if (vorm.vlak) invoer.vlak = vorm.vlak;
     if (vorm.doelAnnotatie) invoer.doelAnnotatie = vorm.doelAnnotatie;
@@ -412,7 +446,11 @@ export default function Interactief({ detail }: { detail: Detail }) {
       </section>
 
       {/* dialoog voor alle acties */}
-      <dialog ref={dialoogRef} className="dialoog" onClose={() => setActie(null)}>
+      <dialog
+        ref={dialoogRef}
+        className={actie === "zichtveld" ? "dialoog dialoog-groot" : "dialoog"}
+        onClose={() => setActie(null)}
+      >
         {actie === "login" && (
           <div>
             <h3>Log in om mee te doen</h3>
@@ -528,18 +566,33 @@ export default function Interactief({ detail }: { detail: Detail }) {
             )}
 
             {actie === "zichtveld" && (
-              <>
-                <div className="veld" style={{ marginTop: ".8rem" }}>
-                  <label>Klik op de kaart waar de fotograaf stond</label>
-                  <LocatieKiezer onKies={(lat, lon) => setVorm((oud) => ({ ...oud, lat, lon }))} />
-                  {vorm.lat !== null && <p style={{ fontSize: ".9rem", marginTop: ".3rem" }}>Speld: {vorm.lat}, {vorm.lon}</p>}
-                </div>
-                <div className="veld">
-                  <label>Kijkrichting: {vorm.richting ?? 0}° (0 = noord, 90 = oost)</label>
-                  <input type="range" min={0} max={359} value={vorm.richting ?? 0}
-                    onChange={(e) => setVorm({ ...vorm, richting: Number(e.target.value) })} />
-                </div>
-              </>
+              <div className="veld" style={{ marginTop: ".8rem" }}>
+                <label>
+                  Versleep de camera naar waar de fotograaf stond, het rondje naar wat
+                  er in beeld is, en knijp de hoek passend
+                </label>
+                <ZichtveldKiezer
+                  begin={vorm.lat !== null ? {
+                    lat: vorm.lat ?? undefined,
+                    lon: vorm.lon ?? undefined,
+                    richting: vorm.richting ?? undefined,
+                    fov: vorm.fov ?? undefined,
+                    doelLat: vorm.doelLat ?? undefined,
+                    doelLon: vorm.doelLon ?? undefined,
+                  } : (detail.metadata.lat && detail.metadata.lon
+                    ? { lat: Number(detail.metadata.lat), lon: Number(detail.metadata.lon) }
+                    : null)}
+                  onWijzig={(z) => setVorm((oud) => ({
+                    ...oud, lat: z.lat, lon: z.lon, richting: z.richting,
+                    fov: z.fov, doelLat: z.doelLat, doelLon: z.doelLon,
+                  }))}
+                />
+                {vorm.lat !== null && (
+                  <p style={{ fontSize: ".9rem", marginTop: ".3rem" }}>
+                    Camera: {vorm.lat}, {vorm.lon} · kijkrichting {vorm.richting ?? 0}° · beeldhoek {vorm.fov ?? 60}°
+                  </p>
+                )}
+              </div>
             )}
 
             {melding && <p className="memo" style={{ marginTop: ".6rem" }}>{melding}</p>}

@@ -41,9 +41,12 @@ class Vlak(BaseModel):
 
 
 class Geo(BaseModel):
-    lat: float = Field(ge=-90, le=90)
+    lat: float = Field(ge=-90, le=90)                          # camerastandpunt
     lon: float = Field(ge=-180, le=180)
-    richting: int | None = Field(default=None, ge=0, le=359)  # graden, kijkrichting
+    richting: int | None = Field(default=None, ge=0, le=359)   # bearing in graden
+    fov: int | None = Field(default=None, ge=1, le=179)        # beeldhoek in graden
+    doelLat: float | None = Field(default=None, ge=-90, le=90)  # doelpunt (kijkdoel)
+    doelLon: float | None = Field(default=None, ge=-180, le=180)
 
 
 class AnnotatieIn(BaseModel):
@@ -192,12 +195,20 @@ def _bouw_annotatie(media: Media, project: Project, gebruiker: Gebruiker,
         annotatie["body"] = _bodies(invoer, "describing")
     elif verrijking.sleutel == "zichtveld":
         if not invoer.geo:
-            raise HTTPException(400, "Zet eerst een speld op de kaart")
+            raise HTTPException(400, "Zet eerst de camera op de kaart")
+        # vorm conform het verrijkingendocument: Point (camera) + bearing/fov; het
+        # doelpunt gaat mee in properties zodat de kaart bij herbewerken terugkomt
+        eigenschappen: dict = {}
+        if invoer.geo.richting is not None:
+            eigenschappen["bearing"] = invoer.geo.richting
+        if invoer.geo.fov is not None:
+            eigenschappen["fov"] = invoer.geo.fov
+        if invoer.geo.doelLat is not None and invoer.geo.doelLon is not None:
+            eigenschappen["target"] = [invoer.geo.doelLon, invoer.geo.doelLat]
         geojson = {
             "type": "Feature",
             "geometry": {"type": "Point", "coordinates": [invoer.geo.lon, invoer.geo.lat]},
-            "properties": ({"bearing": invoer.geo.richting}
-                           if invoer.geo.richting is not None else {}),
+            "properties": eigenschappen,
         }
         import json as _json
         annotatie["body"] = [{"type": "TextualBody", "value": _json.dumps(geojson),

@@ -149,6 +149,8 @@ dialog.dialoog {
     background: var(--wit); color: var(--inkt); font-family: var(--body);
 }
 dialog.dialoog::backdrop { background: rgba(31, 30, 28, .55); }
+/* grote variant, o.a. voor de zichtveld-kaart (Leaflet.GeotagPhoto) */
+dialog.dialoog.dialoog-groot { max-width: min(64rem, calc(100vw - 2rem)); }
 dialog.dialoog h2 { font-family: var(--kop); font-size: 1.35rem; margin-bottom: .8rem; }
 .dialoog-knoppen { display: flex; gap: .7rem; flex-wrap: wrap; margin-top: 1.1rem; }
 
