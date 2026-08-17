@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     # Herkenbaar API (interne container)
     herkenbaar_url: str = "http://herkenbaar:4050"
 
+    # annotatieserver (AnnoRepo): intern schrijven met api-key, publiek lezen
+    anno_url: str = "http://annorepo:8080"
+    anno_basis_url: str = "https://anno.dev.iotm.nl"
+    anno_api_key: str = "wijzig-mij"
+
     # authenticatie (Authentik OIDC)
     oidc_issuer: str = "https://auth.dev.iotm.nl/application/o/jottem/"
     oidc_client_id: str = "jottem-web"

@@ -1,24 +1,36 @@
 """Celery-worker: verwerkt de Gebeurtenislog-outbox idempotent (zie systeemarchitectuur).
 
 Celery beat pollt elke 10 seconden onverwerkte regels; per regel wordt (nu) de mail
-verstuurd en verwerktOp gezet. Latere iteraties haken hier de zoekindex-, RDF- en
-cache-purge-synchronisatie aan, plus de nachtelijke reconciliatiejob.
+verstuurd en verwerktOp gezet. Daarnaast: een dagelijkse bundeltaak voor de
+attenderingsmails (notificaties 10/11, max één mail per dag) en de naamsync naar de
+annotatieserver bij een profielwijziging. Latere iteraties haken hier de zoekindex-,
+RDF- en cache-purge-synchronisatie aan, plus de nachtelijke reconciliatiejob.
 """
 import uuid
+from datetime import datetime, timedelta, timezone
 
+import redis
 from celery import Celery
+from celery.schedules import crontab
 from sqlalchemy import select
 
 from .config import settings
 from .db import SessionLocal
 from .mail import basis_context, verstuur
-from .models import Gebeurtenislog, nu
+from .models import Gebeurtenislog, Gebruiker, Media, nu
 
 celery = Celery("jottem", broker=settings().valkey_url, backend=None)
 celery.conf.beat_schedule = {
     "verwerk-outbox": {"task": "app.worker.verwerk_outbox", "schedule": 10.0},
+    # attenderingen dagelijks bundelen (design: max één mail per dag), vooravond
+    "attenderingen-bundel": {
+        "task": "app.worker.verstuur_attenderingen",
+        "schedule": crontab(hour=18, minute=0),
+    },
 }
 celery.conf.timezone = "Europe/Amsterdam"
+
+_valkey = redis.Redis.from_url(settings().valkey_url, decode_responses=True)
 
 
 @celery.task(name="app.worker.verwerk_outbox")
@@ -47,9 +59,114 @@ def verwerk_outbox() -> int:
                 context = basis_context(db, regel.organisatieId, regel.projectId)
                 context.update(mail.get("context", {}))
                 verstuur(mail["template"], mail["aan"], context)
+            # 3. naamsync: creator.name bijwerken in de annotatieserver (GE-2)
+            if regel.type == "gebruiker-naam-gewijzigd" and regel.gebruikersId:
+                sync_creator_naam(db, regel.gebruikersId)
             regel.verwerktOp = nu()
             verwerkt += 1
         db.commit()
     finally:
         db.close()
     return verwerkt
+
+
+def sync_creator_naam(db, gebruikers_id: int) -> int:
+    """Werk creator.name bij in alle annotaties van een gebruiker in AnnoRepo,
+    na een naam- of naamPubliek-wijziging (idempotent)."""
+    from . import anno
+
+    gebruiker = db.get(Gebruiker, gebruikers_id)
+    if not gebruiker:
+        return 0
+    creator_iri = f"urn:uuid:{gebruiker.publiekeId}"
+    naam = gebruiker.naam if gebruiker.naamPubliek else "Een deelnemer"
+    media_ids = {
+        (regel.payload or {}).get("mediaId")
+        for regel in db.scalars(
+            select(Gebeurtenislog).where(
+                Gebeurtenislog.type == "annotatie-aangemaakt",
+                Gebeurtenislog.gebruikersId == gebruikers_id,
+            )
+        )
+    }
+    bijgewerkt = 0
+    for media_id in filter(None, media_ids):
+        for annotatie in anno.alle_annotaties(media_id):
+            if (annotatie.get("creator") or {}).get("id") != creator_iri:
+                continue
+            if annotatie["creator"].get("name") == naam:
+                continue
+            annotatie["creator"]["name"] = naam
+            iri = annotatie["id"]
+            annotatie.pop("id", None)
+            try:
+                anno.vervang_annotatie(iri, annotatie)
+                bijgewerkt += 1
+            except Exception:  # noqa: BLE001 - volgende run probeert opnieuw
+                pass
+    return bijgewerkt
+
+
+@celery.task(name="app.worker.verstuur_attenderingen")
+def verstuur_attenderingen() -> int:
+    """Dagelijkse bundel van notificaties 10 (nieuwe annotatie/reactie op jouw jottem)
+    en 11 (reactie op jouw annotatie); respecteert Gebruiker.attenderingen en levert de
+    uitschakellink (mailToken) mee. Het venster loopt vanaf de vorige run (Valkey)."""
+    db = SessionLocal()
+    verstuurd = 0
+    try:
+        vorige = _valkey.get("attendering:laatste")
+        sinds = (datetime.fromisoformat(vorige) if vorige
+                 else datetime.now(timezone.utc) - timedelta(days=1))
+        regels = db.scalars(
+            select(Gebeurtenislog).where(
+                Gebeurtenislog.type == "annotatie-aangemaakt",
+                Gebeurtenislog.tijdstip > sinds,
+            )
+        ).all()
+
+        # mail 10: per (uploader, jottem); mail 11: per (annotatiemaker, jottem)
+        per_uploader: dict[tuple[int, str], int] = {}
+        per_annoteerder: dict[tuple[int, str], int] = {}
+        for regel in regels:
+            payload = regel.payload or {}
+            media_id = payload.get("mediaId")
+            if not media_id:
+                continue
+            media = db.get(Media, uuid.UUID(media_id))
+            if not media:
+                continue
+            if media.uploaderId != regel.gebruikersId:
+                sleutel = (media.uploaderId, media_id)
+                per_uploader[sleutel] = per_uploader.get(sleutel, 0) + 1
+            doel = payload.get("doelGebruikersId")
+            if doel and doel != regel.gebruikersId:
+                sleutel = (doel, media_id)
+                per_annoteerder[sleutel] = per_annoteerder.get(sleutel, 0) + 1
+
+        def stuur(groep: dict[tuple[int, str], int], template: str) -> int:
+            aantal_mails = 0
+            for (gebruikers_id, media_id), aantal in groep.items():
+                gebruiker = db.get(Gebruiker, gebruikers_id)
+                media = db.get(Media, uuid.UUID(media_id))
+                if not gebruiker or not media or not gebruiker.attenderingen:
+                    continue
+                context = basis_context(db, media.organisatieId, media.projectId)
+                context.update({
+                    "ontvangerNaam": gebruiker.naam,
+                    "jottemTitel": media.titel,
+                    "aantalNieuw": aantal,
+                    "jottemUrl": f"{settings().publieke_basis_url}/jottem/{media_id}",
+                    "annotatieUrl": f"{settings().publieke_basis_url}/jottem/{media_id}",
+                    "uitschakelUrl": f"{settings().api_basis_url}/attenderingen/uit?token={gebruiker.mailToken}",
+                })
+                verstuur(template, gebruiker.email, context)
+                aantal_mails += 1
+            return aantal_mails
+
+        verstuurd += stuur(per_uploader, "attendering-jottem")
+        verstuurd += stuur(per_annoteerder, "attendering-annotatie")
+        _valkey.set("attendering:laatste", datetime.now(timezone.utc).isoformat())
+    finally:
+        db.close()
+    return verstuurd

@@ -53,6 +53,8 @@ class ProjectIn(BaseModel):
     datasetLicentie: str | None = None
     status: str = Field(default="actief", pattern="^(actief|afgerond)$")
     terminologiebronnen: list[str] = []
+    # ingeschakelde verrijkingen (V-1); None = alle MVP-verrijkingen aan
+    verrijkingen: list[str] | None = None
 
 
 class ProjectUit(ProjectIn):
@@ -126,10 +128,81 @@ class JottemDetail(BaseModel):
     licentie: str | None
     status: str
     organisatie: str
+    organisatieSlug: str
     project: str
+    projectSlug: str
     metadata: dict[str, str]
     afbeeldingUrl: str | None
     iiifService: str | None = None      # IIIF Image API-basis zodra het derivaat er is
     iiifManifest: str | None = None
     publicatieDatum: datetime | None
     wijzigingsDatum: datetime
+    annotatiesUrl: str | None = None    # publieke AnnoRepo-container (W3C)
+    canvas: str | None = None           # canvas-IRI voor vlak-annotaties
+    verrijkingen: list["VerrijkingUit"] = []   # ingeschakelde CTA's van het project (V-2)
+
+
+class VerrijkingUit(BaseModel):
+    sleutel: str
+    label: str
+    cta: str
+    motivation: str
+    doel: str                            # heel | vlak
+
+
+class JottemTegel(BaseModel):
+    """Eén jottem in het publieke projectoverzicht."""
+    mediaId: uuid.UUID
+    titel: str
+    thumbnailUrl: str | None
+    publicatieDatum: datetime | None
+
+
+class ProjectPubliek(BaseModel):
+    naam: str
+    slug: str
+    organisatieSlug: str
+    organisatieNaam: str
+    kleurPrimair: str | None
+    logoUrl: str | None
+    beschrijving: str | None
+    oproep: str | None
+    periode: str | None
+    datasetLicentie: str | None
+    afbeeldingUrl: str | None
+    aantalJottems: int
+    jottems: list[JottemTegel]
+    pagina: int
+    paginas: int
+
+
+class OrganisatiePubliek(BaseModel):
+    naam: str
+    slug: str
+    beschrijving: str | None
+    website: str | None
+    kleurPrimair: str | None
+    kleurAchtergrond: str | None
+    logoUrl: str | None
+    projecten: list[dict]                # naam, slug, oproep, afbeeldingUrl, aantalJottems
+
+
+class MeldingIn(BaseModel):
+    reden: str = Field(pattern="^(spam|reclame|ongepast|onjuist|anders)$")
+    toelichting: str | None = Field(default=None, max_length=2000)
+
+
+class MeldingUit(BaseModel):
+    meldingId: int
+    mediaId: uuid.UUID | None
+    annotatieIri: str
+    reden: str
+    toelichting: str | None
+    status: str
+    creatieDatum: datetime
+    annotatie: dict | None = None        # inhoud uit AnnoRepo (voor de moderator)
+
+
+class MeldingBesluit(BaseModel):
+    besluit: str = Field(pattern="^(verwijderd|verborgen|afgewezen)$")
+    toelichting: str | None = None

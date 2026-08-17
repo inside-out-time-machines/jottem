@@ -62,9 +62,16 @@ export default async function Home() {
                 key={project.projectId}
                 style={organisatie.kleurPrimair ? { borderTopColor: organisatie.kleurPrimair } : undefined}
               >
-                <h3>{project.naam}</h3>
+                <h3>
+                  <a href={`/organisatie/${organisatie.slug}/${project.slug}`} style={{ textDecoration: "none", color: "inherit" }}>
+                    {project.naam}
+                  </a>
+                </h3>
                 {project.oproep && <p style={{ fontSize: "1rem" }}>{project.oproep}</p>}
-                <p style={{ marginTop: ".9rem" }}>
+                <p style={{ marginTop: ".9rem", display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
+                  <a className="knop knop-secundair" href={`/organisatie/${organisatie.slug}/${project.slug}`}>
+                    Bekijk de jottems
+                  </a>
                   <a className="knop knop-primair" href={`/upload?project=${organisatie.slug}/${project.slug}`}>
                     Doe mee: upload je materiaal
                   </a>

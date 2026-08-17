@@ -88,6 +88,34 @@ services:
     build: https://github.com/inside-out-time-machines/herkenbaar-api.git
     restart: unless-stopped
 
+  mongo:
+    # database voor AnnoRepo (annotatieserver); niet publiek ontsloten
+    image: mongo:6.0.27
+    restart: unless-stopped
+    volumes:
+      - mongo:/data/db
+
+  annorepo:
+    # W3C Web Annotation-server (vervangt miiify uit het oorspronkelijke design, dat
+    # read-only is geworden); schrijven alleen via de backend-API met de api-key,
+    # lezen publiek per container (readOnlyForAnonymousUsers)
+    image: ghcr.io/knaw-huc/annorepo-server:0.9.0
+    restart: unless-stopped
+    environment:
+      AR_EXTERNAL_BASE_URL: ${ANNO_PUBLIEK:-https://anno.dev.iotm.nl}
+      AR_MONGODB_URL: mongodb://mongo/
+      AR_DB_NAME: annorepo
+      AR_PAGE_SIZE: "100"
+      AR_ROOT_API_KEY: ${ANNO_API_KEY}
+      AR_PRETTY_PRINT: "false"
+    depends_on:
+      - mongo
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.anno.rule=Host(`anno.dev.iotm.nl`)
+      - traefik.http.routers.anno.tls.certresolver=letsencrypt
+      - traefik.http.services.anno.loadbalancer.server.port=8080
+
   cantaloupe:
     image: uclalibrary/cantaloupe:5.0.7-0
     restart: unless-stopped
@@ -189,6 +217,9 @@ services:
       JOTTEM_AMR_VERPLICHT: ${AMR_VERPLICHT:-1}
       JOTTEM_IIIF_BASIS_URL: ${IIIF_PUBLIEK:-https://iiif.dev.iotm.nl}
       JOTTEM_HERKENBAAR_URL: http://herkenbaar:4050
+      JOTTEM_ANNO_URL: http://annorepo:8080
+      JOTTEM_ANNO_BASIS_URL: ${ANNO_PUBLIEK:-https://anno.dev.iotm.nl}
+      JOTTEM_ANNO_API_KEY: ${ANNO_API_KEY}
       JOTTEM_SMTP_HOST: mailpit
       JOTTEM_SMTP_PORT: 1025
     depends_on:
@@ -214,6 +245,9 @@ services:
       JOTTEM_S3_SECRET_KEY: ${S3_SECRET_KEY}
       JOTTEM_PUBLIEKE_BASIS_URL: ${WEB_PUBLIEK:-https://dev.iotm.nl}
       JOTTEM_IIIF_BASIS_URL: ${IIIF_PUBLIEK:-https://iiif.dev.iotm.nl}
+      JOTTEM_ANNO_URL: http://annorepo:8080
+      JOTTEM_ANNO_BASIS_URL: ${ANNO_PUBLIEK:-https://anno.dev.iotm.nl}
+      JOTTEM_ANNO_API_KEY: ${ANNO_API_KEY}
       JOTTEM_SMTP_HOST: mailpit
       JOTTEM_SMTP_PORT: 1025
     depends_on:
@@ -253,3 +287,4 @@ volumes:
   postgres:
   valkey:
   minio:
+  mongo:

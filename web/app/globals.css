@@ -152,6 +152,54 @@ dialog.dialoog::backdrop { background: rgba(31, 30, 28, .55); }
 dialog.dialoog h2 { font-family: var(--kop); font-size: 1.35rem; margin-bottom: .8rem; }
 .dialoog-knoppen { display: flex; gap: .7rem; flex-wrap: wrap; margin-top: 1.1rem; }
 
+/* verrijkingen (CTA's en annotaties, zie het verrijkingenhoofdstuk in het design) */
+.cta-balk { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: .8rem; max-width: 52rem; }
+.cta-knop {
+    font: inherit; font-size: .95rem; cursor: pointer; text-align: left;
+    background: var(--wit); color: var(--inkt);
+    border: 1px solid var(--kartonrand); border-left: 4px solid var(--oranje);
+    border-radius: .45rem; padding: .55rem .8rem; max-width: 24rem;
+    transition: background .15s ease;
+}
+.cta-knop:hover, .cta-knop:focus { background: var(--papier); border-left-color: var(--roest); }
+
+.annotatie-lijst { display: flex; flex-direction: column; gap: .9rem; margin-top: 1rem; max-width: 44rem; }
+.annotatie {
+    background: var(--wit); border: 1px solid var(--kartonrand); border-radius: .45rem;
+    padding: .9rem 1.1rem;
+}
+.annotatie-kop { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+.annotatie-type {
+    font-family: var(--kop); font-weight: 600; font-size: .95rem; color: var(--roest);
+}
+.aard-badge {
+    font-size: .78rem; padding: .1rem .55rem; border-radius: 99px; border: 1px solid;
+}
+.aard-herinnering { color: var(--roest); border-color: var(--roest); background: var(--papier); }
+.aard-feit { color: #2f5d50; border-color: #2f5d50; background: #eef5f2; }
+.annotatie-voet {
+    margin-top: .55rem; font-size: .85rem; color: var(--grijs);
+    display: flex; gap: .7rem; align-items: center; flex-wrap: wrap;
+}
+.annotatie-actie {
+    font: inherit; font-size: .85rem; background: none; border: none; cursor: pointer;
+    color: var(--roest); text-decoration: underline; padding: 0;
+}
+.annotatie-reactie {
+    margin-top: .7rem; margin-left: 1rem; padding: .6rem .8rem;
+    border-left: 3px solid var(--karton); background: var(--papier);
+    border-radius: 0 .35rem .35rem 0; font-size: .95rem;
+}
+.zoeklijst {
+    list-style: none; margin: .3rem 0 0; padding: 0; border: 1px solid var(--kartonrand);
+    border-radius: .35rem; max-height: 11rem; overflow-y: auto; background: var(--wit);
+}
+.zoeklijst li button {
+    font: inherit; font-size: .92rem; width: 100%; text-align: left; background: none;
+    border: none; border-bottom: 1px solid var(--papier); cursor: pointer; padding: .45rem .6rem;
+}
+.zoeklijst li button:hover { background: var(--papier); }
+
 .bestand-knoppen { display: flex; gap: .7rem; flex-wrap: wrap; }
 .bestand-knoppen .knop { font-size: 1.05rem; }
 .bestand-knoppen .knop .icoon { font-size: 1.5rem; vertical-align: -0.2rem; margin-right: .35rem; }

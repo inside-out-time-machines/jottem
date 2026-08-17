@@ -49,6 +49,7 @@ def _uit(db: Session, project: Project, organisatie_slug: str) -> ProjectUit:
         datasetLicentie=project.datasetLicentie,
         status=project.status,
         terminologiebronnen=project.terminologiebronnen or [],
+        verrijkingen=project.verrijkingen,
         datasetAangemeld=project.datasetAangemeld,
         aantalJottems=aantal,
     )

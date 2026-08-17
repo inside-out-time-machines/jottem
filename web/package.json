@@ -9,6 +9,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@annotorious/openseadragon": "^3.8.9",
     "maplibre-gl": "^5.0.0",
     "next": "15.1.6",
     "openseadragon": "^5.0.1",

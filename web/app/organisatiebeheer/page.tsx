@@ -9,15 +9,18 @@ type Project = {
   beschrijving: string | null; oproep: string | null; periode: string | null;
   afbeelding: string | null; afbeeldingUrl: string | null;
   datasetLicentie: string | null; status: string; terminologiebronnen: string[];
+  verrijkingen: string[] | null;
   datasetAangemeld: string | null; aantalJottems: number;
 };
 type Lid = { gebruikersId: number; naam: string; email: string; rol: string; gekoppeld: boolean };
 type Bron = { uri: string; naam: string; alternatief: string | null };
+type Verrijking = { sleutel: string; label: string; cta: string; motivation: string; doel: string };
 
 const LEEG_PROJECT = {
   naam: "", slug: "", beschrijving: "", oproep: "", periode: "",
   datasetLicentie: "https://creativecommons.org/licenses/by/4.0/",
   status: "actief", terminologiebronnen: [] as string[], afbeelding: null as string | null,
+  verrijkingen: null as string[] | null,
 };
 
 export default function OrganisatiebeheerPagina() {
@@ -26,6 +29,7 @@ export default function OrganisatiebeheerPagina() {
   const [projecten, setProjecten] = useState<Record<string, Project[]>>({});
   const [moderatoren, setModeratoren] = useState<Record<string, Lid[]>>({});
   const [bronnen, setBronnen] = useState<Bron[]>([]);
+  const [catalogus, setCatalogus] = useState<Verrijking[]>([]);
   const [vorm, setVorm] = useState({ ...LEEG_PROJECT });
   const [bewerkProject, setBewerkProject] = useState<Project | null>(null);
   const [vormOrganisatie, setVormOrganisatie] = useState<string | null>(null);
@@ -58,6 +62,7 @@ export default function OrganisatiebeheerPagina() {
     if (isIngelogd()) {
       laden();
       fetch(`${API_PUBLIEK}/termennetwerk/bronnen`).then((r) => r.json()).then(setBronnen).catch(() => {});
+      fetch(`${API_PUBLIEK}/verrijkingen`).then((r) => r.json()).then(setCatalogus).catch(() => {});
     }
   }, [laden]);
 
@@ -198,7 +203,7 @@ export default function OrganisatiebeheerPagina() {
                       periode: project.periode ?? "",
                       datasetLicentie: project.datasetLicentie ?? LEEG_PROJECT.datasetLicentie,
                       status: project.status, terminologiebronnen: project.terminologiebronnen,
-                      afbeelding: project.afbeelding,
+                      afbeelding: project.afbeelding, verrijkingen: project.verrijkingen,
                     });
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   }}>Bewerken</button>
@@ -275,6 +280,35 @@ export default function OrganisatiebeheerPagina() {
                     </label>
                   ))}
                   {bronnen.length === 0 && <em>Bronnenlijst wordt geladen...</em>}
+                </div>
+              </div>
+              <div className="veld">
+                <label>Verrijkingen op de jottem-pagina (standaard staan ze allemaal aan)</label>
+                <div style={{ border: "1px solid var(--kartonrand)", borderRadius: ".35rem", padding: ".6rem", background: "var(--wit)", fontSize: ".92rem" }}>
+                  {catalogus.map((verrijking) => {
+                    const actief = vorm.verrijkingen === null
+                      ? true
+                      : vorm.verrijkingen.includes(verrijking.sleutel);
+                    return (
+                      <label key={verrijking.sleutel} style={{ display: "block", fontWeight: 400 }} title={verrijking.cta}>
+                        <input
+                          type="checkbox"
+                          checked={actief}
+                          onChange={(e) => setVorm((oud) => {
+                            const huidig = oud.verrijkingen ?? catalogus.map((v) => v.sleutel);
+                            return {
+                              ...oud,
+                              verrijkingen: e.target.checked
+                                ? [...huidig.filter((s) => s !== verrijking.sleutel), verrijking.sleutel]
+                                : huidig.filter((s) => s !== verrijking.sleutel),
+                            };
+                          })}
+                        />{" "}
+                        {verrijking.label}
+                      </label>
+                    );
+                  })}
+                  {catalogus.length === 0 && <em>Catalogus wordt geladen...</em>}
                 </div>
               </div>
               <div style={{ display: "flex", gap: ".7rem" }}>

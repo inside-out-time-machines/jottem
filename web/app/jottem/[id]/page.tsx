@@ -1,18 +1,16 @@
 import { apiServer } from "@/lib/api";
-import Viewer from "./viewer";
+import Interactief, { Detail as InteractiefDetail } from "./interactief";
 
-type Detail = {
-  mediaId: string;
-  titel: string;
+type Detail = InteractiefDetail & {
   beschrijving: string | null;
   genre: string | null;
   licentie: string | null;
   status: string;
   organisatie: string;
+  organisatieSlug: string;
   project: string;
+  projectSlug: string;
   metadata: Record<string, string>;
-  afbeeldingUrl: string | null;
-  iiifService: string | null;
   iiifManifest: string | null;
   publicatieDatum: string | null;
 };
@@ -38,25 +36,23 @@ export default async function JottemPagina({
   return (
     <main>
       <p style={{ fontSize: ".9rem", color: "var(--grijs)" }}>
-        {jottem.organisatie} · {jottem.project}
+        <a href={`/organisatie/${jottem.organisatieSlug}`}>{jottem.organisatie}</a>
+        {" · "}
+        <a href={`/organisatie/${jottem.organisatieSlug}/${jottem.projectSlug}`}>{jottem.project}</a>
       </p>
       <h1>{jottem.titel}</h1>
       <p style={{ marginTop: ".3rem" }}>
         <span className={`status-pil status-${jottem.status}`}>{jottem.status}</span>
       </p>
-      {jottem.iiifService ? (
-        <Viewer service={jottem.iiifService} titel={jottem.titel} />
-      ) : (
-        jottem.afbeeldingUrl && (
-          <figure className="polaroid" style={{ marginTop: "1.4rem", maxWidth: "36rem" }}>
-            <img src={jottem.afbeeldingUrl} alt={jottem.titel} />
-            <figcaption>{jottem.titel}</figcaption>
-          </figure>
-        )
-      )}
+
+      <Interactief detail={jottem} />
+
       {jottem.iiifManifest && (
-        <p style={{ fontSize: ".85rem", color: "var(--grijs)", marginTop: ".5rem" }}>
+        <p style={{ fontSize: ".85rem", color: "var(--grijs)", marginTop: "1rem" }}>
           Open data: <a href={jottem.iiifManifest}>IIIF-manifest</a>
+          {jottem.annotatiesUrl && (
+            <> · <a href={jottem.annotatiesUrl}>webannotaties (W3C)</a></>
+          )}
         </p>
       )}
       {jottem.beschrijving && <p style={{ marginTop: "1.2rem", maxWidth: "42rem" }}>{jottem.beschrijving}</p>}

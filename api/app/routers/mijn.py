@@ -19,6 +19,7 @@ router = APIRouter(tags=["Mijn"])
 def _profiel(p: Principal) -> dict:
     return {
         "naam": p.gebruiker.naam,
+        "publiekeId": str(p.gebruiker.publiekeId),   # creator-IRI-basis bij annotaties
         "email": p.gebruiker.email,
         "naamPubliek": p.gebruiker.naamPubliek,
         "attenderingen": p.gebruiker.attenderingen,
@@ -31,6 +32,18 @@ def _profiel(p: Principal) -> dict:
 @router.get("/mijn/profiel")
 async def profiel(p: Principal = Depends(principal)):
     return _profiel(p)
+
+
+@router.get("/attenderingen/uit")
+async def attenderingen_uit(token: uuid.UUID, db: Session = Depends(get_db)):
+    """Uitschakellink uit de attenderingsmails: werkt zonder inloggen, via het geheime
+    mailToken (notificaties 10/11; zie ook de afleverbaarheidseisen in het design)."""
+    gebruiker = db.scalar(select(Gebruiker).where(Gebruiker.mailToken == token))
+    if not gebruiker:
+        return {"melding": "Deze uitschakellink is niet (meer) geldig"}
+    gebruiker.attenderingen = False
+    db.commit()
+    return {"melding": "Je ontvangt geen attenderingen meer; je kunt ze in je profiel weer aanzetten"}
 
 
 class ProfielIn(BaseModel):
@@ -47,6 +60,8 @@ async def profiel_bewerken(
     db: Session = Depends(get_db),
 ):
     gebruiker = db.get(Gebruiker, p.gebruiker.gebruikersId)
+    naam_geraakt = (vraag.naam and vraag.naam != gebruiker.naam) or (
+        vraag.naamPubliek is not None and vraag.naamPubliek != gebruiker.naamPubliek)
     if vraag.naam:
         gebruiker.naam = vraag.naam
     if vraag.naamPubliek is not None:
@@ -55,6 +70,11 @@ async def profiel_bewerken(
         gebruiker.attenderingen = vraag.attenderingen
     if vraag.afbeelding is not None:
         gebruiker.afbeelding = vraag.afbeelding or None
+    if naam_geraakt:
+        # de worker werkt creator.name bij in alle annotaties van deze gebruiker (GE-2)
+        from ..outbox import log
+        log(db, "gebruiker-naam-gewijzigd", gebruikers_id=gebruiker.gebruikersId,
+            payload={"publiekeId": str(gebruiker.publiekeId)})
     db.commit()
     p.gebruiker = gebruiker
     return _profiel(p)

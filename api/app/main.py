@@ -8,7 +8,8 @@ from . import s3
 from .config import settings
 from .db import engine
 from .routers import (
-    dataset, jottem, mijn, moderatie, organisatiebeheer, projectbeheer, termennetwerk, upload,
+    annotaties, dataset, jottem, mijn, moderatie, organisatiebeheer, projectbeheer,
+    publiek, termennetwerk, upload,
 )
 
 app = FastAPI(
@@ -34,6 +35,8 @@ app.include_router(dataset.router)
 app.include_router(moderatie.router)
 app.include_router(jottem.router)
 app.include_router(mijn.router)
+app.include_router(publiek.router)
+app.include_router(annotaties.router)
 
 
 @app.get("/healthz", tags=["Systeem"])

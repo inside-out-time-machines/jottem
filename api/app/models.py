@@ -73,6 +73,9 @@ class Project(Base):
     datasetLicentie: Mapped[str | None] = mapped_column(String(200))
     status: Mapped[str] = mapped_column(String(20), default="actief")  # actief | afgerond
     terminologiebronnen: Mapped[list | None] = mapped_column(JSON, default=list)
+    # ingeschakelde verrijkingen (V-1): lijst van sleutels uit app.verrijkingen;
+    # None = alle MVP-verrijkingen aan (de standaard)
+    verrijkingen: Mapped[list | None] = mapped_column(JSON)
     datasetAangemeld: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # NDE Datasetregister
 
     organisatie: Mapped[Organisatie] = relationship(back_populates="projecten")
@@ -85,6 +88,11 @@ class Gebruiker(Base):
 
     gebruikersId: Mapped[int] = mapped_column(Integer, primary_key=True)
     sub: Mapped[str | None] = mapped_column(String(255), unique=True, index=True)
+    # niet-raadbare publieke identiteit, gebruikt als creator-IRI (urn:uuid:...) in annotaties
+    publiekeId: Mapped[uuid.UUID] = mapped_column(unique=True, index=True, default=uuid.uuid4)
+    # geheim token voor de uitschakellink in attenderingsmails (werkt zonder inloggen);
+    # bewust een ander uuid dan publiekeId, want die is publiek zichtbaar in annotaties
+    mailToken: Mapped[uuid.UUID] = mapped_column(unique=True, index=True, default=uuid.uuid4)
     naam: Mapped[str] = mapped_column(String(200))
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
     afbeelding: Mapped[str | None] = mapped_column(String(400))

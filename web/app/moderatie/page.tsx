@@ -18,8 +18,30 @@ type Jottem = {
 
 const ORGANISATIE = "samh"; // fundament: één organisatie; later uit de ingelogde rol
 
+type MeldingRij = {
+  meldingId: number;
+  mediaId: string | null;
+  annotatieIri: string;
+  reden: string;
+  toelichting: string | null;
+  status: string;
+  creatieDatum: string;
+  annotatie: {
+    body?: { type?: string; value?: string; format?: string }[] | { type?: string; value?: string };
+    creator?: { name?: string };
+  } | null;
+};
+
+function annotatieTekst(rij: MeldingRij): string {
+  const body = rij.annotatie?.body;
+  const lijst = Array.isArray(body) ? body : body ? [body] : [];
+  const tekst = lijst.find((b) => b.type === "TextualBody" && b.value)?.value;
+  return tekst ?? "(geen tekstinhoud)";
+}
+
 export default function ModeratiePagina() {
   const [jottems, setJottems] = useState<Jottem[]>([]);
+  const [meldingen, setMeldingen] = useState<MeldingRij[]>([]);
   const [melding, setMelding] = useState<string | null>(null);
   const [ingelogd, setIngelogd] = useState<boolean | null>(null);
 
@@ -38,6 +60,10 @@ export default function ModeratiePagina() {
       })
       .then(setJottems)
       .catch((fout) => setMelding(`Wachtrij laden mislukt: ${fout.message}`));
+    fetch(`${API_PUBLIEK}/organisatie/${ORGANISATIE}/meldingen`, { headers })
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setMeldingen)
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -141,6 +167,78 @@ export default function ModeratiePagina() {
           )}
         </tbody>
       </table>
+
+      <h2 style={{ marginTop: "2.5rem" }}>Meldingen op annotaties en reacties</h2>
+      <p style={{ marginTop: ".4rem", fontSize: ".95rem", color: "var(--grijs)" }}>
+        Bezoekers kunnen bijdragen rapporteren (ook zonder account). Verbergen of
+        verwijderen haalt de bijdrage uit de publieke weergave; alles wordt gelogd.
+      </p>
+      <table className="lijst">
+        <thead>
+          <tr>
+            <th>Bijdrage</th>
+            <th>Reden</th>
+            <th>Gemeld op</th>
+            <th>Status / actie</th>
+          </tr>
+        </thead>
+        <tbody>
+          {meldingen.map((rij) => (
+            <tr key={rij.meldingId}>
+              <td style={{ maxWidth: "22rem" }}>
+                <em>&ldquo;{annotatieTekst(rij).slice(0, 160)}&rdquo;</em>
+                {rij.annotatie?.creator?.name && (
+                  <div style={{ fontSize: ".85rem", color: "var(--grijs)" }}>door {rij.annotatie.creator.name}</div>
+                )}
+                {rij.mediaId && (
+                  <div style={{ fontSize: ".85rem" }}><a href={`/jottem/${rij.mediaId}`}>bekijk de jottem</a></div>
+                )}
+              </td>
+              <td>
+                {rij.reden}
+                {rij.toelichting && (
+                  <div style={{ fontSize: ".85rem", color: "var(--grijs)" }}>{rij.toelichting}</div>
+                )}
+              </td>
+              <td>{new Date(rij.creatieDatum).toLocaleDateString("nl-NL")}</td>
+              <td>
+                {rij.status === "nieuw" ? (
+                  <span style={{ display: "flex", gap: ".4rem", flexWrap: "wrap" }}>
+                    <button className="knop knop-secundair" onClick={() => besluitMelding(rij, "verborgen")}>Verberg</button>
+                    <button className="knop knop-secundair" onClick={() => besluitMelding(rij, "verwijderd")}>Verwijder</button>
+                    <button className="knop knop-secundair" onClick={() => besluitMelding(rij, "afgewezen")}>Wijs af</button>
+                  </span>
+                ) : (
+                  <span className="status-pil status-gedepubliceerd">{rij.status}</span>
+                )}
+              </td>
+            </tr>
+          ))}
+          {meldingen.length === 0 && (
+            <tr>
+              <td colSpan={4}>Geen meldingen.</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </main>
   );
+
+  async function besluitMelding(rij: MeldingRij, besluit: "verwijderd" | "verborgen" | "afgewezen") {
+    const r = await fetch(`${API_PUBLIEK}/melding/${rij.meldingId}`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({ besluit }),
+    });
+    if (!r.ok) {
+      setMelding(`Afhandelen mislukt: ${(await r.json()).detail ?? r.statusText}`);
+      return;
+    }
+    setMelding(
+      besluit === "afgewezen"
+        ? "Melding afgewezen; de bijdrage blijft staan."
+        : "De bijdrage is uit de publieke weergave gehaald.",
+    );
+    laden();
+  }
 }
