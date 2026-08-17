@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import "@annotorious/openseadragon/annotorious-openseadragon.css";
 
 // Minimale typen voor de Annotorious-laag (W3C-adapter); de volledige typen zitten in
@@ -35,6 +35,24 @@ export default function Viewer({
   const houder = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<{ destroy: () => void; viewport?: unknown } | null>(null);
   const annotatorRef = useRef<OsdAnnotator | null>(null);
+  const [vol, setVol] = useState(false);   // volledig scherm actief (native of fallback)
+
+  useEffect(() => {
+    const bijWissel = () => setVol(Boolean(document.fullscreenElement));
+    const opToets = (e: KeyboardEvent) => {
+      const kader = houder.current?.parentElement;
+      if (e.key === "Escape" && kader?.classList.contains("iiif-vol")) {
+        kader.classList.remove("iiif-vol");
+        setVol(false);
+      }
+    };
+    document.addEventListener("fullscreenchange", bijWissel);
+    document.addEventListener("keydown", opToets);
+    return () => {
+      document.removeEventListener("fullscreenchange", bijWissel);
+      document.removeEventListener("keydown", opToets);
+    };
+  }, []);
 
   useEffect(() => {
     let gestopt = false;
@@ -83,10 +101,16 @@ export default function Viewer({
   }
 
   function volledigScherm() {
-    if (document.fullscreenElement) {
-      void document.exitFullscreen();
+    const kader = houder.current?.parentElement;
+    if (!kader) return;
+    if (kader.requestFullscreen) {
+      if (document.fullscreenElement) void document.exitFullscreen();
+      else void kader.requestFullscreen();
     } else {
-      houder.current?.parentElement?.requestFullscreen?.();
+      // iPhones kennen geen element-fullscreen: CSS-fallback die het kader
+      // schermvullend fixeert (zie .iiif-vol in globals.css)
+      kader.classList.toggle("iiif-vol");
+      setVol(kader.classList.contains("iiif-vol"));
     }
   }
 
@@ -96,7 +120,10 @@ export default function Viewer({
       <div className="iiif-knoppen">
         <button type="button" className="knop knop-secundair" onClick={() => zoom(1.4)} aria-label="Inzoomen">+</button>
         <button type="button" className="knop knop-secundair" onClick={() => zoom(1 / 1.4)} aria-label="Uitzoomen">-</button>
-        <button type="button" className="knop knop-secundair" onClick={volledigScherm} aria-label="Volledig scherm">⛶</button>
+        <button type="button" className="knop knop-secundair" onClick={volledigScherm}
+                aria-label={vol ? "Volledig scherm sluiten" : "Volledig scherm"}>
+          {vol ? "✕" : "⛶"}
+        </button>
       </div>
       <figcaption>{titel}</figcaption>
     </figure>

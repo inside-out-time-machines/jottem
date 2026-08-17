@@ -58,6 +58,37 @@ a:hover { color: var(--oranje); }
 .topbar .proto { font-size: .7rem; letter-spacing: .1em; text-transform: uppercase;
     border: 1px solid rgba(250,246,241,.4); border-radius: 999px; padding: .15rem .6rem; }
 
+/* hamburgerknop: alleen zichtbaar op kleine schermen; transformeert naar een X */
+.hamburger {
+    display: none; margin-left: auto; background: none; border: none; cursor: pointer;
+    padding: .5rem; flex-direction: column; justify-content: center; gap: 5px;
+}
+.hamburger span {
+    display: block; width: 22px; height: 2px; background: var(--papier);
+    border-radius: 1px; transition: transform .25s ease, opacity .2s ease;
+}
+.hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.hamburger.open span:nth-child(2) { opacity: 0; }
+.hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+@media (max-width: 760px) {
+    .topbar { position: relative; }
+    .hamburger { display: flex; }
+    /* nav dicht: verborgen; open: uitklappend paneel onder de balk, items onder elkaar */
+    .topbar nav { display: none; }
+    .topbar nav.menu-open {
+        display: flex; flex-direction: column; gap: 0; margin-left: 0;
+        position: absolute; top: 100%; left: 0; right: 0; z-index: 40;
+        background: var(--inkt); border-top: 1px solid rgba(250,246,241,.15);
+        box-shadow: 0 10px 24px rgba(31,30,28,.35); padding: .4rem 0 .8rem;
+    }
+    .topbar nav.menu-open > a,
+    .topbar nav.menu-open > span { padding: .8rem 1.5rem; }
+    .topbar nav.menu-open > span {
+        display: flex; flex-direction: column; align-items: flex-start; gap: .8rem;
+    }
+}
+
 main { max-width: 68rem; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
 
 .kaart {
@@ -100,6 +131,9 @@ main { max-width: 68rem; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
 
 table.lijst { border-collapse: collapse; width: 100%; margin-top: 1.2rem; font-size: 1rem; }
 table.lijst th, table.lijst td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--kartonrand); vertical-align: top; }
+/* lange URL's (licentie, bron) mogen nooit horizontale scroll veroorzaken */
+table.lijst td { overflow-wrap: anywhere; }
+table.lijst a { word-break: break-all; }
 table.lijst th { font-size: .82rem; letter-spacing: .1em; text-transform: uppercase; }
 
 .polaroid {
@@ -111,7 +145,17 @@ table.lijst th { font-size: .82rem; letter-spacing: .1em; text-transform: upperc
     box-shadow: var(--schaduw); margin-top: 1.4rem; max-width: 52rem; position: relative;
 }
 .iiif-viewer { height: min(68vh, 620px); background: var(--inkt); }
-.iiif-viewer:fullscreen { height: 100vh; }
+/* volledig scherm: de figure (.iiif-kader) gaat fullscreen (of krijgt .iiif-vol als
+   fallback op iPhones zonder element-fullscreen); de viewer vult dan de resthoogte */
+.iiif-kader:fullscreen, .iiif-kader.iiif-vol {
+    display: flex; flex-direction: column; background: var(--inkt);
+    margin: 0; border: none; max-width: none;
+}
+.iiif-kader.iiif-vol { position: fixed; inset: 0; z-index: 60; height: 100dvh; }
+.iiif-kader:fullscreen .iiif-viewer, .iiif-kader.iiif-vol .iiif-viewer {
+    flex: 1; height: auto; min-height: 0;
+}
+.iiif-kader:fullscreen figcaption, .iiif-kader.iiif-vol figcaption { color: var(--papier); }
 .iiif-knoppen {
     position: absolute; top: 1.2rem; right: 1.2rem; display: flex; flex-direction: column;
     gap: .35rem; z-index: 5;
@@ -152,6 +196,14 @@ dialog.dialoog::backdrop { background: rgba(31, 30, 28, .55); }
 /* grote variant, o.a. voor de zichtveld-kaart (Leaflet.GeotagPhoto) */
 dialog.dialoog.dialoog-groot { max-width: min(64rem, calc(100vw - 2rem)); }
 dialog.dialoog h2 { font-family: var(--kop); font-size: 1.35rem; margin-bottom: .8rem; }
+/* op kleine schermen vullen dialogen het hele scherm en scrollen ze in zichzelf */
+@media (max-width: 640px) {
+    dialog.dialoog, dialog.dialoog.dialoog-groot {
+        width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh;
+        margin: 0; border-radius: 0; border-left: none; border-right: none;
+        overflow-y: auto; box-sizing: border-box;
+    }
+}
 .dialoog-knoppen { display: flex; gap: .7rem; flex-wrap: wrap; margin-top: 1.1rem; }
 
 /* gevaarlijke acties (verwijderen): rood, alleen op bevestigingspagina's */

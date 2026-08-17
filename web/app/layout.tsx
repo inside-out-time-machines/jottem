@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { SITE_URL } from "@/lib/api";
-import InlogKnop from "./inlog-knop";
-import NavLinks from "./nav-links";
+import HoofdMenu from "./hoofd-menu";
 
 const BESCHRIJVING =
   "Jottem is het participatieve erfgoedplatform van Inside Out Time Machines: " +
@@ -39,10 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </a>
             <a href="/">Jottem</a>
             <span className="proto">dev</span>
-            <nav>
-              <NavLinks />
-              <InlogKnop />
-            </nav>
+            <HoofdMenu />
           </div>
         </header>
         {children}
