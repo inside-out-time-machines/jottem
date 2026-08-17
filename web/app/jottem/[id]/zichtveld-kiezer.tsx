@@ -37,6 +37,7 @@ export default function ZichtveldKiezer({
       await import("leaflet-geotag-photo/dist/Leaflet.GeotagPhoto.js");
       if (gestopt || !houder.current || kaartRef.current) return;
 
+      // laatste redmiddel als er geen speld en geen organisatieplaats bekend is
       const camera: [number, number] = [begin?.lat ?? 52.0115, begin?.lon ?? 4.7104];
       const doel: [number, number] = [
         begin?.doelLat ?? camera[0],

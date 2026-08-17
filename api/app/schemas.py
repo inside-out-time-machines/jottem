@@ -159,6 +159,9 @@ class JottemDetail(BaseModel):
     organisatie: str
     organisatieSlug: str
     organisatieLogoUrl: str | None = None
+    # plaats van de organisatie: startpunt voor de zichtveldkaart (standpunt fotograaf)
+    organisatieLat: float | None = None
+    organisatieLon: float | None = None
     project: str
     projectSlug: str
     projectId: uuid.UUID

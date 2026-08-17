@@ -11,7 +11,11 @@ type Project = {
   projectId: string; naam: string; slug: string; datasetLicentie: string | null;
   uploadWijzen: string[];
 };
-type Organisatie = { naam: string; slug: string; projecten: Project[] };
+type Organisatie = {
+  naam: string; slug: string; projecten: Project[];
+  // plaats van de organisatie (GeoNames via het Termennetwerk), startpunt van de kaart
+  spatialLat: number | null; spatialLon: number | null;
+};
 
 // CHT-waardelijst (platformconfiguratie, zie de data-architectuur; audio volgt in fase 2)
 const GENRES = ["foto", "menukaart", "advertentie", "folder", "krantenartikel", "vergunning", "overig"];
@@ -73,7 +77,10 @@ export default function UploadPagina() {
   }, []);
 
   const projecten = organisaties.flatMap((o) =>
-    o.projecten.map((p) => ({ ...p, organisatie: o.naam, pad: `${o.slug}/${p.slug}` })),
+    o.projecten.map((p) => ({
+      ...p, organisatie: o.naam, pad: `${o.slug}/${p.slug}`,
+      spatialLat: o.spatialLat, spatialLon: o.spatialLon,
+    })),
   );
   const gekozen = projectParam
     ? projecten.find((p) => p.pad === projectParam || p.projectId === projectParam)
@@ -407,7 +414,12 @@ export default function UploadPagina() {
           <label>Waar was dit? (mag)</label>
           {toonKaart ? (
             <>
-              <LocatieKiezer onKies={(lat, lon) => setLocatie({ lat, lon })} />
+              <LocatieKiezer
+                onKies={(lat, lon) => setLocatie({ lat, lon })}
+                begin={gekozen?.spatialLat != null && gekozen?.spatialLon != null
+                  ? { lat: gekozen.spatialLat, lon: gekozen.spatialLon }
+                  : null}
+              />
               <span style={{ fontSize: ".9rem", color: "var(--grijs)" }}>
                 {locatie
                   ? `Speld staat op ${locatie.lat}, ${locatie.lon}`

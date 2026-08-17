@@ -57,6 +57,10 @@ class Organisatie(Base):
     # schema:spatialCoverage in de datasetbeschrijvingen van deze organisatie
     spatialUri: Mapped[str | None] = mapped_column(String(400))
     spatialNaam: Mapped[str | None] = mapped_column(String(200))
+    # coördinaten opgehaald bij spatialUri (GeoNames); afgeleide data die de kaarten
+    # als startpunt gebruiken, niet zichtbaar of bewerkbaar in de GUI
+    spatialLat: Mapped[float | None] = mapped_column(Float)
+    spatialLon: Mapped[float | None] = mapped_column(Float)
     favicon: Mapped[str | None] = mapped_column(String(400))
     logo: Mapped[str | None] = mapped_column(String(400))
     kleurPrimair: Mapped[str | None] = mapped_column(String(9))

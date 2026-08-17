@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .. import s3
+from .. import geo, s3
 from ..auth import Principal, eis_rol, invalideer_rollen_cache, principal
 from ..config import settings
 from ..db import get_db
@@ -43,6 +43,18 @@ def _uit(organisatie: Organisatie) -> OrganisatieUit:
         logoUrl=s3.presigned_get(organisatie.logo, bucket=settings().s3_bucket_thumbs) if organisatie.logo else None,
         faviconUrl=s3.presigned_get(organisatie.favicon, bucket=settings().s3_bucket_thumbs) if organisatie.favicon else None,
     )
+
+
+def _zet_coordinaten(organisatie: Organisatie) -> bool:
+    """Coördinaten bij de gekozen plaats-URI ophalen en opslaan (afgeleide data, niet
+    in het formulier). Retourneert of ze bekend zijn; mislukken mag het opslaan van de
+    organisatie nooit blokkeren."""
+    if not organisatie.spatialUri:
+        organisatie.spatialLat = organisatie.spatialLon = None
+        return True
+    gevonden = geo.coordinaten(organisatie.spatialUri)
+    organisatie.spatialLat, organisatie.spatialLon = gevonden or (None, None)
+    return gevonden is not None
 
 
 def _organisatie(db: Session, slug: str) -> Organisatie:
@@ -79,8 +91,10 @@ async def organisatie_aanmaken(
         beschrijving="Automatisch aangemaakt bij de organisatie; pas dit project aan of maak nieuwe projecten.",
         status="actief",
     ))
+    coordinaten_bekend = _zet_coordinaten(organisatie)
     log(db, "organisatie.aangemaakt", organisatie_id=organisatie.organisatieId,
-        gebruikers_id=p.gebruiker.gebruikersId, payload={"slug": organisatie.slug})
+        gebruikers_id=p.gebruiker.gebruikersId,
+        payload={"slug": organisatie.slug, "coordinatenBekend": coordinaten_bekend})
     db.commit()
     return _uit(organisatie)
 
@@ -95,10 +109,16 @@ async def organisatie_bewerken(
     organisatie = _organisatie(db, slug)
     if vraag.slug != slug and db.scalar(select(Organisatie).where(Organisatie.slug == vraag.slug)):
         raise HTTPException(409, "Er bestaat al een organisatie met deze slug")
+    oude_plaats = organisatie.spatialUri
     for veld, waarde in vraag.model_dump().items():
         setattr(organisatie, veld, waarde)
+    # alleen opnieuw ophalen als de plaats wijzigde of de coördinaten nog ontbreken
+    coordinaten_bekend = True
+    if organisatie.spatialUri != oude_plaats or organisatie.spatialLat is None:
+        coordinaten_bekend = _zet_coordinaten(organisatie)
     log(db, "organisatie.bewerkt", organisatie_id=organisatie.organisatieId,
-        gebruikers_id=p.gebruiker.gebruikersId, payload={"slug": organisatie.slug})
+        gebruikers_id=p.gebruiker.gebruikersId,
+        payload={"slug": organisatie.slug, "coordinatenBekend": coordinaten_bekend})
     db.commit()
     return _uit(organisatie)
 

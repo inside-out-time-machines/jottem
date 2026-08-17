@@ -74,6 +74,8 @@ def _detail(db: Session, media: Media) -> JottemDetail:
         organisatieSlug=organisatie.slug,
         organisatieLogoUrl=s3.presigned_get(organisatie.logo, bucket=settings().s3_bucket_thumbs)
         if organisatie.logo else None,
+        organisatieLat=organisatie.spatialLat,
+        organisatieLon=organisatie.spatialLon,
         project=project.naam,
         projectSlug=project.slug,
         projectId=project.projectId,

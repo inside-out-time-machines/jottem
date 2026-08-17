@@ -8,8 +8,11 @@ import "maplibre-gl/dist/maplibre-gl.css";
 // in de MVP, conform het ontwerpbesluit "alleen speld op de kaart".
 export default function LocatieKiezer({
   onKies,
+  begin,
 }: {
   onKies: (lat: number, lon: number) => void;
+  // startpunt: de plaats van de organisatie; zonder dat valt de kaart terug op Gouda
+  begin?: { lat: number; lon: number } | null;
 }) {
   const houder = useRef<HTMLDivElement>(null);
 
@@ -18,9 +21,10 @@ export default function LocatieKiezer({
     (async () => {
       const maplibre = (await import("maplibre-gl")).default;
       if (!houder.current) return;
+      const start: [number, number] = begin ? [begin.lon, begin.lat] : [4.7104, 52.0115];
       const m = new maplibre.Map({
         container: houder.current,
-        center: [4.7104, 52.0115], // Gouda
+        center: start,
         zoom: 13,
         style: {
           version: 8,
@@ -37,7 +41,7 @@ export default function LocatieKiezer({
       });
       kaart = m;
       const speld = new maplibre.Marker({ color: "#d85a30", draggable: true })
-        .setLngLat([4.7104, 52.0115])
+        .setLngLat(start)
         .addTo(m);
       const meld = () => {
         const { lat, lng } = speld.getLngLat();

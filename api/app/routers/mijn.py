@@ -150,6 +150,9 @@ async def organisaties(db: Session = Depends(get_db)):
             "beschrijving": organisatie.beschrijving,
             "website": organisatie.website,
             "kleurPrimair": organisatie.kleurPrimair,
+            # coördinaten van de organisatieplaats: startpunt van de kaartspeld
+            "spatialLat": organisatie.spatialLat,
+            "spatialLon": organisatie.spatialLon,
             "logoUrl": s3.presigned_get(organisatie.logo, bucket=settings().s3_bucket_thumbs)
                        if organisatie.logo else None,
             "faviconUrl": s3.presigned_get(organisatie.favicon, bucket=settings().s3_bucket_thumbs)

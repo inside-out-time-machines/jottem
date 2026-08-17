@@ -10,6 +10,8 @@ type Verrijking = { sleutel: string; label: string; cta: string; motivation: str
 export type Detail = {
   mediaId: string;
   titel: string;
+  organisatieLat: number | null;   // plaats van de organisatie (GeoNames)
+  organisatieLon: number | null;
   afbeeldingUrl: string | null;
   iiifService: string | null;
   annotatiesUrl: string | null;
@@ -663,9 +665,12 @@ export default function Interactief({ detail }: { detail: Detail }) {
                     fov: vorm.fov ?? undefined,
                     doelLat: vorm.doelLat ?? undefined,
                     doelLon: vorm.doelLon ?? undefined,
-                  } : (detail.metadata.lat && detail.metadata.lon
+                  } : detail.metadata.lat && detail.metadata.lon
+                    // speld van de uploader, anders de plaats van de organisatie
                     ? { lat: Number(detail.metadata.lat), lon: Number(detail.metadata.lon) }
-                    : null)}
+                    : detail.organisatieLat !== null && detail.organisatieLon !== null
+                      ? { lat: detail.organisatieLat, lon: detail.organisatieLon }
+                      : null}
                   onWijzig={(z) => setVorm((oud) => ({
                     ...oud, lat: z.lat, lon: z.lon, richting: z.richting,
                     fov: z.fov, doelLat: z.doelLat, doelLon: z.doelLon,
