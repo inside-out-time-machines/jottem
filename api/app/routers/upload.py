@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from .. import bronnen, herkenbaar, s3
 from ..auth import Principal, principal
 from ..db import get_db
-from ..models import Media, MediaMetadata, MediaStatus, Project, Toestemming
+from ..models import Media, MediaMetadata, MediaStatus, Project, Toestemming, actieve_upload_wijzen
 from ..outbox import log
 from ..schemas import (
     TOEGESTANE_TYPES, ExterneBronVraag, HerkenbaarCheckAntwoord, HerkenbaarCheckVraag,
@@ -81,6 +81,17 @@ async def jottem_indienen(
         raise HTTPException(404, "Project onbekend; de projectkeuze is verplicht")
     if not vraag.licentieBevestigd:
         raise HTTPException(422, "Bevestig de licentie van het project")
+
+    # de organisatiebeheerder bepaalt per project welke uploadwijzen aan staan; een
+    # cameraopname komt als gewoon bestand binnen, dus bestand en camera tellen hier
+    # samen als de bestandsroute
+    wijzen = actieve_upload_wijzen(project)
+    if vraag.externeBron:
+        toegestaan = vraag.externeBron.soort in wijzen   # "beeldbank" of "url"
+    else:
+        toegestaan = "bestand" in wijzen or "camera" in wijzen
+    if not toegestaan:
+        raise HTTPException(422, "Deze manier van aanleveren staat in dit project niet aan")
 
     externe = None
     object_key = None

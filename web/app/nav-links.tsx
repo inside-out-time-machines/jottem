@@ -26,9 +26,10 @@ export default function NavLinks() {
   const isOrganisatiebeheerder = rollen.includes("organisatiebeheerder") || isPlatformbeheerder;
   const isModerator = rollen.includes("moderator") || isPlatformbeheerder;
 
+  // Uploaden staat bewust niet in het menu: uploaden gaat altijd via een project
+  // (de knoppen op de startpagina en de projectpagina's)
   return (
     <>
-      <a href="/upload">Uploaden</a>
       {isModerator && <a href="/moderatie">Moderatie</a>}
       {isOrganisatiebeheerder && <a href="/organisatiebeheer">Organisatie</a>}
       {isPlatformbeheerder && <a href="/beheer">Platformbeheer</a>}

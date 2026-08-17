@@ -91,6 +91,7 @@ export default function ProjectBewerkPagina() {
               datasetLicentie: project.datasetLicentie ?? LEEG_PROJECT.datasetLicentie,
               status: project.status, terminologiebronnen: project.terminologiebronnen,
               afbeelding: project.afbeelding, verrijkingen: project.verrijkingen,
+              uploadWijzen: project.uploadWijzen,
             }}
             organisatieSlug={org}
             bewerkProjectId={project.projectId}

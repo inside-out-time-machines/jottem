@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 TOEGESTANE_TYPES = {"image/jpeg", "image/png", "image/tiff"}  # MVP: JPG/PNG/TIFF (PDF/audio fase 2)
 MAX_BESTAND_MB = 50
@@ -61,6 +61,21 @@ class ProjectIn(BaseModel):
     terminologiebronnen: list[str] = []
     # ingeschakelde verrijkingen (V-1); None = alle MVP-verrijkingen aan
     verrijkingen: list[str] | None = None
+    # ingeschakelde uploadwijzen; None = alle wijzen aan, minimaal één verplicht
+    uploadWijzen: list[str] | None = None
+
+    @field_validator("uploadWijzen")
+    @classmethod
+    def _upload_wijzen_geldig(cls, waarde: list[str] | None) -> list[str] | None:
+        from .models import UPLOAD_WIJZEN
+        if waarde is None:
+            return None
+        onbekend = [w for w in waarde if w not in UPLOAD_WIJZEN]
+        if onbekend:
+            raise ValueError(f"Onbekende uploadwijze: {', '.join(onbekend)}")
+        if not waarde:
+            raise ValueError("Minimaal één uploadwijze moet aan staan")
+        return waarde
 
 
 class ProjectUit(ProjectIn):

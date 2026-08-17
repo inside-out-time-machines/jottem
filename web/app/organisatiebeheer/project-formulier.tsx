@@ -7,13 +7,23 @@ export type ProjectVorm = {
   naam: string; slug: string; beschrijving: string; oproep: string; periode: string;
   datasetLicentie: string; status: string; terminologiebronnen: string[];
   afbeelding: string | null; verrijkingen: string[] | null;
+  uploadWijzen: string[] | null;
 };
 
 export const LEEG_PROJECT: ProjectVorm = {
   naam: "", slug: "", beschrijving: "", oproep: "", periode: "",
   datasetLicentie: "https://creativecommons.org/licenses/by/4.0/",
   status: "actief", terminologiebronnen: [], afbeelding: null, verrijkingen: null,
+  uploadWijzen: null,
 };
+
+// de vier manieren om materiaal aan te leveren (zelfde sleutels als de API)
+export const UPLOAD_WIJZEN = [
+  { sleutel: "bestand", label: "Bestand kiezen" },
+  { sleutel: "camera", label: "Foto maken met de camera" },
+  { sleutel: "beeldbank", label: "Permalink uit een beeldbank" },
+  { sleutel: "url", label: "Foto-URL van een website" },
+];
 
 type Bron = { uri: string; naam: string; alternatief: string | null };
 type Verrijking = { sleutel: string; label: string; cta: string };
@@ -156,6 +166,35 @@ export default function ProjectFormulier({
             );
           })}
           {catalogus.length === 0 && <em>Catalogus wordt geladen...</em>}
+        </div>
+      </div>
+      <div className="veld">
+        <label>Uploadwijzen op het uploadformulier (minimaal één; standaard staan ze allemaal aan)</label>
+        <div style={{ ...veldStijl, maxHeight: undefined }}>
+          {UPLOAD_WIJZEN.map((wijze) => {
+            const huidig = vorm.uploadWijzen ?? UPLOAD_WIJZEN.map((w) => w.sleutel);
+            const actief = huidig.includes(wijze.sleutel);
+            return (
+              <label key={wijze.sleutel} style={{ display: "block", fontWeight: 400 }}>
+                <input
+                  type="checkbox"
+                  checked={actief}
+                  onChange={(e) => setVorm((oud) => {
+                    const oudeWijzen = oud.uploadWijzen ?? UPLOAD_WIJZEN.map((w) => w.sleutel);
+                    const nieuw = e.target.checked
+                      ? [...oudeWijzen.filter((s) => s !== wijze.sleutel), wijze.sleutel]
+                      : oudeWijzen.filter((s) => s !== wijze.sleutel);
+                    if (nieuw.length === 0) {
+                      setMelding("Er moet minimaal één uploadwijze aan staan.");
+                      return oud;
+                    }
+                    return { ...oud, uploadWijzen: nieuw };
+                  })}
+                />{" "}
+                {wijze.label}
+              </label>
+            );
+          })}
         </div>
       </div>
       <div style={{ display: "flex", gap: ".7rem" }}>

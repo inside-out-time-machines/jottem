@@ -7,7 +7,10 @@ import { startLogin } from "@/lib/oidc";
 import CameraOpname from "./camera-opname";
 import LocatieKiezer from "./locatie-kiezer";
 
-type Project = { projectId: string; naam: string; slug: string; datasetLicentie: string | null };
+type Project = {
+  projectId: string; naam: string; slug: string; datasetLicentie: string | null;
+  uploadWijzen: string[];
+};
 type Organisatie = { naam: string; slug: string; projecten: Project[] };
 
 // CHT-waardelijst (platformconfiguratie, zie de data-architectuur; audio volgt in fase 2)
@@ -16,7 +19,6 @@ const GENRES = ["foto", "menukaart", "advertentie", "folder", "krantenartikel", 
 export default function UploadPagina() {
   const [organisaties, setOrganisaties] = useState<Organisatie[]>([]);
   const [bestand, setBestand] = useState<File | null>(null);
-  const [projectId, setProjectId] = useState("");
   const [titel, setTitel] = useState("");
   const [beschrijving, setBeschrijving] = useState("");
   const [genre, setGenre] = useState("foto");
@@ -49,8 +51,14 @@ export default function UploadPagina() {
 
   useEffect(() => {
     setIngelogd(isIngelogd());
-    // projectkeuze vanaf de homepage: ?project=<organisatieslug>/<projectslug>
-    setProjectParam(new URLSearchParams(window.location.search).get("project"));
+    // uploaden gaat altijd via een project: ?project=<organisatieslug>/<projectslug>
+    // (knop op de startpagina of projectpagina); zonder project terug naar de start
+    const param = new URLSearchParams(window.location.search).get("project");
+    if (!param) {
+      window.location.replace("/");
+      return;
+    }
+    setProjectParam(param);
     // cameradetectie: toon "Maak een foto" alleen als er echt een camera is
     navigator.mediaDevices?.enumerateDevices?.()
       .then((apparaten) => setHeeftCamera(apparaten.some((a) => a.kind === "videoinput")))
@@ -67,11 +75,21 @@ export default function UploadPagina() {
   const projecten = organisaties.flatMap((o) =>
     o.projecten.map((p) => ({ ...p, organisatie: o.naam, pad: `${o.slug}/${p.slug}` })),
   );
-  const vastProject = projectParam
+  const gekozen = projectParam
     ? projecten.find((p) => p.pad === projectParam || p.projectId === projectParam)
     : undefined;
-  const gekozen = vastProject ?? projecten.find((p) => p.projectId === projectId);
   const licentie = licentieInfo(gekozen?.datasetLicentie ?? null);
+  // per project ingeschakelde uploadwijzen (organisatiebeheerder); de server dwingt
+  // ze bij het indienen ook af
+  const wijzen = gekozen?.uploadWijzen ?? ["bestand", "camera", "beeldbank", "url"];
+  const heeftEigenFoto = wijzen.includes("bestand") || wijzen.includes("camera");
+  const heeftVerwijzing = wijzen.includes("beeldbank") || wijzen.includes("url");
+
+  // een onbekend project (verlopen link, typefout) hoort ook terug naar de start
+  useEffect(() => {
+    if (projectParam && organisaties.length > 0 && !gekozen) window.location.replace("/");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectParam, organisaties]);
   const headers = { "Content-Type": "application/json", ...authHeaders("dev-anna", "Anna Uploader") };
 
   async function indienen(mediaId: string, toestemming: "ja" | "nee" | null) {
@@ -277,9 +295,13 @@ export default function UploadPagina() {
     <main>
       <h1>Deel je materiaal</h1>
       <p style={{ maxWidth: "40rem", marginTop: ".8rem" }}>
-        Kies je foto (JPG, PNG of TIFF, tot 50 MB), of verwijs naar een foto in een
-        beeldbank of op een website. Vertel er kort iets bij en kies het project.
-        Een moderator bekijkt je bijdrage voordat hij online komt.
+        {heeftEigenFoto && heeftVerwijzing
+          ? "Kies je foto (JPG, PNG of TIFF, tot 50 MB), of verwijs naar een foto in een beeldbank of op een website."
+          : heeftEigenFoto
+            ? "Kies je foto (JPG, PNG of TIFF, tot 50 MB)."
+            : "Verwijs naar een foto in een beeldbank of op een website."}{" "}
+        Vertel er kort iets bij. Een moderator bekijkt je bijdrage voordat hij
+        online komt.
       </p>
       <form className="formulier" onSubmit={versturen}>
         <div className="veld">
@@ -292,14 +314,16 @@ export default function UploadPagina() {
             onChange={(e) => setBestand(e.target.files?.[0] ?? null)}
           />
           <div className="bestand-knoppen">
-            <button
-              type="button"
-              className="knop knop-secundair"
-              onClick={() => { setExterneBron(null); bestandInput.current?.click(); }}
-            >
-              <span className="icoon" aria-hidden="true">📁</span> Kies een bestand
-            </button>
-            {heeftCamera && (
+            {wijzen.includes("bestand") && (
+              <button
+                type="button"
+                className="knop knop-secundair"
+                onClick={() => { setExterneBron(null); bestandInput.current?.click(); }}
+              >
+                <span className="icoon" aria-hidden="true">📁</span> Kies een bestand
+              </button>
+            )}
+            {wijzen.includes("camera") && heeftCamera && (
               <button
                 type="button"
                 className="knop knop-secundair"
@@ -308,20 +332,24 @@ export default function UploadPagina() {
                 <span className="icoon" aria-hidden="true">📷</span> Of maak nu een foto
               </button>
             )}
-            <button
-              type="button"
-              className="knop knop-secundair"
-              onClick={() => openUrlDialoog("beeldbank")}
-            >
-              <span className="icoon" aria-hidden="true">🏛️</span> Of geef een permalink uit een beeldbank
-            </button>
-            <button
-              type="button"
-              className="knop knop-secundair"
-              onClick={() => openUrlDialoog("url")}
-            >
-              <span className="icoon" aria-hidden="true">🔗</span> Of geef een foto-URL van een website
-            </button>
+            {wijzen.includes("beeldbank") && (
+              <button
+                type="button"
+                className="knop knop-secundair"
+                onClick={() => openUrlDialoog("beeldbank")}
+              >
+                <span className="icoon" aria-hidden="true">🏛️</span> Of geef een permalink uit een beeldbank
+              </button>
+            )}
+            {wijzen.includes("url") && (
+              <button
+                type="button"
+                className="knop knop-secundair"
+                onClick={() => openUrlDialoog("url")}
+              >
+                <span className="icoon" aria-hidden="true">🔗</span> Of geef een foto-URL van een website
+              </button>
+            )}
           </div>
           {bestand && <span style={{ fontSize: ".9rem", color: "var(--grijs)" }}>Gekozen: {bestand.name || "camera-foto"}</span>}
           {externeBron && (
@@ -339,21 +367,10 @@ export default function UploadPagina() {
           )}
         </div>
         <div className="veld">
-          <label htmlFor="project">Project</label>
-          {gekozen ? (
-            <p style={{ fontWeight: 600 }}>
-              {gekozen.organisatie}: {gekozen.naam}
-            </p>
-          ) : (
-            <select id="project" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-              <option value="">Kies een project</option>
-              {projecten.map((p) => (
-                <option key={p.projectId} value={p.projectId}>
-                  {p.organisatie}: {p.naam}
-                </option>
-              ))}
-            </select>
-          )}
+          <label>Project</label>
+          <p style={{ fontWeight: 600 }}>
+            {gekozen ? `${gekozen.organisatie}: ${gekozen.naam}` : "Project wordt geladen..."}
+          </p>
         </div>
         <div className="veld">
           <label htmlFor="titel">Titel</label>

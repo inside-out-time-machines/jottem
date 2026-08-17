@@ -50,6 +50,7 @@ def _uit(db: Session, project: Project, organisatie_slug: str) -> ProjectUit:
         status=project.status,
         terminologiebronnen=project.terminologiebronnen or [],
         verrijkingen=project.verrijkingen,
+        uploadWijzen=project.uploadWijzen,
         datasetAangemeld=project.datasetAangemeld,
         aantalJottems=aantal,
     )

@@ -59,6 +59,18 @@ class Organisatie(Base):
     projecten: Mapped[list["Project"]] = relationship(back_populates="organisatie")
 
 
+# de vier manieren om materiaal aan te leveren; de organisatiebeheerder schakelt ze
+# per project in of uit, met altijd minstens één actief
+UPLOAD_WIJZEN = ("bestand", "camera", "beeldbank", "url")
+
+
+def actieve_upload_wijzen(project: "Project") -> list[str]:
+    """De ingeschakelde uploadwijzen van een project; None = alle wijzen aan."""
+    if project.uploadWijzen is None:
+        return list(UPLOAD_WIJZEN)
+    return [w for w in project.uploadWijzen if w in UPLOAD_WIJZEN]
+
+
 class Project(Base):
     __tablename__ = "project"
 
@@ -76,6 +88,8 @@ class Project(Base):
     # ingeschakelde verrijkingen (V-1): lijst van sleutels uit app.verrijkingen;
     # None = alle MVP-verrijkingen aan (de standaard)
     verrijkingen: Mapped[list | None] = mapped_column(JSON)
+    # ingeschakelde uploadwijzen (zie UPLOAD_WIJZEN); None = alle wijzen aan
+    uploadWijzen: Mapped[list | None] = mapped_column(JSON)
     datasetAangemeld: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # NDE Datasetregister
 
     organisatie: Mapped[Organisatie] = relationship(back_populates="projecten")

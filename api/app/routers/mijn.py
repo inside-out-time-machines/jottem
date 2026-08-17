@@ -10,7 +10,7 @@ from .. import s3
 from ..auth import Principal, principal
 from ..config import settings
 from ..db import get_db
-from ..models import Gebruiker, Media, MediaStatus, Organisatie, Project
+from ..models import Gebruiker, Media, MediaStatus, Organisatie, Project, actieve_upload_wijzen
 from ..schemas import AfbeeldingUploadVraag, JottemKort
 
 router = APIRouter(tags=["Mijn"])
@@ -131,7 +131,8 @@ async def organisaties(db: Session = Depends(get_db)):
                        if organisatie.logo else None,
             "projecten": [
                 {"projectId": str(pr.projectId), "naam": pr.naam, "slug": pr.slug,
-                 "oproep": pr.oproep, "datasetLicentie": pr.datasetLicentie}
+                 "oproep": pr.oproep, "datasetLicentie": pr.datasetLicentie,
+                 "uploadWijzen": actieve_upload_wijzen(pr)}
                 for pr in projecten
             ],
         })
