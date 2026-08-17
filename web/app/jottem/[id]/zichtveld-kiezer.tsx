@@ -18,9 +18,13 @@ export type Zichtveld = {
 export default function ZichtveldKiezer({
   begin,
   onWijzig,
+  readonly = false,
+  hoogte,
 }: {
   begin: Partial<Zichtveld> | null;
-  onWijzig: (zichtveld: Zichtveld) => void;
+  onWijzig?: (zichtveld: Zichtveld) => void;
+  readonly?: boolean;   // alleen tonen: verslepen uit, ingezoomd op de driehoek
+  hoogte?: string;
 }) {
   const houder = useRef<HTMLDivElement>(null);
   const kaartRef = useRef<{ remove: () => void } | null>(null);
@@ -70,11 +74,31 @@ export default function ZichtveldKiezer({
         controlCrosshairImg: "/geotag/crosshair-icon.svg",
       }).addTo(kaart);
 
+      if (readonly) {
+        // weergavemodus: niets is versleepbaar en de kaart zoomt in op de driehoek
+        const zetVast = (laag: unknown) => {
+          const l = laag as {
+            dragging?: { disable: () => void };
+            eachLayer?: (fn: (x: unknown) => void) => void;
+          };
+          l.dragging?.disable();
+          l.eachLayer?.(zetVast);
+        };
+        zetVast(geotag);
+        const grenzen = (geotag as unknown as {
+          getBounds?: () => { pad: (n: number) => unknown; isValid: () => boolean };
+        }).getBounds?.();
+        if (grenzen?.isValid()) {
+          (kaart as unknown as { fitBounds: (b: unknown) => void }).fitBounds(grenzen.pad(0.3));
+        }
+        return;
+      }
+
       const meld = () => {
         const veld = geotag.getFieldOfView();
         const cameraPunt = geotag.getCameraLatLng();
         const doelPunt = geotag.getTargetLatLng();
-        onWijzig({
+        onWijzig?.({
           lat: Number(cameraPunt.lat.toFixed(6)),
           lon: Number(cameraPunt.lng.toFixed(6)),
           richting: Math.round(((veld.properties.bearing % 360) + 360) % 360),
@@ -98,7 +122,7 @@ export default function ZichtveldKiezer({
   return (
     <div
       ref={houder}
-      style={{ height: "min(56vh, 30rem)", borderRadius: ".35rem", border: "1px solid var(--kartonrand)" }}
+      style={{ height: hoogte ?? "min(56vh, 30rem)", borderRadius: ".35rem", border: "1px solid var(--kartonrand)" }}
     />
   );
 }

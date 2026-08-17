@@ -55,18 +55,28 @@ function weergave(a: W3CAnnotatie, catalogus: Verrijking[]) {
   let label = uitCatalogus?.label ?? (sleutel === "reactie" ? "Reactie" : a.motivation ?? "Annotatie");
   const teksten: string[] = [];
   const links: { label: string; url: string }[] = [];
+  // zichtveld: geen coördinatentekst maar dezelfde kaartcomponent als bij het
+  // bewerken, alleen-lezen en ingezoomd op de driehoek
+  let zichtveld: { lat: number; lon: number; richting?: number; fov?: number;
+                   doelLat?: number; doelLon?: number } | null = null;
   for (const b of bodies(a)) {
     if (b.type === "TextualBody" && b.value) {
       if (b.format === "application/geo+json") {
         try {
-          const geo = JSON.parse(b.value) as { geometry?: { coordinates?: [number, number] }; properties?: { bearing?: number } };
+          const geo = JSON.parse(b.value) as {
+            geometry?: { coordinates?: [number, number] };
+            properties?: { bearing?: number; fov?: number; target?: [number, number] };
+          };
           const [lon, lat] = geo.geometry?.coordinates ?? [];
-          const eig = geo.properties as { bearing?: number; fov?: number } | undefined;
-          teksten.push(
-            `Standpunt: ${lat?.toFixed(5)}, ${lon?.toFixed(5)}`
-            + (eig?.bearing !== undefined ? ` · kijkrichting ${eig.bearing}°` : "")
-            + (eig?.fov !== undefined ? ` · beeldhoek ${eig.fov}°` : ""),
-          );
+          if (lat !== undefined && lon !== undefined) {
+            zichtveld = {
+              lat, lon,
+              richting: geo.properties?.bearing,
+              fov: geo.properties?.fov,
+              doelLon: geo.properties?.target?.[0],
+              doelLat: geo.properties?.target?.[1],
+            };
+          }
         } catch { teksten.push(b.value); }
       } else if (sleutel === "periode" && /^[0-9X]{3,4}/.test(b.value)) {
         teksten.push(`Datering: ${b.value}`);
@@ -79,7 +89,7 @@ function weergave(a: W3CAnnotatie, catalogus: Verrijking[]) {
     }
   }
   if (sleutel === "tag") label = "Steekwoord";
-  return { label, teksten, links };
+  return { label, teksten, links, zichtveld };
 }
 
 const LEEG_FORMULIER = {
@@ -433,6 +443,17 @@ export default function Interactief({ detail }: { detail: Detail }) {
                   )}
                 </p>
                 {w.teksten.map((t, i) => <p key={i} style={{ marginTop: ".3rem" }}>{t}</p>)}
+                {w.zichtveld && (
+                  <div style={{ marginTop: ".5rem" }}>
+                    <ZichtveldKiezer
+                      begin={{ lat: w.zichtveld.lat, lon: w.zichtveld.lon,
+                               richting: w.zichtveld.richting, fov: w.zichtveld.fov,
+                               doelLat: w.zichtveld.doelLat, doelLon: w.zichtveld.doelLon }}
+                      readonly
+                      hoogte="16rem"
+                    />
+                  </div>
+                )}
                 {w.links.map((l) => (
                   <p key={l.url} style={{ marginTop: ".3rem" }}>
                     <a href={l.url} rel="noopener noreferrer" target="_blank">{l.label}</a>
