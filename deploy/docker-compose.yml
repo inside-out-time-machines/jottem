@@ -58,22 +58,15 @@ services:
     image: minio/minio:latest
     restart: unless-stopped
     command: server /data --console-address ":9001"
+    # MinIO Console (beheer-GUI) alleen op localhost van de server; bereikbaar via
+    # een SSH-tunnel: ssh -L 9001:localhost:9001 idx@coretidx-de -> http://localhost:9001
+    # (inloggen met S3_ACCESS_KEY / S3_SECRET_KEY uit .env)
+    ports:
+      - "127.0.0.1:9001:9001"
     environment:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
       MINIO_PROMETHEUS_AUTH_TYPE: public   # metrics alleen intern bereikbaar
-      # Console via Authentik-OIDC (zie authentik-blueprints/jottem-minio-oidc.yaml);
-      # alleen de groep Platformbeheerders komt door de applicatiebinding en krijgt
-      # via de policy-claim consoleAdmin; rootlogin blijft werken als break-glass
-      MINIO_BROWSER_REDIRECT_URL: https://s3-admin.dev.iotm.nl
-      MINIO_IDENTITY_OPENID_CONFIG_URL: https://auth.dev.iotm.nl/application/o/minio/.well-known/openid-configuration
-      MINIO_IDENTITY_OPENID_CLIENT_ID: minio
-      MINIO_IDENTITY_OPENID_CLIENT_SECRET: ${MINIO_OIDC_SECRET}
-      MINIO_IDENTITY_OPENID_SCOPES: openid,profile,email,minio
-      MINIO_IDENTITY_OPENID_DISPLAY_NAME: Authentik
-    extra_hosts:
-      # hairpin: de discovery/token-calls naar auth.dev.iotm.nl lopen via de host
-      - "auth.dev.iotm.nl:host-gateway"
     volumes:
       - minio:/data
     healthcheck:
@@ -85,12 +78,7 @@ services:
       - traefik.enable=true
       - traefik.http.routers.s3.rule=Host(`s3.dev.iotm.nl`)
       - traefik.http.routers.s3.tls.certresolver=letsencrypt
-      - traefik.http.routers.s3.service=s3
       - traefik.http.services.s3.loadbalancer.server.port=9000
-      - traefik.http.routers.s3admin.rule=Host(`s3-admin.dev.iotm.nl`)
-      - traefik.http.routers.s3admin.tls.certresolver=letsencrypt
-      - traefik.http.routers.s3admin.service=s3admin
-      - traefik.http.services.s3admin.loadbalancer.server.port=9001
 
   minio-init:
     image: minio/mc:latest
@@ -227,7 +215,6 @@ services:
       AUTHENTIK_EMAIL__PORT: 1025
       AUTHENTIK_EMAIL__FROM: noreply@iotm.nl
       GRAFANA_OIDC_SECRET: ${GRAFANA_OIDC_SECRET}
-      MINIO_OIDC_SECRET: ${MINIO_OIDC_SECRET}
       # social login (client-ids/secrets uit .env; gebruikt door jottem-social-login.yaml)
       SOCIAL_GOOGLE_CLIENT_ID: ${SOCIAL_GOOGLE_CLIENT_ID:-}
       SOCIAL_GOOGLE_CLIENT_SECRET: ${SOCIAL_GOOGLE_CLIENT_SECRET:-}
