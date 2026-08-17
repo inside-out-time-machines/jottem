@@ -150,8 +150,9 @@ services:
 
   datapagina:
     # statische open-data-landingspagina (repo inside-out-time-machines/data,
-    # working copy naast de jottem-checkout: ~/data); alles op data.dev dat niet
-    # /project/* of /datacatalog (api, prio 10) of /sparql (fuseki, prio 20) is
+    # working copy naast de jottem-checkout: ~/data); alles op data.dev behalve
+    # /project/* en /datacatalog (api, prio 10); ook /sparql en /yasgui/ (zie
+    # datapagina/default.conf: Fuseki-proxy resp. YASGUI-editor)
     image: nginx:1.27-alpine
     restart: unless-stopped
     volumes:
@@ -164,9 +165,16 @@ services:
       - traefik.http.routers.datapagina.tls.certresolver=letsencrypt
       - traefik.http.services.datapagina.loadbalancer.server.port=80
 
+  yasgui:
+    # SPARQL-editor (Matdata-eu/yasgui); intern geproxyd door datapagina op /yasgui/
+    image: mathiasvda/yasgui:latest
+    restart: unless-stopped
+    environment:
+      YASGUI_DEFAULT_ENDPOINT: https://data.dev.iotm.nl/sparql
+
   fuseki:
     # triplestore voor de RDF-publicatie (schema.org AP NDE); publiek is ALLEEN het
-    # /sparql-leespad via Traefik, updates lopen intern via de worker
+    # /sparql-leespad via de datapagina-nginx, updates lopen intern via de worker
     image: secoresearch/fuseki:6.2.0
     restart: unless-stopped
     environment:
@@ -177,15 +185,8 @@ services:
       QUERY_TIMEOUT: "30000"
     volumes:
       - fuseki:/fuseki-base
-    labels:
-      - traefik.enable=true
-      # alleen het SPARQL-leespad publiek; de rest van data.dev gaat naar de api
-      - traefik.http.routers.sparql.rule=Host(`data.dev.iotm.nl`) && Path(`/sparql`)
-      - traefik.http.routers.sparql.priority=20
-      - traefik.http.routers.sparql.tls.certresolver=letsencrypt
-      - traefik.http.routers.sparql.middlewares=sparql-pad
-      - traefik.http.middlewares.sparql-pad.replacepath.path=/ds/sparql
-      - traefik.http.services.sparql.loadbalancer.server.port=3030
+    # geen Traefik-labels: /sparql loopt via de datapagina-nginx, die
+    # machineverkeer naar /ds/sparql proxyt en browsers naar YASGUI stuurt
 
   authentik-server:
     image: ghcr.io/goauthentik/server:2025.6
