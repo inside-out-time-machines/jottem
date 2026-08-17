@@ -54,6 +54,11 @@ services:
     image: minio/minio:latest
     restart: unless-stopped
     command: server /data --console-address ":9001"
+    # MinIO Console (beheer-GUI) alleen op localhost van de server; bereikbaar via
+    # een SSH-tunnel: ssh -L 9001:localhost:9001 idx@coretidx-de -> http://localhost:9001
+    # (inloggen met S3_ACCESS_KEY / S3_SECRET_KEY uit .env)
+    ports:
+      - "127.0.0.1:9001:9001"
     environment:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
