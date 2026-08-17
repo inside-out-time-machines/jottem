@@ -49,6 +49,8 @@ class Organisatie(Base):
     slug: Mapped[str] = mapped_column(String(80), unique=True, index=True)
     beschrijving: Mapped[str | None] = mapped_column(Text)
     website: Mapped[str | None] = mapped_column(String(400))
+    # publiek contactadres van de organisatie als publisher (datasetbeschrijving)
+    email: Mapped[str | None] = mapped_column(String(320))
     favicon: Mapped[str | None] = mapped_column(String(400))
     logo: Mapped[str | None] = mapped_column(String(400))
     kleurPrimair: Mapped[str | None] = mapped_column(String(9))

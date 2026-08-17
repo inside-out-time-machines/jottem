@@ -60,10 +60,18 @@ def _dataset_jsonld(db: Session, project: Project) -> dict:
         "description": {"@value": project.beschrijving or f"Jottems uit het project {project.naam}.",
                         "@language": "nl"},
         "license": project.datasetLicentie,
-        "publisher": {
+        "publisher": {sleutel: waarde for sleutel, waarde in {
             "@id": publisher_id,
             "@type": "Organization",
             "name": {"@value": organisatie.naam, "@language": "nl"},
+            "email": organisatie.email,   # verplicht, gevuld via het beheer
+        }.items() if waarde is not None},
+        # het platform zelf als maker van de dataset
+        "creator": {
+            "@id": "https://iotm.nl/",
+            "@type": "Organization",
+            "name": {"@value": "Jottem", "@language": "nl"},
+            "email": "data@iotm.nl",
         },
         "inLanguage": ["nl"],
         # ISO 8601 op secondenprecisie (xsd:dateTime), bijv. 2026-04-14T10:30:00
@@ -120,11 +128,12 @@ async def datasetbeschrijving(
     p: Principal = Depends(principal),
     db: Session = Depends(get_db),
 ):
-    project, _ = project_met_rechten(db, project_id, p)
+    project, organisatie = project_met_rechten(db, project_id, p)
     return {
         "dataset": _dataset_jsonld(db, project),
         "openbareJottems": _aantal_openbaar(db, project_id),
         "aangemeld": project.datasetAangemeld,
+        "publisherEmail": organisatie.email,
     }
 
 
@@ -132,6 +141,8 @@ class DatasetbeschrijvingIn(BaseModel):
     naam: str | None = None
     beschrijving: str | None = None
     datasetLicentie: str | None = None
+    # publisher-contactadres (Organisatie.email); verplicht in de beheer-GUI
+    publisherEmail: str | None = None
 
 
 @router.put("/project/{project_id}/datasetbeschrijving")
@@ -148,6 +159,11 @@ async def datasetbeschrijving_bewerken(
         project.beschrijving = vraag.beschrijving
     if vraag.datasetLicentie:
         project.datasetLicentie = vraag.datasetLicentie
+    if vraag.publisherEmail:
+        import re
+        if not re.match(r"^\S+@\S+\.\S+$", vraag.publisherEmail):
+            raise HTTPException(422, "Geen geldig e-mailadres voor de publisher")
+        organisatie.email = vraag.publisherEmail
     log(db, "dataset.bewerkt", organisatie_id=organisatie.organisatieId,
         project_id=project.projectId, gebruikers_id=p.gebruiker.gebruikersId, payload={})
     db.commit()

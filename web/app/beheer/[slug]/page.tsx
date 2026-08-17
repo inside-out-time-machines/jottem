@@ -28,6 +28,7 @@ export default function OrganisatieBewerkPagina() {
     setBegin({
       naam: organisatie.naam, slug: organisatie.slug,
       beschrijving: organisatie.beschrijving ?? "", website: organisatie.website ?? "",
+      email: organisatie.email ?? "",
       kleurPrimair: organisatie.kleurPrimair ?? "#d85a30",
       kleurSecundair: organisatie.kleurSecundair ?? "#a2401f",
       kleurAchtergrond: organisatie.kleurAchtergrond ?? "#faf6f1",

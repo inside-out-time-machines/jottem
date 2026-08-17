@@ -4,13 +4,13 @@ import { useState } from "react";
 import { API_PUBLIEK } from "@/lib/api";
 
 export type OrganisatieVorm = {
-  naam: string; slug: string; beschrijving: string; website: string;
+  naam: string; slug: string; beschrijving: string; website: string; email: string;
   kleurPrimair: string; kleurSecundair: string; kleurAchtergrond: string;
   logo: string | null; favicon: string | null;
 };
 
 export const LEGE_ORGANISATIE: OrganisatieVorm = {
-  naam: "", slug: "", beschrijving: "", website: "",
+  naam: "", slug: "", beschrijving: "", website: "", email: "",
   kleurPrimair: "#d85a30", kleurSecundair: "#a2401f", kleurAchtergrond: "#faf6f1",
   logo: null, favicon: null,
 };
@@ -84,6 +84,10 @@ export default function OrganisatieFormulier({
       <div className="veld">
         <label htmlFor="website">Website (mag)</label>
         <input id="website" type="text" value={vorm.website} onChange={(e) => setVorm({ ...vorm, website: e.target.value })} />
+      </div>
+      <div className="veld">
+        <label htmlFor="email">E-mailadres (publiek contactadres, staat als publisher in de datasetbeschrijving)</label>
+        <input id="email" type="email" required value={vorm.email} onChange={(e) => setVorm({ ...vorm, email: e.target.value })} />
       </div>
       <div style={{ display: "flex", gap: "1.2rem", flexWrap: "wrap" }}>
         {(["kleurPrimair", "kleurSecundair", "kleurAchtergrond"] as const).map((veld) => (

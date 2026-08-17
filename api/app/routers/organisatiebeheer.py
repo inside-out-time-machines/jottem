@@ -31,6 +31,7 @@ def _uit(organisatie: Organisatie) -> OrganisatieUit:
         slug=organisatie.slug,
         beschrijving=organisatie.beschrijving,
         website=organisatie.website,
+        email=organisatie.email,
         kleurPrimair=organisatie.kleurPrimair,
         kleurSecundair=organisatie.kleurSecundair,
         kleurAchtergrond=organisatie.kleurAchtergrond,

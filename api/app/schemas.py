@@ -91,6 +91,8 @@ class OrganisatieIn(BaseModel):
     slug: str = Field(min_length=2, max_length=80, pattern="^[a-z0-9-]+$")
     beschrijving: str | None = None
     website: str | None = None
+    # publiek contactadres als publisher in de datasetbeschrijving (verplicht)
+    email: str = Field(max_length=320, pattern=r"^\S+@\S+\.\S+$")
     kleurPrimair: str | None = Field(default=None, pattern="^#[0-9a-fA-F]{6}$")
     kleurSecundair: str | None = Field(default=None, pattern="^#[0-9a-fA-F]{6}$")
     kleurAchtergrond: str | None = Field(default=None, pattern="^#[0-9a-fA-F]{6}$")
@@ -100,6 +102,7 @@ class OrganisatieIn(BaseModel):
 
 class OrganisatieUit(OrganisatieIn):
     organisatieId: int
+    email: str | None = None    # bestaande organisaties kunnen nog leeg zijn
     logoUrl: str | None = None
     faviconUrl: str | None = None
 
