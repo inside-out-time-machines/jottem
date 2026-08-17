@@ -20,6 +20,10 @@ export type OsdAnnotator = {
 
 type Vlak = { x: number; y: number; w: number; h: number };
 
+// besturing die de viewer aan de pagina teruggeeft: een annotatie in beeld brengen
+// en selecteren alsof de bezoeker het kader had aangeklikt
+export type ViewerBesturing = { toonAnnotatie: (annotatie: unknown) => void };
+
 // xywh-selector van een W3C-annotatie naar beeldcoördinaten
 function vlakUit(annotatie: unknown): Vlak | null {
   const target = (annotatie as { target?: { selector?: { value?: string } | { value?: string }[] } })?.target;
@@ -37,12 +41,14 @@ export default function Viewer({
   titel,
   canvas,
   onAnnotator,
+  onBesturing,
   popupInhoud,
 }: {
   service: string;
   titel: string;
   canvas?: string;
   onAnnotator?: (annotator: OsdAnnotator) => void;
+  onBesturing?: (besturing: ViewerBesturing) => void;
   // inhoud van de popup bij een aangeklikt kader; null = geen popup tonen
   popupInhoud?: (id: string) => ReactNode;
 }) {
@@ -150,6 +156,19 @@ export default function Viewer({
         });
         viewer.addHandler("update-viewport", plaats);
         viewer.addHandler("resize", plaats);
+
+        onBesturing?.({
+          toonAnnotatie: (annotatie: unknown) => {
+            const id = (annotatie as { id?: string })?.id;
+            const vlak = vlakUit(annotatie);
+            if (!id || !vlak) return;
+            gekozenRef.current = { id, vlak };
+            annotator.setSelected(id);
+            // inzoomen op het vlak, met wat lucht eromheen zodat de omgeving zichtbaar blijft
+            annotator.fitBounds(id, { padding: 160 });
+            plaats();
+          },
+        });
       }
     })();
     return () => {

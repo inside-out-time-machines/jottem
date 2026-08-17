@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { API_PUBLIEK, authHeaders, isIngelogd } from "@/lib/api";
 import { startLogin } from "@/lib/oidc";
-import Viewer, { OsdAnnotator } from "./viewer";
+import Viewer, { OsdAnnotator, ViewerBesturing } from "./viewer";
 import ZichtveldKiezer from "./zichtveld-kiezer";
 
 type Verrijking = { sleutel: string; label: string; cta: string; motivation: string; doel: string };
@@ -119,6 +119,7 @@ export default function Interactief({ detail }: { detail: Detail }) {
   const [zoekResultaten, setZoekResultaten] = useState<{ uri: string; label: string; bron: string | null }[]>([]);
   const annotatorRef = useRef<OsdAnnotator | null>(null);
   const [annotatorGereed, setAnnotatorGereed] = useState(false);
+  const besturingRef = useRef<ViewerBesturing | null>(null);
   const dialoogRef = useRef<HTMLDialogElement>(null);
 
   const headers = { "Content-Type": "application/json", ...authHeaders(DEV_SUB, DEV_NAAM) };
@@ -404,6 +405,7 @@ export default function Interactief({ detail }: { detail: Detail }) {
           titel={detail.titel}
           canvas={detail.canvas ?? undefined}
           onAnnotator={annotatorKlaar}
+          onBesturing={(b) => { besturingRef.current = b; }}
           popupInhoud={popupInhoud}
         />
       ) : (
@@ -469,7 +471,13 @@ export default function Interactief({ detail }: { detail: Detail }) {
                   {heeftVlak(a) && (
                     <button
                       className="annotatie-actie"
-                      onClick={() => { annotatorRef.current?.setSelected(a.id); }}
+                      onClick={() => {
+                        // naar de viewer scrollen en daar het vlak in beeld brengen
+                        // en selecteren, alsof je het kader had aangeklikt
+                        document.querySelector(".iiif-kader")
+                          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                        besturingRef.current?.toonAnnotatie(a);
+                      }}
                     >toon op de foto</button>
                   )}
                 </p>
