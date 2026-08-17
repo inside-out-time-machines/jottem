@@ -1,0 +1,15 @@
+# Eenmalige opruiming van de MinIO-OIDC-objecten (console-SSO bleek uit de
+# community-editie gehaald; zie gespreksverslag). Dit bestand kan daarna weg.
+version: 1
+metadata:
+  name: opruimen-minio-oidc
+entries:
+  - model: authentik_core.application
+    identifiers: {slug: minio}
+    state: absent
+  - model: authentik_providers_oauth2.oauth2provider
+    identifiers: {name: minio}
+    state: absent
+  - model: authentik_providers_oauth2.scopemapping
+    identifiers: {name: minio-policy}
+    state: absent
