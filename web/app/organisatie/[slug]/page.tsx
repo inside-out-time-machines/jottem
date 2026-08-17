@@ -1,5 +1,6 @@
 import { API_PUBLIEK, apiServer } from "@/lib/api";
 import { notFound } from "next/navigation";
+import OpenGraph from "../../open-graph";
 
 type OrganisatiePubliek = {
   naam: string;
@@ -35,17 +36,6 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
           }],
         },
       },
-      openGraph: {
-        siteName: "Jottem",
-        type: "website",
-        locale: "nl_NL",
-        url: `/organisatie/${slug}`,
-        title: `${organisatie.naam} · Jottem`,
-        description: organisatie.beschrijving ?? undefined,
-        images: organisatie.logoUrl
-          ? [{ url: organisatie.logoUrl, alt: `Logo van ${organisatie.naam}` }]
-          : undefined,
-      },
     };
   } catch {
     return {};
@@ -68,6 +58,12 @@ export default async function OrganisatiePagina({
 
   return (
     <main>
+      <OpenGraph
+        titel={`${organisatie.naam} · Jottem`}
+        beschrijving={organisatie.beschrijving}
+        pad={`/organisatie/${slug}`}
+        beeld={organisatie.logoUrl ? { url: organisatie.logoUrl, alt: `Logo van ${organisatie.naam}` } : null}
+      />
       <h1 style={organisatie.kleurPrimair ? { color: organisatie.kleurPrimair } : undefined}>
         {organisatie.logoUrl && (
           <img src={organisatie.logoUrl} alt="" className="organisatie-logo" />

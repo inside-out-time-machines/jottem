@@ -1,20 +1,13 @@
 import type { Metadata } from "next";
 import { apiServer } from "@/lib/api";
+import OpenGraph from "./open-graph";
+
+const OPROEP =
+  "Deel je foto's en herinneringen met de erfgoedprojecten van Jottem, " +
+  "het participatieve erfgoedplatform van Inside Out Time Machines.";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
-  openGraph: {
-    siteName: "Jottem",
-    type: "website",
-    locale: "nl_NL",
-    url: "/",
-    title: "Jottem",
-    description:
-      "Deel je foto's en herinneringen met de erfgoedprojecten van Jottem, " +
-      "het participatieve erfgoedplatform van Inside Out Time Machines.",
-    images: [{ url: "/logo/jottem-woordmerk@2x.png", width: 1180, height: 300,
-               alt: "Het Jottem-woordmerk: een oranje spraakwolk als O" }],
-  },
 };
 
 type Project = {
@@ -43,6 +36,13 @@ export default async function Home() {
 
   return (
     <main>
+      <OpenGraph
+        titel="Jottem"
+        beschrijving={OPROEP}
+        pad="/"
+        beeld={{ url: "/logo/jottem-woordmerk@2x.png", width: 1180, height: 300,
+                 alt: "Het Jottem-woordmerk: een oranje spraakwolk als O" }}
+      />
       <img
         src="/logo/jottem-woordmerk.svg"
         alt="Jottem"

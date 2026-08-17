@@ -13,19 +13,10 @@ export const metadata: Metadata = {
   description: BESCHRIJVING,
   icons: { icon: [{ url: "/favicon.svg", type: "image/svg+xml" }] },
   manifest: "/site.webmanifest",
-  // sitebrede Open Graph-basis; pagina's met eigen inhoud (project, jottem)
-  // overschrijven dit via generateMetadata
-  openGraph: {
-    siteName: "Jottem",
-    type: "website",
-    locale: "nl_NL",
-    url: "/",
-    title: "Jottem",
-    description: BESCHRIJVING,
-    images: [{ url: "/logo/jottem-woordmerk@2x.png", width: 1180, height: 300,
-               alt: "Het Jottem-woordmerk: een oranje spraakwolk als O" }],
-  },
 };
+
+// De Open Graph-tags staan niet in deze metadata maar in <OpenGraph> op de
+// publiekspagina's: Next leidt uit een openGraph-blok automatisch twitter:-tags af.
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

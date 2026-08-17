@@ -1,5 +1,6 @@
 import { API_PUBLIEK, apiServer } from "@/lib/api";
 import { notFound } from "next/navigation";
+import OpenGraph from "../../../open-graph";
 
 type JottemTegel = {
   mediaId: string;
@@ -42,7 +43,6 @@ export async function generateMetadata({
     const project = await apiServer<ProjectPubliek>(
       `/organisatie/${slug}/project/${projectSlug}/publiek`,
     );
-    const afbeelding = project.afbeeldingUrl ?? project.logoUrl;
     return {
       title: `${project.naam} · ${project.organisatieNaam}`,
       description: project.oproep ?? project.beschrijving ?? undefined,
@@ -55,17 +55,6 @@ export async function generateMetadata({
             title: `Nieuwe jottems in ${project.naam}`,
           }],
         },
-      },
-      openGraph: {
-        siteName: "Jottem",
-        type: "website",
-        locale: "nl_NL",
-        url: `/organisatie/${slug}/${projectSlug}`,
-        title: `${project.naam} · ${project.organisatieNaam}`,
-        description: project.oproep ?? project.beschrijving ?? undefined,
-        images: afbeelding
-          ? [{ url: afbeelding, alt: `${project.naam} (${project.organisatieNaam})` }]
-          : undefined,   // zonder eigen beeld geldt het woordmerk uit de layout
       },
     };
   } catch {
@@ -96,6 +85,15 @@ export default async function ProjectPagina({
 
   return (
     <main>
+      <OpenGraph
+        titel={`${project.naam} · ${project.organisatieNaam}`}
+        beschrijving={project.oproep ?? project.beschrijving}
+        pad={`/organisatie/${slug}/${projectSlug}`}
+        beeld={(() => {
+          const url = project.afbeeldingUrl ?? project.logoUrl;
+          return url ? { url, alt: `${project.naam} (${project.organisatieNaam})` } : null;
+        })()}
+      />
       {project.logoUrl && (
         <img src={project.logoUrl} alt="" className="organisatie-logo organisatie-logo-rechts" />
       )}

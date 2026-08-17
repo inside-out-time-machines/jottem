@@ -1,4 +1,5 @@
 import { apiServer } from "@/lib/api";
+import OpenGraph from "../../open-graph";
 import Interactief, { Detail as InteractiefDetail } from "./interactief";
 
 type Detail = InteractiefDetail & {
@@ -37,35 +38,36 @@ function beeldMaat(breedte: number | null, hoogte: number | null, viaIiif: boole
   return { width: Math.round(breedte * schaal), height: Math.round(hoogte * schaal) };
 }
 
+// duurzame og:image: de (eigen of externe) IIIF-service of de bron-URL;
+// presigned S3-URL's verlopen en zijn ongeschikt voor social previews
+function ogBeeld(jottem: Detail) {
+  const url = jottem.iiifService
+    ? `${jottem.iiifService}/full/${iiifMaat(jottem.breedte, jottem.hoogte)}/0/default.jpg`
+    : jottem.bron === "url"
+      ? jottem.bronUrl
+      : jottem.afbeeldingUrl;
+  if (!url) return null;
+  return {
+    url,
+    alt: jottem.titel,
+    ...beeldMaat(jottem.breedte, jottem.hoogte, Boolean(jottem.iiifService)),
+  };
+}
+
+function ogBeschrijving(jottem: Detail) {
+  return jottem.beschrijving
+    ?? `Een jottem uit het project ${jottem.project} van ${jottem.organisatie}.`;
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
     const jottem = await apiServer<Detail>(`/jottem/${id}/detail`);
     if (jottem.status !== "goedgekeurd") return {};
-    // duurzame og:image: de (eigen of externe) IIIF-service of de bron-URL;
-    // presigned S3-URL's verlopen en zijn ongeschikt voor social previews
-    const beeld = jottem.iiifService
-      ? `${jottem.iiifService}/full/${iiifMaat(jottem.breedte, jottem.hoogte)}/0/default.jpg`
-      : jottem.bron === "url"
-        ? jottem.bronUrl
-        : jottem.afbeeldingUrl;
-    const maat = beeldMaat(jottem.breedte, jottem.hoogte, Boolean(jottem.iiifService));
-    const beschrijving = jottem.beschrijving
-      ?? `Een jottem uit het project ${jottem.project} van ${jottem.organisatie}.`;
     return {
       title: `${jottem.titel} · Jottem`,
-      description: beschrijving,
+      description: ogBeschrijving(jottem),
       alternates: { canonical: `/jottem/${id}` },
-      openGraph: {
-        siteName: "Jottem",
-        type: "article",
-        locale: "nl_NL",
-        url: `/jottem/${id}`,
-        // uitnodigende titel in tijdlijnen: de jottem plus een oproep om mee te weten
-        title: `${jottem.titel} - weet jij hier meer van?`,
-        description: beschrijving,
-        images: beeld ? [{ url: beeld, alt: jottem.titel, ...maat }] : undefined,
-      },
     };
   } catch {
     return {};
@@ -92,6 +94,16 @@ export default async function JottemPagina({
 
   return (
     <main>
+      {jottem.status === "goedgekeurd" && (
+        <OpenGraph
+          type="article"
+          // uitnodigende titel in tijdlijnen: de jottem plus een oproep om mee te weten
+          titel={`${jottem.titel} - weet jij hier meer van?`}
+          beschrijving={ogBeschrijving(jottem)}
+          pad={`/jottem/${id}`}
+          beeld={ogBeeld(jottem)}
+        />
+      )}
       <p style={{ fontSize: ".9rem", color: "var(--grijs)" }}>
         {jottem.organisatieLogoUrl && (
           <img src={jottem.organisatieLogoUrl} alt="" className="organisatie-logo-klein" />
