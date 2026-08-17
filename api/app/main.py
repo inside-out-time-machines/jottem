@@ -1,6 +1,6 @@
 """Jottem backend-API (FastAPI) - EUPL-1.2, zie LICENSE in de repowortel."""
 import redis
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
@@ -26,6 +26,36 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Open data is voor iedereen: IIIF-manifests en -collections, W3C-annotaties, RDF,
+# RSS en de datacatalogus moeten door externe viewers (Universal Viewer, Mirador)
+# en harvesters vanuit de browser op te halen zijn. De IIIF-specificatie schrijft
+# daarvoor Access-Control-Allow-Origin: * voor; de overige endpoints blijven via de
+# CORSMiddleware hierboven beperkt tot de eigen frontend.
+OPEN_DATA_EINDEN = ("/annotations", "/activity-stream", "/rss", "/datacatalog", "/dump.nt.gz")
+
+
+def _is_open_data(pad: str) -> bool:
+    return "/iiif/" in pad or pad.endswith(OPEN_DATA_EINDEN) or pad.startswith("/jottem/")
+
+
+@app.middleware("http")
+async def open_data_cors(request: Request, call_next):
+    if request.method not in ("GET", "HEAD", "OPTIONS") or not _is_open_data(request.url.path):
+        return await call_next(request)
+    if request.method == "OPTIONS":
+        # preflight zelf beantwoorden, zodat ook viewers die met extra headers
+        # fetchen (en dus preflighten) niet op de origin-lijst stuklopen
+        return Response(status_code=204, headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+            "Access-Control-Allow-Headers": request.headers.get(
+                "access-control-request-headers", "*"),
+            "Access-Control-Max-Age": "600",
+        })
+    response = await call_next(request)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    return response
 
 app.include_router(upload.router)
 app.include_router(organisatiebeheer.router)
