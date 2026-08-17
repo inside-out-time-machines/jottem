@@ -20,13 +20,20 @@ type Detail = InteractiefDetail & {
   hoogte: number | null;
 };
 
-// De afmetingen die IIIF-maat `!1200,1200` oplevert: passend binnen 1200x1200 en
-// nooit vergroot (dat vraagt in IIIF 3 om `^`). Zonder bekende bronafmetingen
-// laten we og:image:width/height weg; een gegokte maat is erger dan geen maat.
-function beeldMaat(breedte: number | null, hoogte: number | null, past: boolean) {
+// IIIF-maat voor de socialpreview: verkleinen naar 1200 alleen als het bronbeeld
+// daar groter dan is, anders `max`. `!1200,1200` op een kleinere bron is in IIIF 3
+// namelijk een vergrotingsverzoek en levert een 400 (dat vraagt om `^`).
+function iiifMaat(breedte: number | null, hoogte: number | null) {
+  return Math.max(breedte ?? 0, hoogte ?? 0) > 1200 || !breedte || !hoogte
+    ? "!1200,1200"
+    : "max";
+}
+
+// De afmetingen die dat verzoek oplevert. Zonder bekende bronafmetingen laten we
+// og:image:width/height weg; een gegokte maat is erger dan geen maat.
+function beeldMaat(breedte: number | null, hoogte: number | null, viaIiif: boolean) {
   if (!breedte || !hoogte) return {};
-  if (!past) return { width: breedte, height: hoogte };
-  const schaal = Math.min(1200 / breedte, 1200 / hoogte, 1);
+  const schaal = viaIiif ? Math.min(1200 / breedte, 1200 / hoogte, 1) : 1;
   return { width: Math.round(breedte * schaal), height: Math.round(hoogte * schaal) };
 }
 
@@ -38,7 +45,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     // duurzame og:image: de (eigen of externe) IIIF-service of de bron-URL;
     // presigned S3-URL's verlopen en zijn ongeschikt voor social previews
     const beeld = jottem.iiifService
-      ? `${jottem.iiifService}/full/!1200,1200/0/default.jpg`
+      ? `${jottem.iiifService}/full/${iiifMaat(jottem.breedte, jottem.hoogte)}/0/default.jpg`
       : jottem.bron === "url"
         ? jottem.bronUrl
         : jottem.afbeeldingUrl;
