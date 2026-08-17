@@ -130,7 +130,7 @@ export default function ProjectBewerkPagina() {
             De beschrijving wordt gegenereerd uit de projectvelden hierboven en is
             {project.datasetAangemeld ? " aangemeld bij" : " nog niet aangemeld bij"} het NDE Datasetregister.
           </p>
-          <form onSubmit={emailOpslaan} style={{ marginTop: ".8rem", display: "flex", gap: ".5rem", flexWrap: "wrap", alignItems: "end", maxWidth: "34rem" }}>
+          <form className="formulier" onSubmit={emailOpslaan} style={{ marginTop: ".8rem", display: "flex", gap: ".5rem", flexWrap: "wrap", alignItems: "end", maxWidth: "34rem" }}>
             <div className="veld" style={{ flex: "1 1 16rem" }}>
               <label htmlFor="publisher-email">E-mailadres van de publisher (verplicht in de datasetbeschrijving)</label>
               <input
