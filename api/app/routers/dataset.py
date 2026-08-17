@@ -44,6 +44,13 @@ def _dataset_jsonld(db: Session, project: Project) -> dict:
         select(func.max(Media.wijzigingsDatum)).where(
             Media.projectId == project.projectId, Media.status == MediaStatus.goedgekeurd)
     )
+    eerste_publicatie = db.scalar(
+        select(func.min(Media.publicatieDatum)).where(
+            Media.projectId == project.projectId, Media.status == MediaStatus.goedgekeurd)
+    )
+
+    def _nl(tekst: str) -> dict:
+        return {"@value": tekst, "@language": "nl"}
     dataset = {
         "@context": "https://schema.org/",
         "@id": dataset_url,
@@ -61,25 +68,35 @@ def _dataset_jsonld(db: Session, project: Project) -> dict:
         "inLanguage": ["nl"],
         # ISO 8601 op secondenprecisie (xsd:dateTime), bijv. 2026-04-14T10:30:00
         "dateModified": laatste_wijziging.strftime("%Y-%m-%dT%H:%M:%S") if laatste_wijziging else None,
+        "datePublished": eerste_publicatie.strftime("%Y-%m-%dT%H:%M:%S") if eerste_publicatie else None,
         "temporalCoverage": project.periode,
         "includedInDataCatalog": {"@id": f"{cfg.data_basis_url}/datacatalog"},
         # alle toegangswegen tot de projectdata als distributie (aanbeveling in de
         # data-architectuur, sectie aanvullende distributies)
+        # encodingFormat draagt alleen het MIME-type; profielen en protocollen staan
+        # in usageInfo (conform het SHACL-shape van het Datasetregister)
         "distribution": [
             {"@type": "DataDownload", "encodingFormat": "application/n-triples+gzip",
+             "description": _nl("RDF-datadump van alle gepubliceerde jottems (N-Triples, gecomprimeerd)"),
              "contentUrl": f"{cfg.data_basis_url}/project/{project.projectId}/dump-{project.slug}.nt.gz"},
-            {"@type": "DataDownload", "encodingFormat": "application/sparql-results+json",
+            {"@type": "DataDownload",
+             "usageInfo": "https://www.w3.org/TR/sparql11-protocol/",
+             "description": _nl("SPARQL-endpoint (alleen lezen; named graph per project)"),
              "contentUrl": f"{cfg.data_basis_url}/sparql"},
-            # encodingFormat draagt alleen het MIME-type; het profiel staat in usageInfo
             {"@type": "DataDownload", "encodingFormat": "application/ld+json",
              "usageInfo": "http://iiif.io/api/presentation/3/context.json",
+             "description": _nl("IIIF Presentation Collection van de gepubliceerde jottems"),
              "contentUrl": f"{cfg.api_basis_url}/project/{project.projectId}/iiif/collection"},
             {"@type": "DataDownload", "encodingFormat": "application/rss+xml",
+             "description": _nl("RSS-feed van nieuwe jottems in dit project"),
              "contentUrl": f"{cfg.api_basis_url}/project/{project.projectId}/rss"},
             {"@type": "DataDownload", "encodingFormat": "application/ld+json",
              "usageInfo": "http://www.w3.org/ns/anno.jsonld",
+             "description": _nl("Alle W3C-webannotaties bij de jottems van dit project"),
              "contentUrl": f"{cfg.api_basis_url}/project/{project.projectId}/annotations"},
             {"@type": "DataDownload", "encodingFormat": "application/ld+json",
+             "usageInfo": "http://iiif.io/api/discovery/1/context.json",
+             "description": _nl("IIIF Change Discovery activity-stream voor incrementeel harvesten"),
              "contentUrl": f"{cfg.api_basis_url}/project/{project.projectId}/activity-stream"},
         ],
     }
