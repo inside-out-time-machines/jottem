@@ -6,6 +6,7 @@ import type { CSSProperties } from "react";
 
 const INKT = "#1f1e1c";
 const WIT = "#ffffff";
+const PAPIER = "#faf6f1";   // paginagrond; iets donkerder dan wit, dus de strengste eis
 
 function kanaal(waarde: number): number {
   const v = waarde / 255;
@@ -40,17 +41,17 @@ export function contrast(voorgrond: string, achtergrond: string): number | null 
 }
 
 /**
- * Dezelfde kleur, zo nodig donkerder gemaakt tot hij op wit leesbaar is (4.5:1).
- * Nodig voor tekst in een secundaire kleur: een lichte huisstijlkleur als #00ccfe
- * haalt op wit maar 1.9:1.
+ * Dezelfde kleur, zo nodig donkerder gemaakt tot hij op de paginagrond leesbaar is
+ * (4.5:1). Nodig voor tekst in een secundaire kleur: een lichte huisstijlkleur als
+ * #00ccfe haalt op papier maar 1.8:1.
  */
-export function leesbaarOpWit(kleur: string): string {
+export function leesbaarOpGrond(kleur: string): string {
   const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(kleur.trim());
   if (!m) return kleur;
   let [r, g, b] = m.slice(1).map((h) => parseInt(h, 16));
   for (let stap = 0; stap < 20; stap++) {
     const hex = "#" + [r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("");
-    if ((contrast(hex, WIT) ?? 0) >= 4.5) return hex;
+    if ((contrast(hex, PAPIER) ?? 0) >= 4.5) return hex;
     [r, g, b] = [r, g, b].map((c) => Math.round(c * 0.85));
   }
   return INKT;
@@ -70,7 +71,7 @@ export function projectStijl(
   if (secundair) {
     stijl["--knop-vlak"] = secundair;
     // de rand mag de kleur zelf zijn; tekst moet leesbaar blijven op wit
-    stijl["--knop-tekst"] = leesbaarOpWit(secundair);
+    stijl["--knop-tekst"] = leesbaarOpGrond(secundair);
     stijl["--knop-op-vlak"] = tekstOp(secundair) ?? WIT;
   }
   return stijl as CSSProperties;
