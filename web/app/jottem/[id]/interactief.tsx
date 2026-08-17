@@ -170,6 +170,30 @@ export default function Interactief({ detail }: { detail: Detail }) {
     return () => clearTimeout(timer);
   }, [zoekTekst]);
 
+  // wat er in de popup bij een aangeklikt kader komt: type, tekst, bronlinks en
+  // de inzender, met een sprong naar de volledige bijdrage in de lijst eronder
+  function popupInhoud(id: string) {
+    const a = annotaties.find((x) => x.id === id);
+    if (!a) return null;
+    const w = weergave(a, detail.verrijkingen);
+    return (
+      <>
+        <p className="annotatie-type">{w.label}</p>
+        {w.teksten.map((tekst, i) => <p key={i}>{tekst}</p>)}
+        {w.links.map((l) => (
+          <p key={l.url}>
+            <a href={l.url} rel="noopener noreferrer" target="_blank">{l.label}</a>
+          </p>
+        ))}
+        <p className="kader-popup-voet">
+          {a.creator?.name ?? "Een deelnemer"}
+          {" · "}
+          <a href={`#${naamUitIri(a.id)}`}>lees verder</a>
+        </p>
+      </>
+    );
+  }
+
   function annotatorKlaar(annotator: OsdAnnotator) {
     annotatorRef.current = annotator;
     annotator.setDrawingTool("rectangle");
@@ -374,6 +398,7 @@ export default function Interactief({ detail }: { detail: Detail }) {
           titel={detail.titel}
           canvas={detail.canvas ?? undefined}
           onAnnotator={annotatorKlaar}
+          popupInhoud={popupInhoud}
         />
       ) : (
         detail.afbeeldingUrl && (

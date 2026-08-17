@@ -194,6 +194,22 @@ table.lijst th { font-size: .82rem; letter-spacing: .1em; text-transform: upperc
     flex: 1; height: auto; min-height: 0;
 }
 .iiif-kader:fullscreen figcaption, .iiif-kader.iiif-vol figcaption { color: var(--papier); }
+/* popup bij een aangeklikt annotatiekader: hangt onder het midden van het kader en
+   beweegt mee met zoomen en pannen (positie komt uit viewer.tsx) */
+.kader-popup {
+    position: absolute; z-index: 6; transform: translate(-50%, .5rem);
+    max-width: min(22rem, 80%); background: var(--wit); color: var(--inkt);
+    border: 3px solid var(--oranje); border-radius: .45rem;
+    padding: .6rem 1.8rem .6rem .8rem; font-size: .95rem; line-height: 1.45;
+    box-shadow: var(--schaduw);
+}
+.kader-popup p { margin-top: .25rem; }
+.kader-popup p:first-of-type { margin-top: 0; }
+.kader-popup-voet { font-size: .82rem; color: var(--grijs); }
+.kader-popup-sluit {
+    position: absolute; top: .1rem; right: .3rem; font: inherit; font-size: .95rem;
+    background: none; border: none; color: var(--grijs); cursor: pointer; padding: .1rem;
+}
 .iiif-knoppen {
     position: absolute; top: 1.2rem; right: 1.2rem; display: flex; flex-direction: column;
     gap: .35rem; z-index: 5;
