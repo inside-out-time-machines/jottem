@@ -80,6 +80,7 @@ async def organisatie_publiek(slug: str, db: Session = Depends(get_db)):
         beschrijving=organisatie.beschrijving,
         website=organisatie.website,
         kleurPrimair=organisatie.kleurPrimair,
+        kleurSecundair=organisatie.kleurSecundair,
         kleurAchtergrond=organisatie.kleurAchtergrond,
         logoUrl=s3.presigned_get(organisatie.logo, bucket=settings().s3_bucket_thumbs)
         if organisatie.logo else None,
@@ -125,6 +126,7 @@ async def project_publiek(
         organisatieSlug=organisatie.slug,
         organisatieNaam=organisatie.naam,
         kleurPrimair=organisatie.kleurPrimair,
+        kleurSecundair=organisatie.kleurSecundair,
         logoUrl=s3.presigned_get(organisatie.logo, bucket=settings().s3_bucket_thumbs)
         if organisatie.logo else None,
         beschrijving=project.beschrijving,

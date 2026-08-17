@@ -27,6 +27,12 @@
     --kop: 'Fraunces', Georgia, 'Times New Roman', serif;
     --body: 'Albert Sans', 'Segoe UI', system-ui, Helvetica, Arial, sans-serif;
     --schaduw: 0 3px 10px rgba(31, 30, 28, .14);
+    /* huisstijlvariabelen: standaard de Jottem-kleuren, binnen een projectcontext
+       overschreven met de kleuren van de organisatie (zie web/lib/kleuren.ts) */
+    --project-primair: var(--oranje);   /* annotaties: kaart, kader op de foto, popup */
+    --knop-vlak: var(--oranje);         /* knopachtergrond en -rand, CTA-linkerrand */
+    --knop-tekst: var(--roest);         /* tekst van een secundaire knop */
+    --knop-op-vlak: var(--wit);         /* tekst op een primaire knop */
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -47,16 +53,18 @@ a { color: var(--roest); text-decoration-color: var(--oranje); text-underline-of
 a:hover { color: var(--oranje); }
 :focus-visible { outline: 3px solid var(--oranje); outline-offset: 2px; border-radius: 2px; }
 
-.topbar { background: var(--inkt); color: var(--papier); }
+.topbar { background: var(--kop-vlak, var(--inkt)); color: var(--kop-tekst, var(--papier)); }
 .topbar-binnen {
     max-width: 68rem; margin: 0 auto; padding: .6rem 1.5rem;
     display: flex; align-items: center; gap: .7rem;
 }
-.topbar img { height: 1.6rem; width: auto; }
-.topbar a { color: var(--papier); text-decoration: none; font-weight: 600; }
+/* het woordmerk is wit; op een lichte headerkleur zet de pagina invert(1) */
+.topbar img { height: 1.6rem; width: auto; filter: var(--kop-logo-filter, none); }
+.topbar a { color: var(--kop-tekst, var(--papier)); text-decoration: none; font-weight: 600; }
 .topbar nav { margin-left: auto; display: flex; gap: 1.1rem; font-size: .95rem; }
 .topbar .proto { font-size: .7rem; letter-spacing: .1em; text-transform: uppercase;
-    border: 1px solid rgba(250,246,241,.4); border-radius: 999px; padding: .15rem .6rem; }
+    border: 1px solid color-mix(in srgb, currentColor 40%, transparent);
+    border-radius: 999px; padding: .15rem .6rem; }
 
 /* hamburgerknop: alleen zichtbaar op kleine schermen; transformeert naar een X */
 .hamburger {
@@ -64,7 +72,7 @@ a:hover { color: var(--oranje); }
     padding: .5rem; flex-direction: column; justify-content: center; gap: 5px;
 }
 .hamburger span {
-    display: block; width: 22px; height: 2px; background: var(--papier);
+    display: block; width: 22px; height: 2px; background: var(--kop-tekst, var(--papier));
     border-radius: 1px; transition: transform .25s ease, opacity .2s ease;
 }
 .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
@@ -79,7 +87,8 @@ a:hover { color: var(--oranje); }
     .topbar nav.menu-open {
         display: flex; flex-direction: column; gap: 0; margin-left: 0;
         position: absolute; top: 100%; left: 0; right: 0; z-index: 40;
-        background: var(--inkt); border-top: 1px solid rgba(250,246,241,.15);
+        background: var(--kop-vlak, var(--inkt));
+        border-top: 1px solid color-mix(in srgb, currentColor 25%, transparent);
         box-shadow: 0 10px 24px rgba(31,30,28,.35); padding: .4rem 0 .8rem;
     }
     .topbar nav.menu-open > a,
@@ -103,9 +112,10 @@ main { max-width: 68rem; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
     padding: .65rem 1.3rem; border-radius: .4rem; text-decoration: none;
     border: 2px solid transparent; cursor: pointer;
 }
-.knop-primair { background: var(--oranje); color: var(--wit); }
-.knop-primair:hover { background: var(--oranje-donker); color: var(--wit); }
-.knop-secundair { background: transparent; color: var(--roest); border-color: var(--oranje); }
+.knop-primair { background: var(--knop-vlak); color: var(--knop-op-vlak); }
+/* brightness werkt voor elke organisatiekleur, ook zonder aparte donkere variant */
+.knop-primair:hover { filter: brightness(.92); color: var(--knop-op-vlak); }
+.knop-secundair { background: transparent; color: var(--knop-tekst); border-color: var(--knop-vlak); }
 
 .memo {
     background: var(--geel); border: 1px solid var(--geelrand);
@@ -199,7 +209,7 @@ table.lijst th { font-size: .82rem; letter-spacing: .1em; text-transform: upperc
 .kader-popup {
     position: absolute; z-index: 6; transform: translate(-50%, .5rem);
     max-width: min(22rem, 80%); background: var(--wit); color: var(--inkt);
-    border: 3px solid var(--oranje); border-radius: .45rem;
+    border: 3px solid var(--project-primair); border-radius: .45rem;
     padding: .6rem 1.8rem .6rem .8rem; font-size: .95rem; line-height: 1.45;
     box-shadow: var(--schaduw);
 }
@@ -273,15 +283,15 @@ dialog.dialoog h2 { font-family: var(--kop); font-size: 1.35rem; margin-bottom: 
 .cta-knop {
     font: inherit; font-size: .95rem; cursor: pointer; text-align: left;
     background: var(--wit); color: var(--inkt);
-    border: 1px solid var(--kartonrand); border-left: 4px solid var(--oranje);
+    border: 1px solid var(--kartonrand); border-left: 4px solid var(--knop-vlak);
     border-radius: .45rem; padding: .55rem .8rem; max-width: 24rem;
     transition: background .15s ease;
 }
-.cta-knop:hover, .cta-knop:focus { background: var(--papier); border-left-color: var(--roest); }
+.cta-knop:hover, .cta-knop:focus { background: var(--papier); border-left-color: var(--knop-tekst); }
 
 .annotatie-lijst { display: flex; flex-direction: column; gap: .9rem; margin-top: 1rem; }
 .annotatie {
-    background: var(--wit); border: 4px solid var(--oranje); border-radius: .45rem;
+    background: var(--wit); border: 4px solid var(--project-primair); border-radius: .45rem;
     padding: .9rem 1.1rem;
 }
 .annotatie-kop { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
@@ -320,9 +330,11 @@ dialog.dialoog h2 { font-family: var(--kop); font-size: 1.35rem; margin-bottom: 
 .bestand-knoppen .knop { font-size: 1.05rem; }
 .bestand-knoppen .knop .icoon { font-size: 1.5rem; vertical-align: -0.2rem; margin-right: .35rem; }
 
-footer { background: var(--onderkant); color: #e8ddd2; padding: 2rem 1.5rem; font-size: .95rem; margin-top: 3rem; }
+footer { background: var(--voet-vlak, var(--onderkant)); color: var(--voet-tekst, #e8ddd2);
+    padding: 2rem 1.5rem; font-size: .95rem; margin-top: 3rem; }
 footer .binnen { max-width: 68rem; margin: 0 auto; }
-footer strong { color: var(--papier); }
-footer a { color: var(--papier); text-decoration-color: var(--oranje); }
+footer strong { color: var(--voet-tekst, var(--papier)); }
+footer a { color: var(--voet-tekst, var(--papier));
+    text-decoration-color: color-mix(in srgb, currentColor 60%, transparent); }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

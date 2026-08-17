@@ -162,6 +162,9 @@ class JottemDetail(BaseModel):
     # plaats van de organisatie: startpunt voor de zichtveldkaart (standpunt fotograaf)
     organisatieLat: float | None = None
     organisatieLon: float | None = None
+    # huisstijl van de organisatie: primair kleurt de annotaties, secundair de knoppen
+    organisatieKleurPrimair: str | None = None
+    organisatieKleurSecundair: str | None = None
     project: str
     projectSlug: str
     projectId: uuid.UUID
@@ -203,6 +206,7 @@ class ProjectPubliek(BaseModel):
     organisatieSlug: str
     organisatieNaam: str
     kleurPrimair: str | None
+    kleurSecundair: str | None = None
     logoUrl: str | None
     beschrijving: str | None
     oproep: str | None
@@ -221,6 +225,7 @@ class OrganisatiePubliek(BaseModel):
     beschrijving: str | None
     website: str | None
     kleurPrimair: str | None
+    kleurSecundair: str | None = None
     kleurAchtergrond: str | None
     logoUrl: str | None
     projecten: list[dict]                # naam, slug, oproep, afbeeldingUrl, aantalJottems

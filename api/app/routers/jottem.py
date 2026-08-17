@@ -76,6 +76,8 @@ def _detail(db: Session, media: Media) -> JottemDetail:
         if organisatie.logo else None,
         organisatieLat=organisatie.spatialLat,
         organisatieLon=organisatie.spatialLon,
+        organisatieKleurPrimair=organisatie.kleurPrimair,
+        organisatieKleurSecundair=organisatie.kleurSecundair,
         project=project.naam,
         projectSlug=project.slug,
         projectId=project.projectId,

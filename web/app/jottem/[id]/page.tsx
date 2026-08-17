@@ -1,5 +1,6 @@
 import { apiServer } from "@/lib/api";
 import OpenGraph from "../../open-graph";
+import { kopVoetCss, projectStijl } from "@/lib/kleuren";
 import Interactief, { Detail as InteractiefDetail } from "./interactief";
 
 type Detail = InteractiefDetail & {
@@ -92,8 +93,16 @@ export default async function JottemPagina({
     );
   }
 
+  // header en footer staan in de root-layout: kleuren via CSS-variabelen in de head
+  const kopVoet = kopVoetCss(jottem.organisatieKleurPrimair, jottem.organisatieKleurSecundair);
+
   return (
-    <main>
+    <main style={projectStijl(jottem.organisatieKleurPrimair, jottem.organisatieKleurSecundair)}>
+      {kopVoet && (
+        <style href={`organisatiekleuren-${jottem.organisatieSlug}`} precedence="high">
+          {kopVoet}
+        </style>
+      )}
       {jottem.status === "goedgekeurd" && (
         <OpenGraph
           type="article"

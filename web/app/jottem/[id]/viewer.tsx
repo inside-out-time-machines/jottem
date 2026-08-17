@@ -43,6 +43,7 @@ export default function Viewer({
   onAnnotator,
   onBesturing,
   popupInhoud,
+  kleur = "#d85a30",
 }: {
   service: string;
   titel: string;
@@ -51,6 +52,8 @@ export default function Viewer({
   onBesturing?: (besturing: ViewerBesturing) => void;
   // inhoud van de popup bij een aangeklikt kader; null = geen popup tonen
   popupInhoud?: (id: string) => ReactNode;
+  // kleur van de annotatiekaders: de primaire kleur van de organisatie
+  kleur?: `#${string}`;
 }) {
   const houder = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<{ destroy: () => void; viewport?: unknown } | null>(null);
@@ -108,7 +111,7 @@ export default function Viewer({
           // bestaande kaders zijn alleen-lezen: aanklikken selecteert (en opent de
           // popup), maar je kunt ze niet verslepen of van formaat veranderen
           userSelectAction: UserSelectAction.SELECT,
-          style: { fill: "#d85a30", fillOpacity: 0.18, stroke: "#d85a30", strokeWidth: 2 },
+          style: { fill: kleur, fillOpacity: 0.18, stroke: kleur, strokeWidth: 2 },
         }) as unknown as OsdAnnotator;
         annotatorRef.current = annotator;
         onAnnotator(annotator);

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { apiServer } from "@/lib/api";
+import { projectStijl } from "@/lib/kleuren";
 import OpenGraph from "./open-graph";
 
 const OPROEP =
@@ -22,6 +23,7 @@ type Organisatie = {
   naam: string;
   beschrijving: string | null;
   kleurPrimair: string | null;
+  kleurSecundair: string | null;
   logoUrl: string | null;
   projecten: Project[];
 };
@@ -73,7 +75,10 @@ export default async function Home() {
               <article
                 className="kaart"
                 key={project.projectId}
-                style={organisatie.kleurPrimair ? { borderTopColor: organisatie.kleurPrimair } : undefined}
+                style={{
+                  ...projectStijl(organisatie.kleurPrimair, organisatie.kleurSecundair),
+                  ...(organisatie.kleurPrimair ? { borderTopColor: organisatie.kleurPrimair } : {}),
+                }}
               >
                 <h3>
                   <a href={`/organisatie/${organisatie.slug}/${project.slug}`} style={{ textDecoration: "none", color: "inherit" }}>

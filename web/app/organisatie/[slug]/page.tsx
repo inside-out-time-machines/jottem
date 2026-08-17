@@ -1,6 +1,7 @@
 import { API_PUBLIEK, apiServer } from "@/lib/api";
 import { notFound } from "next/navigation";
 import OpenGraph from "../../open-graph";
+import { kopVoetCss, projectStijl } from "@/lib/kleuren";
 
 type OrganisatiePubliek = {
   naam: string;
@@ -8,6 +9,7 @@ type OrganisatiePubliek = {
   beschrijving: string | null;
   website: string | null;
   kleurPrimair: string | null;
+  kleurSecundair: string | null;
   kleurAchtergrond: string | null;
   logoUrl: string | null;
   projecten: {
@@ -56,8 +58,15 @@ export default async function OrganisatiePagina({
     notFound();
   }
 
+  // header (primaire kleur) en footer (secundaire kleur) staan in de root-layout, dus
+  // die kleuren we via CSS-variabelen; React hijst dit style-blok naar de head
+  const kopVoet = kopVoetCss(organisatie.kleurPrimair, organisatie.kleurSecundair);
+
   return (
-    <main>
+    <main style={projectStijl(organisatie.kleurPrimair, organisatie.kleurSecundair)}>
+      {kopVoet && (
+        <style href={`organisatiekleuren-${slug}`} precedence="high">{kopVoet}</style>
+      )}
       <OpenGraph
         titel={`${organisatie.naam} · Jottem`}
         beschrijving={organisatie.beschrijving}
@@ -85,7 +94,10 @@ export default async function OrganisatiePagina({
           <article
             className="kaart"
             key={project.slug}
-            style={organisatie.kleurPrimair ? { borderTopColor: organisatie.kleurPrimair } : undefined}
+            style={{
+              ...projectStijl(organisatie.kleurPrimair, organisatie.kleurSecundair),
+              ...(organisatie.kleurPrimair ? { borderTopColor: organisatie.kleurPrimair } : {}),
+            }}
           >
             {project.afbeeldingUrl && (
               <img src={project.afbeeldingUrl} alt="" style={{ maxHeight: "6rem", borderRadius: ".3rem", marginBottom: ".5rem" }} />

@@ -150,6 +150,7 @@ async def organisaties(db: Session = Depends(get_db)):
             "beschrijving": organisatie.beschrijving,
             "website": organisatie.website,
             "kleurPrimair": organisatie.kleurPrimair,
+            "kleurSecundair": organisatie.kleurSecundair,
             # coördinaten van de organisatieplaats: startpunt van de kaartspeld
             "spatialLat": organisatie.spatialLat,
             "spatialLon": organisatie.spatialLon,

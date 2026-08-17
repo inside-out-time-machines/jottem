@@ -12,6 +12,8 @@ export type Detail = {
   titel: string;
   organisatieLat: number | null;   // plaats van de organisatie (GeoNames)
   organisatieLon: number | null;
+  organisatieKleurPrimair: string | null;   // kleurt de annotaties (kaart, kader, popup)
+  organisatieKleurSecundair: string | null;
   afbeeldingUrl: string | null;
   iiifService: string | null;
   annotatiesUrl: string | null;
@@ -408,6 +410,7 @@ export default function Interactief({ detail }: { detail: Detail }) {
           canvas={detail.canvas ?? undefined}
           onAnnotator={annotatorKlaar}
           onBesturing={(b) => { besturingRef.current = b; }}
+          kleur={(detail.organisatieKleurPrimair as `#${string}` | null) ?? undefined}
           popupInhoud={popupInhoud}
         />
       ) : (

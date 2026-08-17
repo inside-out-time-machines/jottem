@@ -1,6 +1,7 @@
 import { API_PUBLIEK, apiServer } from "@/lib/api";
 import { notFound } from "next/navigation";
 import OpenGraph from "../../../open-graph";
+import { kopVoetCss, projectStijl } from "@/lib/kleuren";
 
 type JottemTegel = {
   mediaId: string;
@@ -15,6 +16,7 @@ type ProjectPubliek = {
   organisatieSlug: string;
   organisatieNaam: string;
   kleurPrimair: string | null;
+  kleurSecundair: string | null;
   logoUrl: string | null;
   beschrijving: string | null;
   oproep: string | null;
@@ -82,9 +84,14 @@ export default async function ProjectPagina({
   }
 
   const kleur = project.kleurPrimair ?? "var(--oranje)";
+  // header en footer staan in de root-layout: kleuren via CSS-variabelen in de head
+  const kopVoet = kopVoetCss(project.kleurPrimair, project.kleurSecundair);
 
   return (
-    <main>
+    <main style={projectStijl(project.kleurPrimair, project.kleurSecundair)}>
+      {kopVoet && (
+        <style href={`organisatiekleuren-${slug}`} precedence="high">{kopVoet}</style>
+      )}
       <OpenGraph
         titel={`${project.naam} · ${project.organisatieNaam}`}
         beschrijving={project.oproep ?? project.beschrijving}

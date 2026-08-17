@@ -6,6 +6,7 @@ import { licentieInfo } from "@/lib/licenties";
 import { startLogin } from "@/lib/oidc";
 import CameraOpname from "./camera-opname";
 import LocatieKiezer from "./locatie-kiezer";
+import { kopVoetCss, projectStijl } from "@/lib/kleuren";
 
 type Project = {
   projectId: string; naam: string; slug: string; datasetLicentie: string | null;
@@ -13,6 +14,7 @@ type Project = {
 };
 type Organisatie = {
   naam: string; slug: string; projecten: Project[];
+  kleurPrimair: string | null; kleurSecundair: string | null;
   // plaats van de organisatie (GeoNames via het Termennetwerk), startpunt van de kaart
   spatialLat: number | null; spatialLon: number | null;
 };
@@ -78,8 +80,9 @@ export default function UploadPagina() {
 
   const projecten = organisaties.flatMap((o) =>
     o.projecten.map((p) => ({
-      ...p, organisatie: o.naam, pad: `${o.slug}/${p.slug}`,
+      ...p, organisatie: o.naam, organisatieSlug: o.slug, pad: `${o.slug}/${p.slug}`,
       spatialLat: o.spatialLat, spatialLon: o.spatialLon,
+      kleurPrimair: o.kleurPrimair, kleurSecundair: o.kleurSecundair,
     })),
   );
   const gekozen = projectParam
@@ -228,12 +231,23 @@ export default function UploadPagina() {
     }
   }
 
+  // huisstijl van de organisatie achter het gekozen project: knoppen in de secundaire
+  // kleur, header en footer (die in de root-layout staan) via een style-blok in de head
+  const kleurStijl = projectStijl(gekozen?.kleurPrimair, gekozen?.kleurSecundair);
+  const kopVoet = kopVoetCss(gekozen?.kleurPrimair, gekozen?.kleurSecundair);
+  const kopVoetBlok = kopVoet ? (
+    <style href={`organisatiekleuren-${gekozen?.organisatieSlug}`} precedence="high">
+      {kopVoet}
+    </style>
+  ) : null;
+
   if (ingelogd === null) {
     return <main><h1>Deel je materiaal</h1></main>;
   }
   if (!ingelogd) {
     return (
-      <main>
+      <main style={kleurStijl}>
+        {kopVoetBlok}
         <h1>Deel je materiaal</h1>
         <p style={{ marginTop: "1rem", maxWidth: "40rem" }}>
           Om te uploaden heb je een account nodig. Zo weten we wie er bij een
@@ -250,7 +264,8 @@ export default function UploadPagina() {
 
   if (toestemmingsVraag) {
     return (
-      <main>
+      <main style={kleurStijl}>
+        {kopVoetBlok}
         <h1>Staan er mensen op je foto?</h1>
         <p style={{ maxWidth: "40rem", marginTop: "1rem" }}>
           We zien mogelijk <strong>herkenbare personen</strong> op je foto. Vanwege het
@@ -299,7 +314,8 @@ export default function UploadPagina() {
   }
 
   return (
-    <main>
+    <main style={kleurStijl}>
+      {kopVoetBlok}
       <h1>Deel je materiaal</h1>
       <p style={{ maxWidth: "40rem", marginTop: ".8rem" }}>
         {heeftEigenFoto && heeftVerwijzing
