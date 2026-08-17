@@ -81,6 +81,7 @@ def _dataset_jsonld(db: Session, project: Project) -> dict:
         },
         "inLanguage": ["nl"],
         # ISO 8601 op secondenprecisie (xsd:dateTime), bijv. 2026-04-14T10:30:00
+        "dateCreated": project.creatieDatum.strftime("%Y-%m-%dT%H:%M:%S") if project.creatieDatum else None,
         "dateModified": laatste_wijziging.strftime("%Y-%m-%dT%H:%M:%S") if laatste_wijziging else None,
         "datePublished": eerste_publicatie.strftime("%Y-%m-%dT%H:%M:%S") if eerste_publicatie else None,
         "temporalCoverage": project.periode,

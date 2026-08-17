@@ -93,6 +93,7 @@ class Project(Base):
     # ingeschakelde uploadwijzen (zie UPLOAD_WIJZEN); None = alle wijzen aan
     uploadWijzen: Mapped[list | None] = mapped_column(JSON)
     datasetAangemeld: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # NDE Datasetregister
+    creatieDatum: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=nu)  # schema:dateCreated
 
     organisatie: Mapped[Organisatie] = relationship(back_populates="projecten")
 
