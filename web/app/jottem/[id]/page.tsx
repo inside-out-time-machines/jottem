@@ -8,6 +8,7 @@ type Detail = InteractiefDetail & {
   status: string;
   organisatie: string;
   organisatieSlug: string;
+  organisatieLogoUrl: string | null;
   project: string;
   projectSlug: string;
   metadata: Record<string, string>;
@@ -69,6 +70,9 @@ export default async function JottemPagina({
   return (
     <main>
       <p style={{ fontSize: ".9rem", color: "var(--grijs)" }}>
+        {jottem.organisatieLogoUrl && (
+          <img src={jottem.organisatieLogoUrl} alt="" className="organisatie-logo-klein" />
+        )}
         <a href={`/organisatie/${jottem.organisatieSlug}`}>{jottem.organisatie}</a>
         {" · "}
         <a href={`/organisatie/${jottem.organisatieSlug}/${jottem.projectSlug}`}>{jottem.project}</a>

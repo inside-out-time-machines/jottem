@@ -158,6 +158,7 @@ class JottemDetail(BaseModel):
     status: str
     organisatie: str
     organisatieSlug: str
+    organisatieLogoUrl: str | None = None
     project: str
     projectSlug: str
     projectId: uuid.UUID
