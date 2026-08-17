@@ -26,6 +26,9 @@ cp .env.example .env        # vul de secrets in
 docker compose up -d --build
 ```
 
+Secrets staan uitsluitend in `.env` (buiten git); de deploy-configuratie zelf is
+publiek en hoort dus nooit geheimen te bevatten.
+
 Lokale smoke-test zonder Traefik (alles op 127.0.0.1:81xx):
 
 ```sh
@@ -50,5 +53,4 @@ herkenbare personen, AGPL-3.0) is bewust een aparte repository.
 
 ## Licentie
 
-[EUPL-1.2](LICENSE). Secrets horen nooit in deze repository; de deploy-configuratie zelf is
-publiek.
+[EUPL-1.2](LICENSE).
