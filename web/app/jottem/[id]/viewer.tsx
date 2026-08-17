@@ -79,7 +79,10 @@ export default function Viewer({
         element: houder.current,
         tileSources: [`${service}/info.json`],
         showNavigationControl: false,
-        gestureSettingsMouse: { scrollToZoom: true, dblClickToZoom: true },
+        // klikken selecteert een annotatiekader (en opent de popup), dus daar mag de
+        // viewer niet ook op inzoomen; zoomen gaat met scroll, dubbelklik, pinch en de knoppen
+        gestureSettingsMouse: { scrollToZoom: true, clickToZoom: false, dblClickToZoom: true },
+        gestureSettingsTouch: { clickToZoom: false, dblClickToZoom: true, pinchToZoom: true },
         maxZoomPixelRatio: 2,
         visibilityRatio: 0.6,
         crossOriginPolicy: "Anonymous",
