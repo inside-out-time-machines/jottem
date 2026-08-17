@@ -4,6 +4,7 @@ import { apiServer } from "@/lib/api";
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
   openGraph: {
+    siteName: "Jottem",
     type: "website",
     locale: "nl_NL",
     url: "/",

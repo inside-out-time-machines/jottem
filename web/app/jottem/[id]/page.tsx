@@ -57,6 +57,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       description: beschrijving,
       alternates: { canonical: `/jottem/${id}` },
       openGraph: {
+        siteName: "Jottem",
         type: "article",
         locale: "nl_NL",
         url: `/jottem/${id}`,

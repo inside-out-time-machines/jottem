@@ -57,6 +57,7 @@ export async function generateMetadata({
         },
       },
       openGraph: {
+        siteName: "Jottem",
         type: "website",
         locale: "nl_NL",
         url: `/organisatie/${slug}/${projectSlug}`,

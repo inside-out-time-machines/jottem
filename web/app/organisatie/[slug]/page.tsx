@@ -36,6 +36,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
         },
       },
       openGraph: {
+        siteName: "Jottem",
         type: "website",
         locale: "nl_NL",
         url: `/organisatie/${slug}`,
