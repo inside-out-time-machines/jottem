@@ -156,6 +156,7 @@ services:
     restart: unless-stopped
     volumes:
       - ../../data:/usr/share/nginx/html:ro
+      - ./datapagina/default.conf:/etc/nginx/conf.d/default.conf:ro
     labels:
       - traefik.enable=true
       - traefik.http.routers.datapagina.rule=Host(`data.dev.iotm.nl`)
