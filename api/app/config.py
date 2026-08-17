@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     anno_basis_url: str = "https://anno.dev.iotm.nl"
     anno_api_key: str = "wijzig-mij"
 
+    # RDF/SPARQL (Fuseki): intern schrijven, publiek alleen /sparql via Traefik
+    fuseki_url: str = "http://fuseki:3030/ds"
+    data_basis_url: str = "https://data.dev.iotm.nl"
+
     # authenticatie (Authentik OIDC)
     oidc_issuer: str = "https://auth.dev.iotm.nl/application/o/jottem/"
     oidc_client_id: str = "jottem-web"

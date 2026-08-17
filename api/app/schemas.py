@@ -160,6 +160,7 @@ class JottemTegel(BaseModel):
 
 
 class ProjectPubliek(BaseModel):
+    projectId: uuid.UUID
     naam: str
     slug: str
     organisatieSlug: str

@@ -12,3 +12,4 @@ PyJWT[crypto]==2.10.*
 pyvips==2.2.*
 httpx==0.28.*
 python-multipart==0.0.*
+rdflib==7.1.*

@@ -148,6 +148,29 @@ services:
       - traefik.http.routers.iiif.tls.certresolver=letsencrypt
       - traefik.http.services.iiif.loadbalancer.server.port=80
 
+  fuseki:
+    # triplestore voor de RDF-publicatie (schema.org AP NDE); publiek is ALLEEN het
+    # /sparql-leespad via Traefik, updates lopen intern via de worker
+    image: secoresearch/fuseki:6.2.0
+    restart: unless-stopped
+    environment:
+      ENABLE_DATA_WRITE: "true"
+      ENABLE_UPDATE: "true"
+      ENABLE_UPLOAD: "false"
+      ADMIN_PASSWORD: ${FUSEKI_ADMIN_WACHTWOORD:-}
+      QUERY_TIMEOUT: "30000"
+    volumes:
+      - fuseki:/fuseki-base
+    labels:
+      - traefik.enable=true
+      # alleen het SPARQL-leespad publiek; de rest van data.dev gaat naar de api
+      - traefik.http.routers.sparql.rule=Host(`data.dev.iotm.nl`) && Path(`/sparql`)
+      - traefik.http.routers.sparql.priority=20
+      - traefik.http.routers.sparql.tls.certresolver=letsencrypt
+      - traefik.http.routers.sparql.middlewares=sparql-pad
+      - traefik.http.middlewares.sparql-pad.replacepath.path=/ds/sparql
+      - traefik.http.services.sparql.loadbalancer.server.port=3030
+
   authentik-server:
     image: ghcr.io/goauthentik/server:2025.6
     restart: unless-stopped
@@ -220,6 +243,8 @@ services:
       JOTTEM_ANNO_URL: http://annorepo:8080
       JOTTEM_ANNO_BASIS_URL: ${ANNO_PUBLIEK:-https://anno.dev.iotm.nl}
       JOTTEM_ANNO_API_KEY: ${ANNO_API_KEY}
+      JOTTEM_FUSEKI_URL: http://fuseki:3030/ds
+      JOTTEM_DATA_BASIS_URL: ${DATA_PUBLIEK:-https://data.dev.iotm.nl}
       JOTTEM_SMTP_HOST: mailpit
       JOTTEM_SMTP_PORT: 1025
     depends_on:
@@ -231,6 +256,11 @@ services:
       - traefik.enable=true
       - traefik.http.routers.api.rule=Host(`api.dev.iotm.nl`)
       - traefik.http.routers.api.tls.certresolver=letsencrypt
+      # datasetbeschrijving, dump, datacatalogus en feeds ook op data.dev (URI-strategie)
+      - traefik.http.routers.data.rule=Host(`data.dev.iotm.nl`)
+      - traefik.http.routers.data.priority=10
+      - traefik.http.routers.data.tls.certresolver=letsencrypt
+      - traefik.http.routers.data.service=api
       - traefik.http.services.api.loadbalancer.server.port=8000
 
   worker:
@@ -248,6 +278,8 @@ services:
       JOTTEM_ANNO_URL: http://annorepo:8080
       JOTTEM_ANNO_BASIS_URL: ${ANNO_PUBLIEK:-https://anno.dev.iotm.nl}
       JOTTEM_ANNO_API_KEY: ${ANNO_API_KEY}
+      JOTTEM_FUSEKI_URL: http://fuseki:3030/ds
+      JOTTEM_DATA_BASIS_URL: ${DATA_PUBLIEK:-https://data.dev.iotm.nl}
       JOTTEM_SMTP_HOST: mailpit
       JOTTEM_SMTP_PORT: 1025
     depends_on:
@@ -288,3 +320,4 @@ volumes:
   valkey:
   minio:
   mongo:
+  fuseki:

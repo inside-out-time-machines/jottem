@@ -79,24 +79,20 @@ async def jottem(media_id: uuid.UUID, request: Request, db: Session = Depends(ge
     if media.status != MediaStatus.goedgekeurd:
         raise HTTPException(404, "Jottem niet gepubliceerd")
 
-    accept = request.headers.get("accept", "")
-    detail = _detail(db, media)
+    # content negotiation (data-architectuur): HTML voor mensen, RDF conform
+    # schema.org AP NDE voor machines (JSON-LD, Turtle of RDF/XML)
+    from .. import rdf
+    from fastapi.responses import Response
 
+    accept = request.headers.get("accept", "")
+    if "text/turtle" in accept:
+        return Response(rdf.serialiseer(rdf.jottem_jsonld(db, media), "turtle"),
+                        media_type="text/turtle")
+    if "application/rdf+xml" in accept:
+        return Response(rdf.serialiseer(rdf.jottem_jsonld(db, media), "xml"),
+                        media_type="application/rdf+xml")
     if "application/ld+json" in accept or "application/json" in accept:
-        return JSONResponse({
-            "@context": "https://schema.org",
-            "@id": f"{settings().publieke_basis_url}/jottem/{media_id}",
-            "@type": "ImageObject",
-            "name": detail.titel,
-            "description": detail.beschrijving,
-            "genre": detail.genre,
-            "license": detail.licentie,
-            "creator": {"@type": "Organization", "name": detail.organisatie},
-            "isPartOf": {"@type": "Collection", "name": detail.project},
-            "contentUrl": detail.afbeeldingUrl,
-            "datePublished": detail.publicatieDatum.isoformat() if detail.publicatieDatum else None,
-            "dateModified": detail.wijzigingsDatum.isoformat(),
-        }, media_type="application/ld+json")
+        return JSONResponse(rdf.jottem_jsonld(db, media), media_type="application/ld+json")
 
     # HTML-weergave leeft in de frontend: 303 See Other (content negotiation conform design)
     return RedirectResponse(

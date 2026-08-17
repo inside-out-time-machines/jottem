@@ -38,8 +38,12 @@ def _aantal_openbaar(db: Session, project_id: uuid.UUID) -> int:
 def _dataset_jsonld(db: Session, project: Project) -> dict:
     organisatie = db.get(Organisatie, project.organisatieId)
     cfg = settings()
-    dataset_url = f"{cfg.api_basis_url}/project/{project.projectId}/dataset"
+    dataset_url = f"{cfg.data_basis_url}/project/{project.projectId}/dataset"
     publisher_id = organisatie.website or f"{cfg.publieke_basis_url}/organisatie/{organisatie.slug}"
+    laatste_wijziging = db.scalar(
+        select(func.max(Media.wijzigingsDatum)).where(
+            Media.projectId == project.projectId, Media.status == MediaStatus.goedgekeurd)
+    )
     dataset = {
         "@context": "https://schema.org/",
         "@id": dataset_url,
@@ -53,11 +57,27 @@ def _dataset_jsonld(db: Session, project: Project) -> dict:
             "name": organisatie.naam,
         },
         "inLanguage": ["nl"],
-        "distribution": [{
-            "@type": "DataDownload",
-            "encodingFormat": "application/ld+json",
-            "contentUrl": dataset_url,
-        }],
+        "dateModified": laatste_wijziging.isoformat() if laatste_wijziging else None,
+        "temporalCoverage": project.periode,
+        "includedInDataCatalog": {"@id": f"{cfg.data_basis_url}/datacatalog"},
+        # alle toegangswegen tot de projectdata als distributie (aanbeveling in de
+        # data-architectuur, sectie aanvullende distributies)
+        "distribution": [
+            {"@type": "DataDownload", "encodingFormat": "application/n-triples",
+             "contentUrl": f"{cfg.data_basis_url}/project/{project.projectId}/dump.nt.gz"},
+            {"@type": "DataDownload", "encodingFormat": "application/sparql-results+json",
+             "contentUrl": f"{cfg.data_basis_url}/sparql"},
+            {"@type": "DataDownload",
+             "encodingFormat": 'application/ld+json;profile="http://iiif.io/api/presentation/3/context.json"',
+             "contentUrl": f"{cfg.api_basis_url}/project/{project.projectId}/iiif/collection"},
+            {"@type": "DataDownload", "encodingFormat": "application/rss+xml",
+             "contentUrl": f"{cfg.api_basis_url}/project/{project.projectId}/rss"},
+            {"@type": "DataDownload",
+             "encodingFormat": 'application/ld+json;profile="http://www.w3.org/ns/anno.jsonld"',
+             "contentUrl": f"{cfg.api_basis_url}/project/{project.projectId}/annotations"},
+            {"@type": "DataDownload", "encodingFormat": "application/ld+json",
+             "contentUrl": f"{cfg.api_basis_url}/organisatie/{organisatie.slug}/activity-stream"},
+        ],
     }
     return {sleutel: waarde for sleutel, waarde in dataset.items() if waarde is not None}
 

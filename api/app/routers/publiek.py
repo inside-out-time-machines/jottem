@@ -111,6 +111,7 @@ async def project_publiek(
         .offset((pagina - 1) * PAGINA_GROOTTE).limit(PAGINA_GROOTTE)
     ).all()
     return ProjectPubliek(
+        projectId=project.projectId,
         naam=project.naam,
         slug=project.slug,
         organisatieSlug=organisatie.slug,

@@ -14,10 +14,11 @@ from celery import Celery
 from celery.schedules import crontab
 from sqlalchemy import select
 
+from . import fuseki
 from .config import settings
 from .db import SessionLocal
 from .mail import basis_context, verstuur
-from .models import Gebeurtenislog, Gebruiker, Media, nu
+from .models import Gebeurtenislog, Gebruiker, Media, Project, nu
 
 celery = Celery("jottem", broker=settings().valkey_url, backend=None)
 celery.conf.beat_schedule = {
@@ -26,6 +27,12 @@ celery.conf.beat_schedule = {
     "attenderingen-bundel": {
         "task": "app.worker.verstuur_attenderingen",
         "schedule": crontab(hour=18, minute=0),
+    },
+    # nachtelijke RDF-reconciliatie: alle projectgrafen herbouwen uit PostgreSQL
+    # (reproduceerbaarheidsregel uit de data-architectuur)
+    "rdf-hersync": {
+        "task": "app.worker.hersync_rdf",
+        "schedule": crontab(hour=4, minute=30),
     },
 }
 celery.conf.timezone = "Europe/Amsterdam"
@@ -65,9 +72,39 @@ def verwerk_outbox() -> int:
             regel.verwerktOp = nu()
             verwerkt += 1
         db.commit()
+
+        # 4. RDF-sync: geraakte projectgrafen herbouwen (outbox-regel uit de
+        #    data-architectuur; ook annotatiemutaties raken dateModified)
+        geraakt = {
+            regel.projectId for regel in regels
+            if regel.projectId and regel.type.startswith(("jottem", "annotatie", "dataset"))
+        }
+        for project_id in geraakt:
+            project = db.get(Project, project_id)
+            if project:
+                try:
+                    fuseki.sync_project_graaf(db, project)
+                except Exception:  # noqa: BLE001 - de nachtelijke hersync repareert
+                    pass
     finally:
         db.close()
     return verwerkt
+
+
+@celery.task(name="app.worker.hersync_rdf")
+def hersync_rdf() -> int:
+    """Herbouw alle projectgrafen in Fuseki uit PostgreSQL (nachtelijk)."""
+    db = SessionLocal()
+    aantal = 0
+    try:
+        for project in db.scalars(select(Project)):
+            try:
+                aantal += fuseki.sync_project_graaf(db, project)
+            except Exception:  # noqa: BLE001
+                pass
+    finally:
+        db.close()
+    return aantal
 
 
 def sync_creator_naam(db, gebruikers_id: int) -> int:
