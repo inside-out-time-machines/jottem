@@ -118,6 +118,7 @@ export default function Interactief({ detail }: { detail: Detail }) {
   const [zoekTekst, setZoekTekst] = useState("");
   const [zoekResultaten, setZoekResultaten] = useState<{ uri: string; label: string; bron: string | null }[]>([]);
   const annotatorRef = useRef<OsdAnnotator | null>(null);
+  const [annotatorGereed, setAnnotatorGereed] = useState(false);
   const dialoogRef = useRef<HTMLDialogElement>(null);
 
   const headers = { "Content-Type": "application/json", ...authHeaders(DEV_SUB, DEV_NAAM) };
@@ -138,9 +139,6 @@ export default function Interactief({ detail }: { detail: Detail }) {
         } else pagina = null;
       }
       setAnnotaties(alles);
-      // vlak-annotaties op de viewer tonen
-      const vlakken = alles.filter(heeftVlak);
-      annotatorRef.current?.setAnnotations(vlakken);
     } catch {
       setAnnotaties([]);
     }
@@ -157,6 +155,13 @@ export default function Interactief({ detail }: { detail: Detail }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [laadAnnotaties]);
+
+  // vlak-annotaties op de viewer tonen zodra beide er zijn (de laag is soms later
+  // klaar dan de annotaties, en andersom)
+  useEffect(() => {
+    if (!annotatorGereed) return;
+    annotatorRef.current?.setAnnotations(annotaties.filter(heeftVlak));
+  }, [annotaties, annotatorGereed]);
 
   // Termennetwerk-zoek met kleine debounce (OB-3: beperkt tot de projectbronnen)
   useEffect(() => {
@@ -196,6 +201,7 @@ export default function Interactief({ detail }: { detail: Detail }) {
 
   function annotatorKlaar(annotator: OsdAnnotator) {
     annotatorRef.current = annotator;
+    setAnnotatorGereed(true);
     annotator.setDrawingTool("rectangle");
     annotator.on("createAnnotation", (...args: unknown[]) => {
       const a = args[0] as W3CAnnotatie;
