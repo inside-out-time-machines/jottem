@@ -88,6 +88,9 @@ export default async function ProjectPagina({
 
   return (
     <main>
+      {project.logoUrl && (
+        <img src={project.logoUrl} alt="" className="organisatie-logo organisatie-logo-rechts" />
+      )}
       <p style={{ fontSize: ".95rem" }}>
         <a href={`/organisatie/${project.organisatieSlug}`}>{project.organisatieNaam}</a>
       </p>
