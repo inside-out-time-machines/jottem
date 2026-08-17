@@ -1,0 +1,27 @@
+# Tutoyeer-patch voor de Nederlandse authentik web-UI (zie patch-locale.sh).
+# Tab-gescheiden: origineel<TAB>vervanging; exacte ruwe-bestandsmatch, incl. \x-escapes.
+Heeft u een account nodig?	Heb je een account nodig?
+Meld u aan.	Meld je aan.
+Controleer uw Postvak IN voor een verificatie-e-mail.	Controleer je Postvak IN voor een verificatie-e-mail.
+Er is een code naar u verzonden via sms.	Er is een code naar je verzonden via sms.
+Gebruik een beveiligingssleutel om uw identiteit te bewijzen.	Gebruik een beveiligingssleutel om je identiteit te bewijzen.
+In het geval dat u geen toegang heeft tot een andere methode.	Voor het geval je geen toegang hebt tot een andere methode.
+Koppel uw gebruikersaccount aan de hieronder vermelde diensten om in te loggen met behulp van de dienst in plaats van traditionele referenties.	Koppel je gebruikersaccount aan de onderstaande diensten om daarmee in te loggen in plaats van met een wachtwoord.
+Of er zijn geen toepassingen gedefinieerd, of u heeft geen toegang tot een van hen.	Of er zijn geen toepassingen gedefinieerd, of je hebt er geen toegang toe.
+Of klik op deze link als uw huidige apparaat Duo ge\xEFnstalleerd heeft:	Of klik op deze link als je huidige apparaat Duo ge\xEFnstalleerd heeft:
+Ontvang een pushmelding op uw apparaat.	Ontvang een pushmelding op je apparaat.
+Open uw authenticator-app met twee factoren om uw verificatiecode te bekijken.	Open je authenticator-app om je verificatiecode te bekijken.
+Selecteer Ja om het aantal keren dat u wordt gevraagd om u aan te melden te verminderen.	Selecteer Ja om minder vaak te hoeven inloggen.
+U heeft uw apparaat succesvol geauthenticeerd.	Je hebt je apparaat succesvol geverifieerd.
+U kunt deze pagina nu sluiten.	Je kunt deze pagina nu sluiten.
+U wordt zo naar de volgende URL omgeleid.	Je wordt zo doorgestuurd naar:
+Voer de code in die op uw apparaat wordt weergegeven.	Voer de code in die op je apparaat staat.
+Voer de code in die u via sms heeft ontvangen	Voer de code in die je via sms hebt ontvangen
+Voer uw TOTP-code in	Voer je TOTP-code in
+Voer uw code in	Voer je code in
+Voer uw telefoonnummer in.	Voer je telefoonnummer in.
+Voer uw wachtwoord in	Voer je wachtwoord in
+Wijzig uw wachtwoord	Wijzig je wachtwoord
+Zorg ervoor dat u deze tokens op een veilige plaats bewaart.	Zorg ervoor dat je deze tokens op een veilige plek bewaart.
+Login to continue to ${0}.	Log in om verder te gaan naar ${0}.
+"Gebruikersnaam"	"gebruikersnaam"

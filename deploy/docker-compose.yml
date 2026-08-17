@@ -217,6 +217,9 @@ services:
       - ./authentik-assets/icon_left_brand.png:/web/icons/icon_left_brand.png:ro
       # mailtemplates in Jottem-huisstijl; /templates staat vóór de ingebouwde templates
       - ./authentik-templates:/templates:ro
+      # tutoyeer-patch op de Nederlandse web-UI-vertaling (zie authentik-locale/
+      # patch-locale.sh); de chunknaam wisselt per release: script opnieuw draaien
+      - ./authentik-locale/chunks/H73SQ3W6.js:/web/dist/src/locales/chunks/H73SQ3W6.js:ro
     depends_on:
       postgres:
         condition: service_healthy
