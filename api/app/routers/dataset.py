@@ -59,7 +59,8 @@ def _dataset_jsonld(db: Session, project: Project) -> dict:
             "name": {"@value": organisatie.naam, "@language": "nl"},
         },
         "inLanguage": ["nl"],
-        "dateModified": laatste_wijziging.isoformat() if laatste_wijziging else None,
+        # ISO 8601 op secondenprecisie (xsd:dateTime), bijv. 2026-04-14T10:30:00
+        "dateModified": laatste_wijziging.strftime("%Y-%m-%dT%H:%M:%S") if laatste_wijziging else None,
         "temporalCoverage": project.periode,
         "includedInDataCatalog": {"@id": f"{cfg.data_basis_url}/datacatalog"},
         # alle toegangswegen tot de projectdata als distributie (aanbeveling in de
