@@ -1,7 +1,7 @@
 """Ingelogde-gebruiker-endpoints en publieke hulplijsten voor de frontend."""
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -128,6 +128,38 @@ def _aantal_annotaties(db: Session, project_id) -> int:
     totaal = sum(len(anno.alle_annotaties(str(m))) for m in media_ids)
     valkey.setex(sleutel, 300, totaal)
     return totaal
+
+
+@router.get("/deelnemers")
+async def deelnemers(
+    ids: str = Query(description="komma-gescheiden publiekeId's uit de creator-IRI's"),
+    db: Session = Depends(get_db),
+):
+    """Publiek: naam en profielfoto bij de creator van een annotatie of reactie, zodat
+    de jottempagina die naast een bijdrage kan tonen. Wie zijn naam niet publiek deelt,
+    komt hier niet in voor (dan toont de pagina de anonieme weergave)."""
+    gevraagd = []
+    for waarde in ids.split(",")[:100]:
+        waarde = waarde.strip().removeprefix("urn:uuid:")
+        try:
+            gevraagd.append(uuid.UUID(waarde))
+        except ValueError:
+            continue
+    if not gevraagd:
+        return []
+    rijen = db.scalars(
+        select(Gebruiker).where(Gebruiker.publiekeId.in_(gevraagd),
+                                Gebruiker.naamPubliek.is_(True))
+    ).all()
+    return [
+        {
+            "publiekeId": str(g.publiekeId),
+            "naam": g.naam,
+            "afbeeldingUrl": s3.presigned_get(g.afbeelding, bucket=settings().s3_bucket_thumbs)
+                             if g.afbeelding else None,
+        }
+        for g in rijen
+    ]
 
 
 @router.get("/organisaties")

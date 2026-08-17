@@ -5,6 +5,7 @@ import { API_PUBLIEK, authHeaders, isIngelogd } from "@/lib/api";
 import { startLogin } from "@/lib/oidc";
 import Viewer, { OsdAnnotator, ViewerBesturing } from "./viewer";
 import ZichtveldKiezer from "./zichtveld-kiezer";
+import Deelnemer from "../../deelnemer";
 
 type Verrijking = { sleutel: string; label: string; cta: string; motivation: string; doel: string };
 export type Detail = {
@@ -124,6 +125,8 @@ export default function Interactief({ detail }: { detail: Detail }) {
   const annotatorRef = useRef<OsdAnnotator | null>(null);
   const [annotatorGereed, setAnnotatorGereed] = useState(false);
   const besturingRef = useRef<ViewerBesturing | null>(null);
+  // profielfoto's bij de creator-IRI's van de annotaties op deze pagina
+  const [fotos, setFotos] = useState<Record<string, string | null>>({});
   const dialoogRef = useRef<HTMLDialogElement>(null);
 
   const headers = { "Content-Type": "application/json", ...authHeaders(DEV_SUB, DEV_NAAM) };
@@ -168,6 +171,24 @@ export default function Interactief({ detail }: { detail: Detail }) {
     annotatorRef.current?.setAnnotations(annotaties.filter(heeftVlak));
   }, [annotaties, annotatorGereed]);
 
+  // wie heeft wat geplaatst: de foto's horen bij de gebruiker, niet bij de annotatie,
+  // dus die halen we los op (alleen van deelnemers die hun naam publiek delen)
+  useEffect(() => {
+    const ids = [...new Set(annotaties
+      .map((a) => a.creator?.id)
+      .filter((id): id is string => Boolean(id?.startsWith("urn:uuid:")))
+      .map((id) => id.replace("urn:uuid:", "")))];
+    if (ids.length === 0) return;
+    fetch(`${API_PUBLIEK}/deelnemers?ids=${ids.join(",")}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rijen: { publiekeId: string; afbeeldingUrl: string | null }[]) =>
+        setFotos(Object.fromEntries(rijen.map((r) => [r.publiekeId, r.afbeeldingUrl]))))
+      .catch(() => {});
+  }, [annotaties]);
+
+  const foto = (a: W3CAnnotatie) =>
+    fotos[(a.creator?.id ?? "").replace("urn:uuid:", "")] ?? null;
+
   // Termennetwerk-zoek met kleine debounce (OB-3: beperkt tot de projectbronnen)
   useEffect(() => {
     if (zoekTekst.length < 2) { setZoekResultaten([]); return; }
@@ -196,7 +217,7 @@ export default function Interactief({ detail }: { detail: Detail }) {
           </p>
         ))}
         <p className="kader-popup-voet">
-          {a.creator?.name ?? "Een deelnemer"}
+          <Deelnemer naam={a.creator?.name} afbeeldingUrl={foto(a)} datum={a.created} />
           {" · "}
           <a href={`#${naamUitIri(a.id)}`}>lees verder</a>
         </p>
@@ -504,8 +525,7 @@ export default function Interactief({ detail }: { detail: Detail }) {
                   </p>
                 ))}
                 <p className="annotatie-voet">
-                  {a.creator?.name ?? "Een deelnemer"}
-                  {a.created && ` · ${new Date(a.created).toLocaleDateString("nl-NL")}`}
+                  <Deelnemer naam={a.creator?.name} afbeeldingUrl={foto(a)} datum={a.created} />
                   <button className="annotatie-actie" onClick={() => startReactie(a)}>reageer</button>
                   <button className="annotatie-actie" onClick={() => startMelding(a)}>meld</button>
                   {isEigen(a) && (
@@ -519,8 +539,8 @@ export default function Interactief({ detail }: { detail: Detail }) {
                   <div className="annotatie-reactie" key={reactie.id}>
                     {weergave(reactie, catalogus).teksten.map((t, i) => <p key={i}>{t}</p>)}
                     <p className="annotatie-voet">
-                      {reactie.creator?.name ?? "Een deelnemer"}
-                      {reactie.created && ` · ${new Date(reactie.created).toLocaleDateString("nl-NL")}`}
+                      <Deelnemer naam={reactie.creator?.name} afbeeldingUrl={foto(reactie)}
+                                 datum={reactie.created} />
                       <button className="annotatie-actie" onClick={() => startMelding(reactie)}>meld</button>
                       {isEigen(reactie) && (
                         <button className="annotatie-actie" onClick={() => verwijderAnnotatie(reactie)}>verwijder</button>

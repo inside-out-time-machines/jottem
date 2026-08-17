@@ -91,11 +91,16 @@ a:hover { color: var(--oranje); }
         border-top: 1px solid color-mix(in srgb, currentColor 25%, transparent);
         box-shadow: 0 10px 24px rgba(31,30,28,.35); padding: .4rem 0 .8rem;
     }
+    /* gecentreerd en met ruime raakvlakken (minstens 48px hoog), zodat je op een
+       telefoon niet naast een item tikt */
+    .topbar nav.menu-open { text-align: center; }
     .topbar nav.menu-open > a,
-    .topbar nav.menu-open > span { padding: .8rem 1.5rem; }
-    .topbar nav.menu-open > span {
-        display: flex; flex-direction: column; align-items: flex-start; gap: .8rem;
+    .topbar nav.menu-open > span,
+    .topbar nav.menu-open button {
+        display: flex; align-items: center; justify-content: center;
+        min-height: 3rem; padding: .9rem 1.5rem; width: 100%;
     }
+    .topbar nav.menu-open > span { flex-direction: column; gap: .5rem; padding: .4rem 0; }
 }
 
 main { max-width: 68rem; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
@@ -307,6 +312,18 @@ dialog.dialoog h2 { font-family: var(--kop); font-size: 1.35rem; margin-bottom: 
 }
 .aard-herinnering { color: var(--roest); border-color: var(--roest); background: var(--papier); }
 .aard-feit { color: #2f5d50; border-color: #2f5d50; background: #eef5f2; }
+/* "wie heeft dit geplaatst": foto (of poppetje) met een zin, zie app/deelnemer.tsx */
+.deelnemer { display: inline-flex; align-items: center; gap: .45rem; }
+.deelnemer strong { font-weight: 600; }
+.deelnemer-foto {
+    width: 1.5rem; height: 1.5rem; border-radius: 50%; object-fit: cover;
+    border: 1px solid var(--kartonrand); flex: none;
+}
+.deelnemer-leeg {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--karton); color: var(--grijs);
+}
+
 .annotatie-voet {
     margin-top: .55rem; font-size: .85rem; color: var(--grijs);
     display: flex; gap: .7rem; align-items: center; flex-wrap: wrap;

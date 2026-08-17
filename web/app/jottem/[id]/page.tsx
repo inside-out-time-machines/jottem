@@ -1,5 +1,6 @@
 import { apiServer } from "@/lib/api";
 import OpenGraph from "../../open-graph";
+import Deelnemer from "../../deelnemer";
 import { kopVoetCss, projectStijl } from "@/lib/kleuren";
 import Interactief, { Detail as InteractiefDetail } from "./interactief";
 
@@ -16,6 +17,8 @@ type Detail = InteractiefDetail & {
   metadata: Record<string, string>;
   iiifManifest: string | null;
   publicatieDatum: string | null;
+  uploaderNaam: string | null;
+  uploaderAfbeeldingUrl: string | null;
   bron: string;
   bronUrl: string | null;
   breedte: number | null;
@@ -137,7 +140,15 @@ export default async function JottemPagina({
         </p>
       )}
       {jottem.beschrijving && <p style={{ marginTop: "1.2rem", maxWidth: "42rem" }}>{jottem.beschrijving}</p>}
-      <table className="lijst" style={{ maxWidth: "36rem" }}>
+      <p style={{ marginTop: "1.2rem", fontSize: ".9rem", color: "var(--grijs)" }}>
+        <Deelnemer
+          naam={jottem.uploaderNaam}
+          afbeeldingUrl={jottem.uploaderAfbeeldingUrl}
+          datum={jottem.publicatieDatum}
+          wat="deze jottem"
+        />
+      </p>
+      <table className="lijst" style={{ maxWidth: "36rem", marginTop: ".6rem" }}>
         <tbody>
           {jottem.genre && (
             <tr><th>Genre</th><td>{jottem.genre}</td></tr>

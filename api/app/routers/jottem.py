@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from .. import anno, iiif, s3
 from ..config import settings
 from ..db import get_db
-from ..models import Media, MediaStatus, Organisatie, Project
+from ..models import Gebruiker, Media, MediaStatus, Organisatie, Project
 from ..schemas import JottemDetail, VerrijkingUit
 from ..verrijkingen import actieve_verrijkingen
 
@@ -61,6 +61,8 @@ def iiif_rights(licentie: str | None) -> str | None:
 def _detail(db: Session, media: Media) -> JottemDetail:
     organisatie = db.get(Organisatie, media.organisatieId)
     project = db.get(Project, media.projectId)
+    uploader = db.get(Gebruiker, media.uploaderId)
+    toon_uploader = bool(uploader and uploader.naamPubliek)
     service = _iiif_service(media)
     gepubliceerd = media.status == MediaStatus.goedgekeurd
     return JottemDetail(
@@ -91,6 +93,10 @@ def _detail(db: Session, media: Media) -> JottemDetail:
         iiifManifest=f"{settings().api_basis_url}/jottem/{media.mediaId}/iiif/manifest" if service else None,
         publicatieDatum=media.publicatieDatum,
         wijzigingsDatum=media.wijzigingsDatum,
+        uploaderNaam=uploader.naam if toon_uploader else None,
+        uploaderAfbeeldingUrl=s3.presigned_get(
+            uploader.afbeelding, bucket=settings().s3_bucket_thumbs)
+        if toon_uploader and uploader.afbeelding else None,
         annotatiesUrl=anno.container_url_publiek(str(media.mediaId)) if gepubliceerd else None,
         canvas=canvas_iri(media) if gepubliceerd else None,
         verrijkingen=[

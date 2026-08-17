@@ -178,6 +178,9 @@ class JottemDetail(BaseModel):
     iiifManifest: str | None = None
     publicatieDatum: datetime | None
     wijzigingsDatum: datetime
+    # inzender: naam en profielfoto alleen als die publiek mag (Gebruiker.naamPubliek)
+    uploaderNaam: str | None = None
+    uploaderAfbeeldingUrl: str | None = None
     annotatiesUrl: str | None = None    # publieke AnnoRepo-container (W3C)
     canvas: str | None = None           # canvas-IRI voor vlak-annotaties
     verrijkingen: list["VerrijkingUit"] = []   # ingeschakelde CTA's van het project (V-2)
