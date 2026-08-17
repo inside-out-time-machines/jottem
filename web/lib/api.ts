@@ -1,6 +1,7 @@
 // API-toegang. Server-side gebruikt het interne compose-adres, de browser het publieke.
 export const API_INTERN = process.env.JOTTEM_API_INTERN ?? "http://api:8000";
 export const API_PUBLIEK = process.env.NEXT_PUBLIC_API_URL ?? "https://api.dev.iotm.nl";
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://dev.iotm.nl";
 
 // Dev-bypass (alleen actief als de API met JOTTEM_DEV_AUTH=1 draait): identiteit voor
 // browser-calls tijdens het fundament, totdat de Authentik-loginflow is aangesloten.

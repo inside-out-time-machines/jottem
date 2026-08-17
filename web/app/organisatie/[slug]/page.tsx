@@ -1,4 +1,4 @@
-import { apiServer } from "@/lib/api";
+import { API_PUBLIEK, apiServer } from "@/lib/api";
 import { notFound } from "next/navigation";
 
 type OrganisatiePubliek = {
@@ -18,6 +18,37 @@ type OrganisatiePubliek = {
     aantalJottems: number;
   }[];
 };
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  try {
+    const organisatie = await apiServer<OrganisatiePubliek>(`/organisatie/${slug}/publiek`);
+    return {
+      title: `${organisatie.naam} · Jottem`,
+      description: organisatie.beschrijving ?? undefined,
+      alternates: {
+        types: {
+          "application/rss+xml": [{
+            url: `${API_PUBLIEK}/organisatie/${slug}/rss`,
+            title: `Nieuwe jottems van ${organisatie.naam}`,
+          }],
+        },
+      },
+      openGraph: {
+        type: "website",
+        locale: "nl_NL",
+        url: `/organisatie/${slug}`,
+        title: `${organisatie.naam} · Jottem`,
+        description: organisatie.beschrijving ?? undefined,
+        images: organisatie.logoUrl
+          ? [{ url: organisatie.logoUrl, alt: `Logo van ${organisatie.naam}` }]
+          : undefined,
+      },
+    };
+  } catch {
+    return {};
+  }
+}
 
 // publieke organisatiepagina (BE-1): leesbaar zonder account
 export default async function OrganisatiePagina({

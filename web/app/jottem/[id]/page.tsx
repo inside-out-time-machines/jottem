@@ -17,6 +17,37 @@ type Detail = InteractiefDetail & {
   bronUrl: string | null;
 };
 
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  try {
+    const jottem = await apiServer<Detail>(`/jottem/${id}/detail`);
+    if (jottem.status !== "goedgekeurd") return {};
+    // duurzame og:image: de (eigen of externe) IIIF-service of de bron-URL;
+    // presigned S3-URL's verlopen en zijn ongeschikt voor social previews
+    const beeld = jottem.iiifService
+      ? `${jottem.iiifService}/full/!1200,1200/0/default.jpg`
+      : jottem.bron === "url"
+        ? jottem.bronUrl
+        : jottem.afbeeldingUrl;
+    const beschrijving = jottem.beschrijving
+      ?? `Een jottem uit het project ${jottem.project} van ${jottem.organisatie}.`;
+    return {
+      title: `${jottem.titel} · Jottem`,
+      description: beschrijving,
+      openGraph: {
+        type: "article",
+        locale: "nl_NL",
+        url: `/jottem/${id}`,
+        title: jottem.titel,
+        description: beschrijving,
+        images: beeld ? [{ url: beeld, alt: jottem.titel }] : undefined,
+      },
+    };
+  } catch {
+    return {};
+  }
+}
+
 export default async function JottemPagina({
   params,
 }: {

@@ -1,4 +1,19 @@
+import type { Metadata } from "next";
 import { apiServer } from "@/lib/api";
+
+export const metadata: Metadata = {
+  openGraph: {
+    type: "website",
+    locale: "nl_NL",
+    url: "/",
+    title: "Jottem",
+    description:
+      "Deel je foto's en herinneringen met de erfgoedprojecten van Jottem, " +
+      "het participatieve erfgoedplatform van Inside Out Time Machines.",
+    images: [{ url: "/logo/jottem-woordmerk@2x.png", width: 1180, height: 300,
+               alt: "Het Jottem-woordmerk: een oranje spraakwolk als O" }],
+  },
+};
 
 type Project = {
   projectId: string;

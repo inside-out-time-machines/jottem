@@ -1,0 +1,13 @@
+{
+  "name": "Jottem",
+  "short_name": "Jottem",
+  "description": "Jottem is het participatieve erfgoedplatform van Inside Out Time Machines: maak erfgoed van iedereen, door iedereen.",
+  "icons": [
+    { "src": "/logo/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/logo/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "theme_color": "#1f1e1c",
+  "background_color": "#faf6f1",
+  "display": "standalone",
+  "start_url": "/"
+}

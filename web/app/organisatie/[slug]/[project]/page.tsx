@@ -1,4 +1,4 @@
-import { apiServer } from "@/lib/api";
+import { API_PUBLIEK, apiServer } from "@/lib/api";
 import { notFound } from "next/navigation";
 
 type JottemTegel = {
@@ -25,6 +25,45 @@ type ProjectPubliek = {
   pagina: number;
   paginas: number;
 };
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string; project: string }>;
+}) {
+  const { slug, project: projectSlug } = await params;
+  try {
+    const project = await apiServer<ProjectPubliek>(
+      `/organisatie/${slug}/project/${projectSlug}/publiek`,
+    );
+    const afbeelding = project.afbeeldingUrl ?? project.logoUrl;
+    return {
+      title: `${project.naam} · ${project.organisatieNaam}`,
+      description: project.oproep ?? project.beschrijving ?? undefined,
+      // de RSS-feed van dit project als alternate-link in de head
+      alternates: {
+        types: {
+          "application/rss+xml": [{
+            url: `${API_PUBLIEK}/project/${project.projectId}/rss`,
+            title: `Nieuwe jottems in ${project.naam}`,
+          }],
+        },
+      },
+      openGraph: {
+        type: "website",
+        locale: "nl_NL",
+        url: `/organisatie/${slug}/${projectSlug}`,
+        title: `${project.naam} · ${project.organisatieNaam}`,
+        description: project.oproep ?? project.beschrijving ?? undefined,
+        images: afbeelding
+          ? [{ url: afbeelding, alt: `${project.naam} (${project.organisatieNaam})` }]
+          : undefined,   // zonder eigen beeld geldt het woordmerk uit de layout
+      },
+    };
+  } catch {
+    return {};
+  }
+}
 
 // publieke projectpagina met alle gepubliceerde jottems (BE-1/BE-2): zonder account
 export default async function ProjectPagina({

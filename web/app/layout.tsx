@@ -1,14 +1,31 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { SITE_URL } from "@/lib/api";
 import InlogKnop from "./inlog-knop";
 import NavLinks from "./nav-links";
 
+const BESCHRIJVING =
+  "Jottem is het participatieve erfgoedplatform van Inside Out Time Machines: " +
+  "maak erfgoed van iedereen, door iedereen.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "Jottem",
-  description:
-    "Jottem is het participatieve erfgoedplatform van Inside Out Time Machines: " +
-    "maak erfgoed van iedereen, door iedereen.",
-  icons: { icon: "/favicon.ico" },
+  description: BESCHRIJVING,
+  icons: { icon: [{ url: "/favicon.svg", type: "image/svg+xml" }] },
+  manifest: "/site.webmanifest",
+  // sitebrede Open Graph-basis; pagina's met eigen inhoud (project, jottem)
+  // overschrijven dit via generateMetadata
+  openGraph: {
+    siteName: "Jottem",
+    type: "website",
+    locale: "nl_NL",
+    url: "/",
+    title: "Jottem",
+    description: BESCHRIJVING,
+    images: [{ url: "/logo/jottem-woordmerk@2x.png", width: 1180, height: 300,
+               alt: "Het Jottem-woordmerk: een oranje spraakwolk als O" }],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
