@@ -60,6 +60,9 @@ def verwerk_outbox() -> int:
             if regel.type == "jottem.goedgekeurd" and payload.get("mediaId"):
                 from .derivaten import maak_derivaat
                 maak_derivaat(uuid.UUID(payload["mediaId"]))
+                # de (lege) annotatiecontainer aanmaken: de containerlink wordt bij
+                # publicatie al geadverteerd (detail, IIIF-manifest) en mag geen 404 zijn
+                maak_annotatiecontainer(db, payload["mediaId"])
             # 2. mail
             mail = payload.get("mail")
             if mail:
@@ -93,7 +96,10 @@ def verwerk_outbox() -> int:
 
 @celery.task(name="app.worker.hersync_rdf")
 def hersync_rdf() -> int:
-    """Herbouw alle projectgrafen in Fuseki uit PostgreSQL (nachtelijk)."""
+    """Herbouw alle projectgrafen in Fuseki uit PostgreSQL (nachtelijk) en zorg dat
+    elke gepubliceerde jottem zijn annotatiecontainer heeft (vangnet)."""
+    from .models import MediaStatus
+
     db = SessionLocal()
     aantal = 0
     try:
@@ -102,9 +108,28 @@ def hersync_rdf() -> int:
                 aantal += fuseki.sync_project_graaf(db, project)
             except Exception:  # noqa: BLE001
                 pass
+        for media_id in db.scalars(select(Media.mediaId).where(
+                Media.status == MediaStatus.goedgekeurd)):
+            maak_annotatiecontainer(db, str(media_id))
     finally:
         db.close()
     return aantal
+
+
+def maak_annotatiecontainer(db, media_id: str) -> None:
+    """Best effort: bestaat de container niet, dan maakt de eerste annotatie hem alsnog."""
+    import httpx
+
+    from . import anno
+
+    media = db.get(Media, uuid.UUID(media_id))
+    if not media:
+        return
+    try:
+        with httpx.Client(timeout=15) as client:
+            anno.zorg_voor_container(client, media_id, f"Annotaties bij {media.titel}")
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def sync_creator_naam(db, gebruikers_id: int) -> int:
