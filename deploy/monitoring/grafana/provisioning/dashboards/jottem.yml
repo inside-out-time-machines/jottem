@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: jottem
+    folder: Jottem
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards

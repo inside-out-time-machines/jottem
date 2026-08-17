@@ -1,0 +1,65 @@
+# Basisalerts (per mail; in dev vangt Mailpit alles): component down en schijf vol.
+apiVersion: 1
+contactPoints:
+  - orgId: 1
+    name: beheer-mail
+    receivers:
+      - uid: beheer-mail
+        type: email
+        settings:
+          addresses: bob.coret@gmail.com
+policies:
+  - orgId: 1
+    receiver: beheer-mail
+    group_by: ["grafana_folder", "alertname"]
+groups:
+  - orgId: 1
+    name: basis
+    folder: Jottem
+    interval: 1m
+    rules:
+      - uid: component-down
+        title: Component down
+        condition: C
+        for: 5m
+        labels: { ernst: hoog }
+        annotations:
+          summary: "Een gescrapet component is niet bereikbaar (up == 0)."
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model: { expr: "up", instant: true, refId: A }
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              refId: C
+              conditions:
+                - evaluator: { type: lt, params: [1] }
+      - uid: schijf-vol
+        title: Schijf bijna vol
+        condition: C
+        for: 15m
+        labels: { ernst: hoog }
+        annotations:
+          summary: "De hostschijf is voor meer dan 85% gevuld."
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              expr: '100 * (1 - node_filesystem_avail_bytes{mountpoint="/",fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{mountpoint="/",fstype!~"tmpfs|overlay"})'
+              instant: true
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              refId: C
+              conditions:
+                - evaluator: { type: gt, params: [85] }
