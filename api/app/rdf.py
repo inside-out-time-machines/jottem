@@ -12,7 +12,7 @@ from rdflib import Graph
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import anno
+from . import anno, iiif
 from .config import settings
 from .models import Gebruiker, Media, MediaStatus, Organisatie, Project
 
@@ -36,7 +36,7 @@ def jottem_jsonld(db: Session, media: Media) -> dict:
     uploader = db.get(Gebruiker, media.uploaderId)
     metadata = {r.veld: r.waarde for r in media.metadataRijen}
     uri = jottem_uri(media.mediaId)
-    iiif = f"{cfg.iiif_basis_url}/iiif/3/{media.mediaId}.tif"
+    iiif_service = f"{cfg.iiif_basis_url}/iiif/3/{media.mediaId}.tif"
 
     doc: dict = {
         "@context": "https://schema.org/",
@@ -60,15 +60,17 @@ def jottem_jsonld(db: Session, media: Media) -> dict:
     }
     if media.bron == "iiif" and media.externeIiifService:
         doc["contentUrl"] = f"{media.externeIiifService}/full/max/0/default.jpg"
-        doc["thumbnailUrl"] = f"{media.externeIiifService}/full/!400,400/0/default.jpg"
+        doc["thumbnailUrl"] = iiif.afbeelding_url(
+            media.externeIiifService, media.breedte, media.hoogte, 400)
         doc["isBasedOn"] = {"@id": media.bronUrl}          # herkomst: de beeldbank
     elif media.bron == "url":
         doc["contentUrl"] = media.bronUrl
         doc["thumbnailUrl"] = media.bronUrl
         doc["isBasedOn"] = {"@id": media.bronUrl}
     elif media.breedte and media.hoogte:
-        doc["contentUrl"] = f"{iiif}/full/max/0/default.jpg"
-        doc["thumbnailUrl"] = f"{iiif}/full/!400,400/0/default.jpg"
+        doc["contentUrl"] = f"{iiif_service}/full/max/0/default.jpg"
+        doc["thumbnailUrl"] = iiif.afbeelding_url(
+            iiif_service, media.breedte, media.hoogte, 400)
     if media.genre:
         doc["genre"] = media.genre
         if metadata.get("genreUri"):

@@ -19,6 +19,8 @@ from urllib.parse import urlparse
 import httpx
 from fastapi import HTTPException
 
+from . import iiif
+
 FOTO_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp", "image/tiff"}
 MAX_FOTO_BYTES = 20 * 1024 * 1024
 
@@ -99,7 +101,7 @@ def _uit_manifest(manifest: dict, manifest_url: str, media_uuid: str | None) -> 
         raise HTTPException(422, "In het manifest is geen IIIF image service gevonden")
     return ExterneBron(
         bron="iiif", bronUrl=manifest_url,
-        previewUrl=f"{service}/full/!1200,1200/0/default.jpg",
+        previewUrl=iiif.afbeelding_url(service, breedte, hoogte, 1200),
         service=service, breedte=breedte, hoogte=hoogte, mimeType="image/jpeg",
     )
 
@@ -127,7 +129,8 @@ def resolve_beeldbank(url: str) -> ExterneBron:
                 service = document.get("id") or document.get("@id") or url.strip().removesuffix("/info.json")
                 return ExterneBron(
                     bron="iiif", bronUrl=url.strip(),
-                    previewUrl=f"{service}/full/!1200,1200/0/default.jpg",
+                    previewUrl=iiif.afbeelding_url(
+                        service, document.get("width"), document.get("height"), 1200),
                     service=service, breedte=document.get("width"),
                     hoogte=document.get("height"), mimeType="image/jpeg",
                 )
@@ -173,7 +176,7 @@ def resolve(soort: str, url: str) -> ExterneBron:
 
 def haal_beeld_bytes(bron: ExterneBron) -> bytes | None:
     """Verkleinde download voor de Herkenbaar-check (portretrecht)."""
-    doel = (f"{bron.service}/full/!1024,1024/0/default.jpg"
+    doel = (iiif.afbeelding_url(bron.service, bron.breedte, bron.hoogte, 1024)
             if bron.bron == "iiif" and bron.service else bron.bronUrl)
     try:
         with httpx.Client(timeout=30, follow_redirects=True) as client:

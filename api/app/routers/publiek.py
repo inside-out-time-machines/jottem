@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .. import anno, s3
+from .. import anno, iiif, s3
 from ..config import settings
 from ..db import get_db
 from ..models import Media, MediaStatus, Organisatie, Project
@@ -38,11 +38,14 @@ def thumbnail_url(media: Media) -> str | None:
     """IIIF-thumbnail (eigen of externe service), de foto-URL, of presigned origineel;
     bron-bewust, ook gebruikt door de RSS-feeds en IIIF Collections (opendata)."""
     if media.bron == "iiif" and media.externeIiifService:
-        return f"{media.externeIiifService}/full/!400,400/0/default.jpg"
+        return iiif.afbeelding_url(media.externeIiifService, media.breedte, media.hoogte, 400)
     if media.bron == "url":
         return media.bronUrl
     if media.breedte and media.hoogte:
-        return f"{settings().iiif_basis_url}/iiif/3/{media.mediaId}.tif/full/!400,400/0/default.jpg"
+        return iiif.afbeelding_url(
+            f"{settings().iiif_basis_url}/iiif/3/{media.mediaId}.tif",
+            media.breedte, media.hoogte, 400,
+        )
     return s3.presigned_get(media.objectKey) if media.objectKey else None
 
 

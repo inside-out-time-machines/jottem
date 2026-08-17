@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
-from .. import anno, s3
+from .. import anno, iiif, s3
 from ..config import settings
 from ..db import get_db
 from ..models import Media, MediaStatus, Organisatie, Project
@@ -38,7 +38,7 @@ def afbeelding_url(media: Media) -> str | None:
     """Getoonde afbeelding: presigned origineel (upload), IIIF-preview (beeldbank)
     of de foto-URL zelf (website)."""
     if media.bron == "iiif" and media.externeIiifService:
-        return f"{media.externeIiifService}/full/!1200,1200/0/default.jpg"
+        return iiif.afbeelding_url(media.externeIiifService, media.breedte, media.hoogte, 1200)
     if media.bron == "url":
         return media.bronUrl
     return s3.presigned_get(media.objectKey) if media.objectKey else None
