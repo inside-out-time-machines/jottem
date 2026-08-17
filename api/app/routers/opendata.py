@@ -13,7 +13,7 @@ from xml.sax.saxutils import escape
 
 import redis
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -107,14 +107,16 @@ async def project_collection(project_id: uuid.UUID, db: Session = Depends(get_db
 
 # ---------- IIIF Change Discovery ----------
 
-def _activiteiten(db: Session, organisatie_id: int) -> list[dict]:
-    """Create/Update/Delete-activiteiten van een organisatie, oplopend op endTime."""
-    rijen = db.scalars(
-        select(Media).where(
-            Media.organisatieId == organisatie_id,
-            Media.status.in_([MediaStatus.goedgekeurd, MediaStatus.gedepubliceerd]),
-        )
-    ).all()
+def _activiteiten(db: Session, *, organisatie_id: int | None = None,
+                  project_id: uuid.UUID | None = None) -> list[dict]:
+    """Create/Update/Delete-activiteiten (organisatie of project), oplopend op endTime."""
+    stmt = select(Media).where(
+        Media.status.in_([MediaStatus.goedgekeurd, MediaStatus.gedepubliceerd]))
+    if organisatie_id is not None:
+        stmt = stmt.where(Media.organisatieId == organisatie_id)
+    if project_id is not None:
+        stmt = stmt.where(Media.projectId == project_id)
+    rijen = db.scalars(stmt).all()
     activiteiten = []
     for m in rijen:
         manifest = {"id": _manifest_uri(m.mediaId), "type": "Manifest"}
@@ -131,13 +133,8 @@ def _activiteiten(db: Session, organisatie_id: int) -> list[dict]:
     return sorted(activiteiten, key=lambda a: a["endTime"])
 
 
-@router.get("/organisatie/{slug}/activity-stream")
-async def activity_stream(slug: str, pagina: int | None = Query(default=None, alias="page", ge=0),
-                          db: Session = Depends(get_db)):
+def _activity_stream(activiteiten: list[dict], basis: str, pagina: int | None) -> JSONResponse:
     """IIIF Change Discovery 1.0: OrderedCollection (zonder page) of een pagina."""
-    organisatie = _organisatie(db, slug)
-    activiteiten = _activiteiten(db, organisatie.organisatieId)
-    basis = f"{settings().api_basis_url}/organisatie/{slug}/activity-stream"
     laatste = max(0, math.ceil(len(activiteiten) / CD_PAGINA_GROOTTE) - 1)
 
     if pagina is None:
@@ -168,6 +165,30 @@ async def activity_stream(slug: str, pagina: int | None = Query(default=None, al
     }
     blad = {sleutel: waarde for sleutel, waarde in blad.items() if waarde is not None}
     return JSONResponse(blad, media_type="application/ld+json")
+
+
+@router.get("/organisatie/{slug}/activity-stream")
+async def activity_stream(slug: str, pagina: int | None = Query(default=None, alias="page", ge=0),
+                          db: Session = Depends(get_db)):
+    """Activity-stream van alle jottems van een organisatie (Change Discovery)."""
+    organisatie = _organisatie(db, slug)
+    return _activity_stream(
+        _activiteiten(db, organisatie_id=organisatie.organisatieId),
+        f"{settings().api_basis_url}/organisatie/{slug}/activity-stream", pagina)
+
+
+@router.get("/project/{project_id}/activity-stream")
+async def project_activity_stream(project_id: uuid.UUID,
+                                  pagina: int | None = Query(default=None, alias="page", ge=0),
+                                  db: Session = Depends(get_db)):
+    """Activity-stream van één project (Change Discovery); ook de distributie waarnaar
+    de projectdatasetbeschrijving verwijst."""
+    project = db.get(Project, project_id)
+    if not project:
+        raise HTTPException(404, "Project onbekend")
+    return _activity_stream(
+        _activiteiten(db, project_id=project_id),
+        f"{settings().api_basis_url}/project/{project_id}/activity-stream", pagina)
 
 
 # ---------- RSS 2.0 ----------
@@ -254,12 +275,12 @@ async def project_rss(project_id: uuid.UUID, db: Session = Depends(get_db)):
 
 # ---------- Datadump en datacatalogus ----------
 
-@router.get("/project/{project_id}/dump.nt.gz")
-async def project_dump(project_id: uuid.UUID, db: Session = Depends(get_db)):
+@router.get("/project/{project_id}/dump-{slug}.nt.gz")
+async def project_dump(project_id: uuid.UUID, slug: str, db: Session = Depends(get_db)):
     """N-Triples-dump van alle gepubliceerde jottems van een project (gecomprimeerd);
     de kern-distributie van de projectdataset en onderdeel van de exitstrategie."""
     project = db.get(Project, project_id)
-    if not project:
+    if not project or project.slug != slug:
         raise HTTPException(404, "Project onbekend")
     sleutel = f"dump:{project_id}"
     dump = _valkey.get(sleutel)
@@ -271,7 +292,20 @@ async def project_dump(project_id: uuid.UUID, db: Session = Depends(get_db)):
         _valkey.setex(sleutel, 3600, dump)
     return Response(
         dump, media_type="application/gzip",
-        headers={"Content-Disposition": f'attachment; filename="jottem-{project.slug}-dump.nt.gz"'},
+        headers={"Content-Disposition": f'attachment; filename="dump-{project.slug}.nt.gz"'},
+    )
+
+
+@router.get("/project/{project_id}/dump.nt.gz")
+async def project_dump_oud(project_id: uuid.UUID, db: Session = Depends(get_db)):
+    """De oude dump-URL zonder slug staat in eerder gepubliceerde datasetbeschrijvingen:
+    permanent doorverwijzen naar de naam met projectslug."""
+    project = db.get(Project, project_id)
+    if not project:
+        raise HTTPException(404, "Project onbekend")
+    return RedirectResponse(
+        f"{settings().data_basis_url}/project/{project_id}/dump-{project.slug}.nt.gz",
+        status_code=301,
     )
 
 

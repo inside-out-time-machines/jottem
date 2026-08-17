@@ -63,8 +63,8 @@ def _dataset_jsonld(db: Session, project: Project) -> dict:
         # alle toegangswegen tot de projectdata als distributie (aanbeveling in de
         # data-architectuur, sectie aanvullende distributies)
         "distribution": [
-            {"@type": "DataDownload", "encodingFormat": "application/n-triples",
-             "contentUrl": f"{cfg.data_basis_url}/project/{project.projectId}/dump.nt.gz"},
+            {"@type": "DataDownload", "encodingFormat": "application/n-triples+gzip",
+             "contentUrl": f"{cfg.data_basis_url}/project/{project.projectId}/dump-{project.slug}.nt.gz"},
             {"@type": "DataDownload", "encodingFormat": "application/sparql-results+json",
              "contentUrl": f"{cfg.data_basis_url}/sparql"},
             {"@type": "DataDownload",
@@ -76,7 +76,7 @@ def _dataset_jsonld(db: Session, project: Project) -> dict:
              "encodingFormat": 'application/ld+json;profile="http://www.w3.org/ns/anno.jsonld"',
              "contentUrl": f"{cfg.api_basis_url}/project/{project.projectId}/annotations"},
             {"@type": "DataDownload", "encodingFormat": "application/ld+json",
-             "contentUrl": f"{cfg.api_basis_url}/organisatie/{organisatie.slug}/activity-stream"},
+             "contentUrl": f"{cfg.api_basis_url}/project/{project.projectId}/activity-stream"},
         ],
     }
     return {sleutel: waarde for sleutel, waarde in dataset.items() if waarde is not None}

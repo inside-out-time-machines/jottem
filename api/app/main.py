@@ -32,7 +32,7 @@ app.add_middleware(
 # en harvesters vanuit de browser op te halen zijn. De IIIF-specificatie schrijft
 # daarvoor Access-Control-Allow-Origin: * voor; de overige endpoints blijven via de
 # CORSMiddleware hierboven beperkt tot de eigen frontend.
-OPEN_DATA_EINDEN = ("/annotations", "/activity-stream", "/rss", "/datacatalog", "/dump.nt.gz")
+OPEN_DATA_EINDEN = ("/annotations", "/activity-stream", "/rss", "/datacatalog", ".nt.gz")
 
 
 def _is_open_data(pad: str) -> bool:
