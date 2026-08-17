@@ -35,10 +35,14 @@ async def verrijkingen_catalogus():
 
 
 def _thumbnail(media: Media) -> str | None:
-    """IIIF-thumbnail zodra het derivaat er is, anders presigned origineel."""
+    """IIIF-thumbnail (eigen of externe service), de foto-URL, of presigned origineel."""
+    if media.bron == "iiif" and media.externeIiifService:
+        return f"{media.externeIiifService}/full/!400,400/0/default.jpg"
+    if media.bron == "url":
+        return media.bronUrl
     if media.breedte and media.hoogte:
         return f"{settings().iiif_basis_url}/iiif/3/{media.mediaId}.tif/full/!400,400/0/default.jpg"
-    return s3.presigned_get(media.objectKey)
+    return s3.presigned_get(media.objectKey) if media.objectKey else None
 
 
 def _aantal_gepubliceerd(db: Session, project_id: uuid.UUID) -> int:

@@ -58,7 +58,15 @@ def jottem_jsonld(db: Session, media: Media) -> dict:
         "width": media.breedte,
         "height": media.hoogte,
     }
-    if media.breedte and media.hoogte:
+    if media.bron == "iiif" and media.externeIiifService:
+        doc["contentUrl"] = f"{media.externeIiifService}/full/max/0/default.jpg"
+        doc["thumbnailUrl"] = f"{media.externeIiifService}/full/!400,400/0/default.jpg"
+        doc["isBasedOn"] = {"@id": media.bronUrl}          # herkomst: de beeldbank
+    elif media.bron == "url":
+        doc["contentUrl"] = media.bronUrl
+        doc["thumbnailUrl"] = media.bronUrl
+        doc["isBasedOn"] = {"@id": media.bronUrl}
+    elif media.breedte and media.hoogte:
         doc["contentUrl"] = f"{iiif}/full/max/0/default.jpg"
         doc["thumbnailUrl"] = f"{iiif}/full/!400,400/0/default.jpg"
     if media.genre:

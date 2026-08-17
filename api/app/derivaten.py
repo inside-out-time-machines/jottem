@@ -34,6 +34,10 @@ def maak_derivaat(media_id: uuid.UUID) -> tuple[int, int]:
         media = db.get(Media, media_id)
         if not media:
             raise ValueError(f"Media {media_id} onbekend")
+        if not media.objectKey:
+            # externe bron (beeldbank/URL): geen origineel in S3, dus geen derivaat;
+            # de viewer gebruikt de externe service of de foto-URL rechtstreeks
+            return media.breedte or 0, media.hoogte or 0
 
         # idempotent: bestaat het derivaat al, alleen de afmetingen bijwerken indien nodig
         try:

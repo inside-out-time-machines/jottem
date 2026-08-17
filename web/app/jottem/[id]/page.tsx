@@ -13,6 +13,8 @@ type Detail = InteractiefDetail & {
   metadata: Record<string, string>;
   iiifManifest: string | null;
   publicatieDatum: string | null;
+  bron: string;
+  bronUrl: string | null;
 };
 
 export default async function JottemPagina({
@@ -63,6 +65,12 @@ export default async function JottemPagina({
           )}
           {jottem.licentie && (
             <tr><th>Licentie</th><td><a href={jottem.licentie}>{jottem.licentie}</a></td></tr>
+          )}
+          {jottem.bronUrl && (
+            <tr><th>Bron</th><td>
+              <a href={jottem.bronUrl} rel="noopener noreferrer" target="_blank">{jottem.bronUrl}</a>
+              {jottem.bron === "iiif" && <span style={{ fontSize: ".85rem", color: "var(--grijs)" }}> (IIIF, uit een beeldbank)</span>}
+            </td></tr>
           )}
           {Object.entries(jottem.metadata).map(([veld, waarde]) => (
             <tr key={veld}><th>{veld}</th><td>{waarde}</td></tr>

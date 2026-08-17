@@ -19,6 +19,11 @@ class UploadUrlAntwoord(BaseModel):
     objectKey: str
 
 
+class ExterneBronVraag(BaseModel):
+    soort: str = Field(pattern="^(beeldbank|url)$")
+    url: str = Field(min_length=8, max_length=1000)
+
+
 class JottemIndienen(BaseModel):
     mediaId: uuid.UUID
     projectId: uuid.UUID
@@ -29,6 +34,7 @@ class JottemIndienen(BaseModel):
     steekwoorden: list[str] = []
     metadata: dict[str, str] = {}     # adres, jaarVan, jaarTot, lat, lon, ...
     toestemming: str | None = None    # "ja" of "nee" wanneer herkenbaar gemeld is
+    externeBron: ExterneBronVraag | None = None   # i.p.v. een geupload bestand
 
 
 class JottemKort(BaseModel):
@@ -134,6 +140,8 @@ class JottemDetail(BaseModel):
     projectId: uuid.UUID
     metadata: dict[str, str]
     afbeeldingUrl: str | None
+    bron: str = "upload"                # upload | iiif | url
+    bronUrl: str | None = None          # permalink/manifest of foto-URL bij externe bron
     iiifService: str | None = None      # IIIF Image API-basis zodra het derivaat er is
     iiifManifest: str | None = None
     publicatieDatum: datetime | None

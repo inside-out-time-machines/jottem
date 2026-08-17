@@ -33,8 +33,17 @@ export default function UploadPagina() {
     mediaId: string;
     betrouwbaarheid: number | null;
   } | null>(null);
+  // externe fotobron (beeldbank-permalink of foto-URL): alleen verwijzing, geen upload
+  const [externeBron, setExterneBron] = useState<{
+    soort: "beeldbank" | "url"; url: string; bronUrl: string; previewUrl: string;
+  } | null>(null);
+  const [urlSoort, setUrlSoort] = useState<"beeldbank" | "url">("beeldbank");
+  const [urlInvoer, setUrlInvoer] = useState("");
+  const [urlFout, setUrlFout] = useState<string | null>(null);
+  const [urlBezig, setUrlBezig] = useState(false);
   const bestandInput = useRef<HTMLInputElement>(null);
   const licentieDialoog = useRef<HTMLDialogElement>(null);
+  const urlDialoog = useRef<HTMLDialogElement>(null);
 
   const [projectParam, setProjectParam] = useState<string | null>(null);
 
@@ -84,12 +93,23 @@ export default function UploadPagina() {
         steekwoorden: steekwoorden.split(",").map((w) => w.trim()).filter(Boolean),
         metadata,
         toestemming,
+        externeBron: externeBron ? { soort: externeBron.soort, url: externeBron.url } : null,
       }),
     });
-    if (!antwoord.ok) throw new Error((await antwoord.json()).detail ?? antwoord.statusText);
+    if (!antwoord.ok) {
+      const detail = (await antwoord.json()).detail ?? antwoord.statusText;
+      // gezaghebbende Herkenbaar-check op de server: bij herkenbare personen
+      // stelt de server de toestemmingsvraag via deze 422
+      if (antwoord.status === 422 && String(detail).includes("herkenbare personen") && toestemming === null) {
+        setToestemmingsVraag({ mediaId, betrouwbaarheid: null });
+        return;
+      }
+      throw new Error(detail);
+    }
     setMelding("Gelukt! Je jottem staat in de wachtrij voor de moderator. Jottem!");
     setToestemmingsVraag(null);
     setBestand(null);
+    setExterneBron(null);
     setTitel("");
     setBeschrijving("");
     setSteekwoorden("");
@@ -99,20 +119,26 @@ export default function UploadPagina() {
 
   async function versturen(e: React.FormEvent) {
     e.preventDefault();
-    if (!bestand || !gekozen || !titel || !licentieAkkoord) {
+    if ((!bestand && !externeBron) || !gekozen || !titel || !licentieAkkoord) {
       setMelding("Vul alles in en bevestig de licentie.");
       return;
     }
     setBezig(true);
     setMelding(null);
     try {
+      if (externeBron) {
+        // externe bron: geen upload; de server valideert de URL opnieuw en doet de
+        // Herkenbaar-check op een verkleinde download
+        await indienen(crypto.randomUUID(), null);
+        return;
+      }
       const urlAntwoord = await fetch(`${API_PUBLIEK}/upload-url`, {
         method: "POST",
         headers,
         body: JSON.stringify({
-          bestandsnaam: bestand.name || "camera-foto.jpg",
-          contentType: bestand.type,
-          grootte: bestand.size,
+          bestandsnaam: bestand!.name || "camera-foto.jpg",
+          contentType: bestand!.type,
+          grootte: bestand!.size,
         }),
       });
       if (!urlAntwoord.ok) throw new Error((await urlAntwoord.json()).detail ?? urlAntwoord.statusText);
@@ -120,7 +146,7 @@ export default function UploadPagina() {
 
       const putAntwoord = await fetch(uploadUrl, {
         method: "PUT",
-        headers: { "Content-Type": bestand.type },
+        headers: { "Content-Type": bestand!.type },
         body: bestand,
       });
       if (!putAntwoord.ok) throw new Error(`Upload naar opslag mislukt (${putAntwoord.status})`);
@@ -141,6 +167,39 @@ export default function UploadPagina() {
       setMelding(`Er ging iets mis: ${(fout as Error).message}`);
     } finally {
       setBezig(false);
+    }
+  }
+
+  function openUrlDialoog(soort: "beeldbank" | "url") {
+    setUrlSoort(soort);
+    setUrlInvoer("");
+    setUrlFout(null);
+    urlDialoog.current?.showModal();
+  }
+
+  async function urlControleren(e: React.FormEvent) {
+    e.preventDefault();
+    setUrlBezig(true);
+    setUrlFout(null);
+    try {
+      const antwoord = await fetch(`${API_PUBLIEK}/upload/externe-bron`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ soort: urlSoort, url: urlInvoer.trim() }),
+      });
+      const inhoud = await antwoord.json();
+      if (!antwoord.ok) {
+        setUrlFout(typeof inhoud.detail === "string" ? inhoud.detail : "De URL kon niet worden gecontroleerd");
+        return;
+      }
+      setExterneBron({
+        soort: urlSoort, url: urlInvoer.trim(),
+        bronUrl: inhoud.bronUrl, previewUrl: inhoud.previewUrl,
+      });
+      setBestand(null);
+      urlDialoog.current?.close();
+    } finally {
+      setUrlBezig(false);
     }
   }
 
@@ -218,8 +277,9 @@ export default function UploadPagina() {
     <main>
       <h1>Deel je materiaal</h1>
       <p style={{ maxWidth: "40rem", marginTop: ".8rem" }}>
-        Kies je foto (JPG, PNG of TIFF, tot 50 MB), vertel er kort iets bij en
-        kies het project. Een moderator bekijkt je bijdrage voordat hij online komt.
+        Kies je foto (JPG, PNG of TIFF, tot 50 MB), of verwijs naar een foto in een
+        beeldbank of op een website. Vertel er kort iets bij en kies het project.
+        Een moderator bekijkt je bijdrage voordat hij online komt.
       </p>
       <form className="formulier" onSubmit={versturen}>
         <div className="veld">
@@ -235,7 +295,7 @@ export default function UploadPagina() {
             <button
               type="button"
               className="knop knop-secundair"
-              onClick={() => bestandInput.current?.click()}
+              onClick={() => { setExterneBron(null); bestandInput.current?.click(); }}
             >
               <span className="icoon" aria-hidden="true">📁</span> Kies een bestand
             </button>
@@ -243,13 +303,40 @@ export default function UploadPagina() {
               <button
                 type="button"
                 className="knop knop-secundair"
-                onClick={() => setCameraOpen(true)}
+                onClick={() => { setExterneBron(null); setCameraOpen(true); }}
               >
                 <span className="icoon" aria-hidden="true">📷</span> Of maak nu een foto
               </button>
             )}
+            <button
+              type="button"
+              className="knop knop-secundair"
+              onClick={() => openUrlDialoog("beeldbank")}
+            >
+              <span className="icoon" aria-hidden="true">🏛️</span> Of geef een permalink uit een beeldbank
+            </button>
+            <button
+              type="button"
+              className="knop knop-secundair"
+              onClick={() => openUrlDialoog("url")}
+            >
+              <span className="icoon" aria-hidden="true">🔗</span> Of geef een foto-URL van een website
+            </button>
           </div>
           {bestand && <span style={{ fontSize: ".9rem", color: "var(--grijs)" }}>Gekozen: {bestand.name || "camera-foto"}</span>}
+          {externeBron && (
+            <div style={{ marginTop: ".5rem" }}>
+              <img
+                src={externeBron.previewUrl}
+                alt="Voorbeeld van de gekozen foto"
+                style={{ maxHeight: "10rem", borderRadius: ".35rem", border: "1px solid var(--kartonrand)" }}
+              />
+              <div style={{ fontSize: ".9rem", color: "var(--grijs)", wordBreak: "break-all" }}>
+                Gekozen: {externeBron.bronUrl}
+                {externeBron.soort === "beeldbank" && " (IIIF, uit een beeldbank)"}
+              </div>
+            </div>
+          )}
         </div>
         <div className="veld">
           <label htmlFor="project">Project</label>
@@ -370,6 +457,42 @@ export default function UploadPagina() {
           </div>
         </dialog>
       )}
+
+      <dialog ref={urlDialoog} className="dialoog">
+        <form onSubmit={urlControleren}>
+          <h2>
+            {urlSoort === "beeldbank" ? "Foto uit een beeldbank" : "Foto-URL van een website"}
+          </h2>
+          <p style={{ marginTop: ".5rem", fontSize: ".95rem" }}>
+            {urlSoort === "beeldbank"
+              ? "Plak de permalink van de foto uit de beeldbank; we zoeken er de IIIF-versie bij en verwijzen daarnaar (we kopiëren niets). Op dit moment ondersteunen we de beeldbank van samh.nl en directe IIIF-links."
+              : "Plak het adres van een foto op een website; we controleren of de link echt een afbeelding oplevert en verwijzen ernaar (we kopiëren niets)."}
+          </p>
+          <div className="veld" style={{ marginTop: ".8rem" }}>
+            <label htmlFor="bron-url">URL</label>
+            <input
+              id="bron-url"
+              type="url"
+              required
+              value={urlInvoer}
+              placeholder={urlSoort === "beeldbank"
+                ? "https://samh.nl/bronnen/beeldbank/detail/..."
+                : "https://voorbeeld.nl/foto.jpg"}
+              onChange={(e) => setUrlInvoer(e.target.value)}
+              style={{ font: "inherit", padding: ".45rem .6rem", border: "1px solid var(--kartonrand)", borderRadius: ".3rem", width: "100%" }}
+            />
+          </div>
+          {urlFout && <p className="memo" style={{ marginTop: ".6rem" }}>{urlFout}</p>}
+          <div className="dialoog-knoppen">
+            <button className="knop knop-primair" type="submit" disabled={urlBezig}>
+              {urlBezig ? "Controleren..." : "Controleer en gebruik"}
+            </button>
+            <button className="knop knop-secundair" type="button" onClick={() => urlDialoog.current?.close()}>
+              Annuleren
+            </button>
+          </div>
+        </form>
+      </dialog>
 
       {cameraOpen && (
         <CameraOpname

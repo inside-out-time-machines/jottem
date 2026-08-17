@@ -124,7 +124,12 @@ class Media(Base):
     beschrijving: Mapped[str | None] = mapped_column(Text)
     genre: Mapped[str | None] = mapped_column(String(80))          # CHT-waardelijst
     licentie: Mapped[str | None] = mapped_column(String(200))      # bevestigde projectlicentie
-    objectKey: Mapped[str] = mapped_column(String(500))            # sleutel in bucket originals
+    # herkomst van het beeld: upload (S3-origineel), iiif (externe beeldbank met
+    # IIIF-manifest/info.json) of url (directe foto-URL); extern = alleen verwijzing
+    bron: Mapped[str] = mapped_column(String(20), default="upload")
+    bronUrl: Mapped[str | None] = mapped_column(String(1000))          # manifest-/info.json-/foto-URL
+    externeIiifService: Mapped[str | None] = mapped_column(String(500))  # image service-basis
+    objectKey: Mapped[str | None] = mapped_column(String(500))     # sleutel in bucket originals (alleen upload)
     mimeType: Mapped[str | None] = mapped_column(String(100))
     breedte: Mapped[int | None] = mapped_column(Integer)
     hoogte: Mapped[int | None] = mapped_column(Integer)

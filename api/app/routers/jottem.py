@@ -21,10 +21,27 @@ router = APIRouter(tags=["Jottems"])
 
 
 def _iiif_service(media: Media) -> str | None:
-    """IIIF Image API-basis-URL; beschikbaar zodra de worker het derivaat heeft gemaakt."""
-    if media.breedte and media.hoogte and media.status == MediaStatus.goedgekeurd:
+    """IIIF Image API-basis-URL: de eigen Cantaloupe voor uploads (zodra de worker het
+    derivaat heeft gemaakt), of de externe service bij een beeldbank-bron."""
+    if media.status != MediaStatus.goedgekeurd:
+        return None
+    if media.bron == "iiif":
+        return media.externeIiifService
+    if media.bron == "url":
+        return None
+    if media.breedte and media.hoogte:
         return f"{settings().iiif_basis_url}/iiif/3/{media.mediaId}.tif"
     return None
+
+
+def afbeelding_url(media: Media) -> str | None:
+    """Getoonde afbeelding: presigned origineel (upload), IIIF-preview (beeldbank)
+    of de foto-URL zelf (website)."""
+    if media.bron == "iiif" and media.externeIiifService:
+        return f"{media.externeIiifService}/full/!1200,1200/0/default.jpg"
+    if media.bron == "url":
+        return media.bronUrl
+    return s3.presigned_get(media.objectKey) if media.objectKey else None
 
 
 def canvas_iri(media: Media) -> str:
@@ -49,7 +66,9 @@ def _detail(db: Session, media: Media) -> JottemDetail:
         projectSlug=project.slug,
         projectId=project.projectId,
         metadata={r.veld: r.waarde for r in media.metadataRijen},
-        afbeeldingUrl=s3.presigned_get(media.objectKey),
+        afbeeldingUrl=afbeelding_url(media),
+        bron=media.bron,
+        bronUrl=media.bronUrl,
         iiifService=service,
         iiifManifest=f"{settings().api_basis_url}/jottem/{media.mediaId}/iiif/manifest" if service else None,
         publicatieDatum=media.publicatieDatum,
@@ -107,7 +126,7 @@ async def iiif_manifest(media_id: uuid.UUID, db: Session = Depends(get_db)):
     if not media or media.status != MediaStatus.goedgekeurd:
         raise HTTPException(404, "Jottem niet gepubliceerd")
     service = _iiif_service(media)
-    if not service:
+    if not service and not (media.bron == "url" and media.breedte and media.hoogte):
         raise HTTPException(404, "Beeldderivaat nog niet beschikbaar")
     organisatie = db.get(Organisatie, media.organisatieId)
     project = db.get(Project, media.projectId)
@@ -148,17 +167,19 @@ async def iiif_manifest(media_id: uuid.UUID, db: Session = Depends(get_db)):
                     "type": "Annotation",
                     "motivation": "painting",
                     "target": canvas_id,
+                    # uploads en beeldbank-bronnen dragen een image service (eigen
+                    # Cantaloupe resp. de externe dienst); een kale foto-URL niet
                     "body": {
-                        "id": f"{service}/full/max/0/default.jpg",
+                        "id": f"{service}/full/max/0/default.jpg" if service else media.bronUrl,
                         "type": "Image",
-                        "format": "image/jpeg",
+                        "format": media.mimeType or "image/jpeg",
                         "width": media.breedte,
                         "height": media.hoogte,
-                        "service": [{
+                        **({"service": [{
                             "id": service,
                             "type": "ImageService3",
                             "profile": "level2",
-                        }],
+                        }]} if service else {}),
                     },
                 }],
             }],
