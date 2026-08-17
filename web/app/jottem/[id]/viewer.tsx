@@ -50,7 +50,8 @@ export default function Viewer({
   const viewerRef = useRef<{ destroy: () => void; viewport?: unknown } | null>(null);
   const annotatorRef = useRef<OsdAnnotator | null>(null);
   const [vol, setVol] = useState(false);   // volledig scherm actief (native of fallback)
-  const [popup, setPopup] = useState<{ id: string; links: number; boven: number } | null>(null);
+  const [popup, setPopup] = useState<
+    { id: string; links: number; boven: number; omhoog: boolean } | null>(null);
   const gekozenRef = useRef<{ id: string; vlak: Vlak } | null>(null);
 
   useEffect(() => {
@@ -112,10 +113,21 @@ export default function Viewer({
           const gekozen = gekozenRef.current;
           if (!gekozen) return;
           const { x, y, w, h } = gekozen.vlak;
-          const punt = viewer.viewport.imageToViewerElementCoordinates(
-            new OpenSeadragon.Point(x + w / 2, y + h),
+          const punt = (dy: number) => viewer.viewport.imageToViewerElementCoordinates(
+            new OpenSeadragon.Point(x + w / 2, dy),
           );
-          setPopup({ id: gekozen.id, links: punt.x, boven: punt.y });
+          const onder = punt(y + h);
+          const breedte = houder.current?.clientWidth ?? 0;
+          const hoogte = houder.current?.clientHeight ?? 0;
+          // te weinig ruimte onder het kader? dan klapt het kaartje erboven; links en
+          // rechts houden we het binnen de viewer
+          const omhoog = onder.y > hoogte - 150;
+          setPopup({
+            id: gekozen.id,
+            links: Math.min(Math.max(onder.x, 130), Math.max(breedte - 130, 130)),
+            boven: omhoog ? punt(y).y : onder.y,
+            omhoog,
+          });
         };
         annotator.on("clickAnnotation", (...args: unknown[]) => {
           const a = args[0] as { id: string };
@@ -174,7 +186,11 @@ export default function Viewer({
     <figure className="iiif-kader" aria-label={`Beeldviewer: ${titel}`}>
       <div ref={houder} className="iiif-viewer" />
       {popup && popupInhoud && (
-        <div className="kader-popup" style={{ left: popup.links, top: popup.boven }} role="dialog">
+        <div
+          className={`kader-popup${popup.omhoog ? " kader-popup-omhoog" : ""}`}
+          style={{ left: popup.links, top: popup.boven }}
+          role="dialog"
+        >
           <button
             type="button"
             className="kader-popup-sluit"

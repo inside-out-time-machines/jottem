@@ -203,6 +203,7 @@ table.lijst th { font-size: .82rem; letter-spacing: .1em; text-transform: upperc
     padding: .6rem 1.8rem .6rem .8rem; font-size: .95rem; line-height: 1.45;
     box-shadow: var(--schaduw);
 }
+.kader-popup-omhoog { transform: translate(-50%, calc(-100% - .5rem)); }
 .kader-popup p { margin-top: .25rem; }
 .kader-popup p:first-of-type { margin-top: 0; }
 .kader-popup-voet { font-size: .82rem; color: var(--grijs); }
