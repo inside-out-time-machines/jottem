@@ -1,0 +1,45 @@
+# Nederlandse labels voor de ingebouwde promptvelden (gebruikersinstellingen en
+# wachtwoord wijzigen). Deze labels zijn data (geen web-UI-vertaling): authentik
+# bootstrapt ze in het Engels in de database; dit blueprint zet ze om.
+version: 1
+metadata:
+  name: jottem-nederlandse-promptlabels
+  labels:
+    blueprints.goauthentik.io/description: "NL-labels voor default prompts"
+entries:
+  - model: authentik_stages_prompt.prompt
+    identifiers:
+      name: default-user-settings-field-username
+    state: present
+    attrs:
+      label: Gebruikersnaam
+  - model: authentik_stages_prompt.prompt
+    identifiers:
+      name: default-user-settings-field-name
+    state: present
+    attrs:
+      label: Naam
+  - model: authentik_stages_prompt.prompt
+    identifiers:
+      name: default-user-settings-field-email
+    state: present
+    attrs:
+      label: E-mail
+  - model: authentik_stages_prompt.prompt
+    identifiers:
+      name: default-user-settings-field-locale
+    state: present
+    attrs:
+      label: Taal
+  - model: authentik_stages_prompt.prompt
+    identifiers:
+      name: default-password-change-field-password
+    state: present
+    attrs:
+      label: Wachtwoord
+  - model: authentik_stages_prompt.prompt
+    identifiers:
+      name: default-password-change-field-password-repeat
+    state: present
+    attrs:
+      label: Wachtwoord (herhaal)
