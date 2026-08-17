@@ -92,6 +92,10 @@ entries:
         a { color: var(--jottem-roest); }
         .pf-c-page { --pf-c-page--BackgroundColor: var(--jottem-papier); }
         .pf-c-nav__link.pf-m-current { border-left-color: var(--jottem-oranje); }
+        /* ook pagina's zonder flow-context (geweigerd-scherm, foutpagina, eerste
+           paint van /application/o/authorize/) krijgen de papieren achtergrond
+           i.p.v. de standaard Authentik-foto */
+        :root { --ak-flow-background: url("https://dev.iotm.nl/papier.png") !important; }
 
   # Nederlandse titel + papieren achtergrond op de bestaande loginflow
   - model: authentik_flows.flow
