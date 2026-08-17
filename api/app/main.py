@@ -61,6 +61,8 @@ async def open_data_cors(request: Request, call_next):
         })
     response = await call_next(request)
     response.headers["Access-Control-Allow-Origin"] = "*"
+    # `*` en allow-credentials sluiten elkaar uit; open data heeft geen credentials nodig
+    response.headers.pop("Access-Control-Allow-Credentials", None)
     return response
 
 app.include_router(upload.router)
