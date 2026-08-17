@@ -134,6 +134,22 @@ table.lijst th, table.lijst td { text-align: left; padding: .55rem .7rem; border
 /* lange URL's (licentie, bron) mogen nooit horizontale scroll veroorzaken */
 table.lijst td { overflow-wrap: anywhere; }
 table.lijst a { word-break: break-all; }
+
+/* beheer- en moderatietabellen (.lijst.stapel): op kleine schermen wordt elke rij
+   een kaartje met veldlabels (data-label) boven de waarden */
+@media (max-width: 700px) {
+    table.stapel, table.stapel tbody, table.stapel tr, table.stapel td { display: block; }
+    table.stapel thead { display: none; }
+    table.stapel tr {
+        background: var(--wit); border: 1px solid var(--kartonrand); border-radius: .45rem;
+        box-shadow: var(--schaduw); padding: .55rem 1rem .9rem; margin-top: .9rem;
+    }
+    table.stapel td { border-bottom: none; padding: .45rem 0 0; }
+    table.stapel td[data-label]::before {
+        content: attr(data-label); display: block; font-size: .72rem; font-weight: 600;
+        letter-spacing: .08em; text-transform: uppercase; color: var(--grijs);
+    }
+}
 table.lijst th { font-size: .82rem; letter-spacing: .1em; text-transform: uppercase; }
 
 .polaroid {

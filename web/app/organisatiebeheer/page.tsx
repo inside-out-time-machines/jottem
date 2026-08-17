@@ -100,7 +100,7 @@ export default function OrganisatiebeheerPagina() {
           <p style={{ marginTop: "1rem" }}>
             <a className="knop knop-primair" href={`/organisatiebeheer/${slug}/nieuw`}>Nieuw project</a>
           </p>
-          <table className="lijst">
+          <table className="lijst stapel">
             <thead>
               <tr>
                 <th>Project</th>
@@ -113,15 +113,15 @@ export default function OrganisatiebeheerPagina() {
             <tbody>
               {(projecten[slug] ?? []).map((project) => (
                 <tr key={project.projectId}>
-                  <td>
+                  <td data-label="Project">
                     <a href={`/organisatie/${slug}/${project.slug}`}>{project.naam}</a>
                     {project.datasetAangemeld && (
                       <div style={{ fontSize: ".82rem", color: "var(--grijs)" }}>in Datasetregister</div>
                     )}
                   </td>
-                  <td>{project.slug}</td>
-                  <td><span className={`status-pil ${project.status === "actief" ? "status-goedgekeurd" : "status-gedepubliceerd"}`}>{project.status}</span></td>
-                  <td>{project.aantalJottems}</td>
+                  <td data-label="Slug">{project.slug}</td>
+                  <td data-label="Status"><span className={`status-pil ${project.status === "actief" ? "status-goedgekeurd" : "status-gedepubliceerd"}`}>{project.status}</span></td>
+                  <td data-label="Jottems">{project.aantalJottems}</td>
                   <td>
                     <span style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
                       <a className="knop knop-secundair" href={`/organisatiebeheer/${slug}/${project.slug}`}>Bewerken</a>

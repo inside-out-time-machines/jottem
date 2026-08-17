@@ -89,7 +89,7 @@ export default function BeheerPagina() {
         <a className="knop knop-primair" href="/beheer/nieuw">Nieuwe organisatie</a>
       </p>
 
-      <table className="lijst">
+      <table className="lijst stapel">
         <thead>
           <tr>
             <th>Organisatie</th>
@@ -101,7 +101,7 @@ export default function BeheerPagina() {
         <tbody>
           {organisaties.map((organisatie) => (
             <tr key={organisatie.slug}>
-              <td>
+              <td data-label="Organisatie">
                 {organisatie.logoUrl && (
                   <img src={organisatie.logoUrl} alt="" style={{ maxHeight: "1.4rem", marginRight: ".5rem", verticalAlign: "-0.25rem" }} />
                 )}
@@ -113,8 +113,8 @@ export default function BeheerPagina() {
                 )}
                 <a href={`/organisatie/${organisatie.slug}`}>{organisatie.naam}</a>
               </td>
-              <td>{organisatie.slug}</td>
-              <td>
+              <td data-label="Slug">{organisatie.slug}</td>
+              <td data-label="Beheerders">
                 {(beheerders[organisatie.slug] ?? []).length === 0
                   ? <em style={{ color: "var(--grijs)" }}>nog geen</em>
                   : (beheerders[organisatie.slug] ?? []).map((lid) => lid.naam).join(", ")}

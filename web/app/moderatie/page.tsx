@@ -111,7 +111,7 @@ export default function ModeratiePagina() {
         Alle jottems van <strong>Streekarchief Midden-Holland</strong>.
       </p>
       {melding && <p className="memo" style={{ marginTop: "1rem" }}>{melding}</p>}
-      <table className="lijst">
+      <table className="lijst stapel">
         <thead>
           <tr>
             <th>Titel</th>
@@ -123,7 +123,7 @@ export default function ModeratiePagina() {
         <tbody>
           {jottems.map((jottem) => (
             <tr key={jottem.mediaId}>
-              <td>
+              <td data-label="Titel">
                 <a href={`/jottem/${jottem.mediaId}`}>{jottem.titel}</a>
                 {jottem.herkenbaar && (
                   <div>
@@ -141,10 +141,10 @@ export default function ModeratiePagina() {
                   </div>
                 )}
               </td>
-              <td>
+              <td data-label="Status">
                 <span className={`status-pil status-${jottem.status}`}>{jottem.status}</span>
               </td>
-              <td>{new Date(jottem.creatieDatum).toLocaleDateString("nl-NL")}</td>
+              <td data-label="Ingediend">{new Date(jottem.creatieDatum).toLocaleDateString("nl-NL")}</td>
               <td>
                 {jottem.status === "nieuw" && (
                   <span style={{ display: "flex", gap: ".5rem" }}>
@@ -173,7 +173,7 @@ export default function ModeratiePagina() {
         Bezoekers kunnen bijdragen rapporteren (ook zonder account). Verbergen of
         verwijderen haalt de bijdrage uit de publieke weergave; alles wordt gelogd.
       </p>
-      <table className="lijst">
+      <table className="lijst stapel">
         <thead>
           <tr>
             <th>Bijdrage</th>
@@ -185,7 +185,7 @@ export default function ModeratiePagina() {
         <tbody>
           {meldingen.map((rij) => (
             <tr key={rij.meldingId}>
-              <td style={{ maxWidth: "22rem" }}>
+              <td data-label="Bijdrage" style={{ maxWidth: "22rem" }}>
                 <em>&ldquo;{annotatieTekst(rij).slice(0, 160)}&rdquo;</em>
                 {rij.annotatie?.creator?.name && (
                   <div style={{ fontSize: ".85rem", color: "var(--grijs)" }}>door {rij.annotatie.creator.name}</div>
@@ -194,13 +194,13 @@ export default function ModeratiePagina() {
                   <div style={{ fontSize: ".85rem" }}><a href={`/jottem/${rij.mediaId}`}>bekijk de jottem</a></div>
                 )}
               </td>
-              <td>
+              <td data-label="Reden">
                 {rij.reden}
                 {rij.toelichting && (
                   <div style={{ fontSize: ".85rem", color: "var(--grijs)" }}>{rij.toelichting}</div>
                 )}
               </td>
-              <td>{new Date(rij.creatieDatum).toLocaleDateString("nl-NL")}</td>
+              <td data-label="Gemeld op">{new Date(rij.creatieDatum).toLocaleDateString("nl-NL")}</td>
               <td>
                 {rij.status === "nieuw" ? (
                   <span style={{ display: "flex", gap: ".4rem", flexWrap: "wrap" }}>
