@@ -198,17 +198,39 @@ export default function Interactief({ detail }: { detail: Detail }) {
     setMeldToelichting("");
   }
 
+  const aanraakscherm = typeof window !== "undefined" && "ontouchstart" in window;
+
   function startVerrijking(v: Verrijking) {
     if (!ingelogd) { openDialoog("login"); return; }
     setVorm({ ...LEEG_FORMULIER });
     if (v.doel === "vlak") {
       if (!annotatorRef.current) { setMelding("De viewer is nog niet klaar; probeer zo weer."); return; }
       setTekenen(true);
-      annotatorRef.current.setDrawingEnabled(true);
+      // desktop: tekenen alleen met SHIFT ingedrukt, zodat gewoon slepen/zoomen blijft
+      // werken; aanraakschermen hebben geen SHIFT en tekenen direct
+      annotatorRef.current.setDrawingEnabled(aanraakscherm);
       return;
     }
     openDialoog(v.sleutel);
   }
+
+  // SHIFT houdt tekenen en navigeren uit elkaar (alleen actief in de tekenmodus)
+  useEffect(() => {
+    if (!tekenen || aanraakscherm) return;
+    const toetsIn = (e: KeyboardEvent) => {
+      if (e.key === "Shift") annotatorRef.current?.setDrawingEnabled(true);
+    };
+    const toetsUit = (e: KeyboardEvent) => {
+      if (e.key === "Shift") annotatorRef.current?.setDrawingEnabled(false);
+    };
+    window.addEventListener("keydown", toetsIn);
+    window.addEventListener("keyup", toetsUit);
+    return () => {
+      window.removeEventListener("keydown", toetsIn);
+      window.removeEventListener("keyup", toetsUit);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tekenen]);
 
   function startReactie(doel: W3CAnnotatie) {
     if (!ingelogd) { openDialoog("login"); return; }
@@ -354,7 +376,9 @@ export default function Interactief({ detail }: { detail: Detail }) {
 
       {tekenen && (
         <p className="memo" style={{ marginTop: ".8rem" }}>
-          Teken een vak op de foto: klik en sleep.{" "}
+          {aanraakscherm
+            ? "Teken een vak op de foto: sleep met je vinger."
+            : "Houd SHIFT ingedrukt en sleep een vak op de foto; zonder SHIFT kun je gewoon slepen en zoomen."}{" "}
           <button className="knop knop-secundair" onClick={() => {
             annotatorRef.current?.setDrawingEnabled(false);
             setTekenen(false);

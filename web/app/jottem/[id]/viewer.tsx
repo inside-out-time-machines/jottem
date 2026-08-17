@@ -57,6 +57,9 @@ export default function Viewer({
         const annotator = createOSDAnnotator(viewer, {
           adapter: W3CImageFormat(canvas),
           drawingEnabled: false,
+          // drag: één beweging tekent het vak (met SHIFT ingedrukt op desktop, zie
+          // interactief.tsx); zonder tekenmodus blijft slepen gewoon navigeren
+          drawingMode: "drag",
           style: { fill: "#d85a30", fillOpacity: 0.18, stroke: "#d85a30", strokeWidth: 2 },
         }) as unknown as OsdAnnotator;
         annotatorRef.current = annotator;
