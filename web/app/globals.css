@@ -104,6 +104,11 @@ a:hover { color: var(--oranje); }
 }
 
 main { max-width: 68rem; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
+/* jottempagina: links in de inhoud zijn zwart, zodat het beeld en de bijdragen de
+   aandacht houden (header en footer vallen hier buiten) */
+.jottem-pagina a, .jottem-pagina a:hover {
+    color: var(--inkt); text-decoration-color: var(--inkt);
+}
 
 .kaart {
     background: var(--wit); border: 1px solid var(--kartonrand);
@@ -305,7 +310,7 @@ dialog.dialoog h2 { font-family: var(--kop); font-size: 1.35rem; margin-bottom: 
 }
 .annotatie-kop { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
 .annotatie-type {
-    font-family: var(--kop); font-weight: 600; font-size: .95rem; color: var(--roest);
+    font-family: var(--kop); font-weight: 600; font-size: .95rem; color: var(--project-primair);
 }
 .aard-badge {
     font-size: .78rem; padding: .1rem .55rem; border-radius: 99px; border: 1px solid;
@@ -330,7 +335,7 @@ dialog.dialoog h2 { font-family: var(--kop); font-size: 1.35rem; margin-bottom: 
 }
 .annotatie-actie {
     font: inherit; font-size: .85rem; background: none; border: none; cursor: pointer;
-    color: var(--roest); text-decoration: underline; padding: 0;
+    color: var(--inkt); text-decoration: underline; padding: 0;
 }
 .annotatie-reactie {
     margin-top: .7rem; margin-left: 1rem; padding: .6rem .8rem;

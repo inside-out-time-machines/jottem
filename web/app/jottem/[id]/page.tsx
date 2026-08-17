@@ -100,7 +100,8 @@ export default async function JottemPagina({
   const kopVoet = kopVoetCss(jottem.organisatieKleurPrimair, jottem.organisatieKleurSecundair);
 
   return (
-    <main style={projectStijl(jottem.organisatieKleurPrimair, jottem.organisatieKleurSecundair)}>
+    <main className="jottem-pagina"
+          style={projectStijl(jottem.organisatieKleurPrimair, jottem.organisatieKleurSecundair)}>
       {kopVoet && (
         <style href={`organisatiekleuren-${jottem.organisatieSlug}`} precedence="high">
           {kopVoet}
