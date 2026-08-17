@@ -28,10 +28,16 @@ type ProjectPubliek = {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string; project: string }>;
+  searchParams: Promise<{ pagina?: string }>;
 }) {
   const { slug, project: projectSlug } = await params;
+  const { pagina } = await searchParams;
+  // zelfverwijzende canonical; vervolgpagina's houden hun eigen ?pagina
+  const paginaNr = Number(pagina) || 1;
+  const pad = `/organisatie/${slug}/${projectSlug}${paginaNr > 1 ? `?pagina=${paginaNr}` : ""}`;
   try {
     const project = await apiServer<ProjectPubliek>(
       `/organisatie/${slug}/project/${projectSlug}/publiek`,
@@ -42,6 +48,7 @@ export async function generateMetadata({
       description: project.oproep ?? project.beschrijving ?? undefined,
       // de RSS-feed van dit project als alternate-link in de head
       alternates: {
+        canonical: pad,
         types: {
           "application/rss+xml": [{
             url: `${API_PUBLIEK}/project/${project.projectId}/rss`,

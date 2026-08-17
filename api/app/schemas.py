@@ -164,6 +164,8 @@ class JottemDetail(BaseModel):
     projectId: uuid.UUID
     metadata: dict[str, str]
     afbeeldingUrl: str | None
+    breedte: int | None = None          # afmetingen van het bronbeeld (o.a. voor og:image)
+    hoogte: int | None = None
     bron: str = "upload"                # upload | iiif | url
     bronUrl: str | None = None          # permalink/manifest of foto-URL bij externe bron
     iiifService: str | None = None      # IIIF Image API-basis zodra het derivaat er is

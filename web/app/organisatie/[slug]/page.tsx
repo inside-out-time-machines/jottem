@@ -27,6 +27,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       title: `${organisatie.naam} · Jottem`,
       description: organisatie.beschrijving ?? undefined,
       alternates: {
+        canonical: `/organisatie/${slug}`,
         types: {
           "application/rss+xml": [{
             url: `${API_PUBLIEK}/organisatie/${slug}/rss`,

@@ -16,7 +16,19 @@ type Detail = InteractiefDetail & {
   publicatieDatum: string | null;
   bron: string;
   bronUrl: string | null;
+  breedte: number | null;
+  hoogte: number | null;
 };
+
+// De afmetingen die IIIF-maat `!1200,1200` oplevert: passend binnen 1200x1200 en
+// nooit vergroot (dat vraagt in IIIF 3 om `^`). Zonder bekende bronafmetingen
+// laten we og:image:width/height weg; een gegokte maat is erger dan geen maat.
+function beeldMaat(breedte: number | null, hoogte: number | null, past: boolean) {
+  if (!breedte || !hoogte) return {};
+  if (!past) return { width: breedte, height: hoogte };
+  const schaal = Math.min(1200 / breedte, 1200 / hoogte, 1);
+  return { width: Math.round(breedte * schaal), height: Math.round(hoogte * schaal) };
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -30,18 +42,21 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       : jottem.bron === "url"
         ? jottem.bronUrl
         : jottem.afbeeldingUrl;
+    const maat = beeldMaat(jottem.breedte, jottem.hoogte, Boolean(jottem.iiifService));
     const beschrijving = jottem.beschrijving
       ?? `Een jottem uit het project ${jottem.project} van ${jottem.organisatie}.`;
     return {
       title: `${jottem.titel} · Jottem`,
       description: beschrijving,
+      alternates: { canonical: `/jottem/${id}` },
       openGraph: {
         type: "article",
         locale: "nl_NL",
         url: `/jottem/${id}`,
-        title: jottem.titel,
+        // uitnodigende titel in tijdlijnen: de jottem plus een oproep om mee te weten
+        title: `${jottem.titel} - weet jij hier meer van?`,
         description: beschrijving,
-        images: beeld ? [{ url: beeld, alt: jottem.titel }] : undefined,
+        images: beeld ? [{ url: beeld, alt: jottem.titel, ...maat }] : undefined,
       },
     };
   } catch {

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { apiServer } from "@/lib/api";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     locale: "nl_NL",

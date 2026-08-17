@@ -79,6 +79,8 @@ def _detail(db: Session, media: Media) -> JottemDetail:
         projectId=project.projectId,
         metadata={r.veld: r.waarde for r in media.metadataRijen},
         afbeeldingUrl=afbeelding_url(media),
+        breedte=media.breedte,
+        hoogte=media.hoogte,
         bron=media.bron,
         bronUrl=media.bronUrl,
         iiifService=service,
