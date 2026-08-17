@@ -34,8 +34,9 @@ async def verrijkingen_catalogus():
     ]
 
 
-def _thumbnail(media: Media) -> str | None:
-    """IIIF-thumbnail (eigen of externe service), de foto-URL, of presigned origineel."""
+def thumbnail_url(media: Media) -> str | None:
+    """IIIF-thumbnail (eigen of externe service), de foto-URL, of presigned origineel;
+    bron-bewust, ook gebruikt door de RSS-feeds en IIIF Collections (opendata)."""
     if media.bron == "iiif" and media.externeIiifService:
         return f"{media.externeIiifService}/full/!400,400/0/default.jpg"
     if media.bron == "url":
@@ -133,7 +134,7 @@ async def project_publiek(
         jottems=[
             JottemTegel(
                 mediaId=m.mediaId, titel=m.titel,
-                thumbnailUrl=_thumbnail(m), publicatieDatum=m.publicatieDatum,
+                thumbnailUrl=thumbnail_url(m), publicatieDatum=m.publicatieDatum,
             )
             for m in rijen
         ],

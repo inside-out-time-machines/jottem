@@ -21,6 +21,7 @@ from .. import rdf
 from ..config import settings
 from ..db import get_db
 from ..models import Media, MediaStatus, Organisatie, Project
+from .publiek import thumbnail_url
 
 router = APIRouter(tags=["Open data"])
 
@@ -66,13 +67,15 @@ def _collection(collectie_id: str, label: str, beschrijving: str | None,
                 "id": _manifest_uri(m.mediaId),
                 "type": "Manifest",
                 "label": {"nl": [m.titel]},
+                # bron-bewust: eigen beeldserver, externe IIIF-service of foto-URL
                 "thumbnail": [{
-                    "id": f"{settings().iiif_basis_url}/iiif/3/{m.mediaId}.tif/full/!400,400/0/default.jpg",
+                    "id": thumb,
                     "type": "Image",
                     "format": "image/jpeg",
-                }] if m.breedte else None,
+                }] if thumb else None,
             }
             for m in media
+            for thumb in [thumbnail_url(m)]
         ],
     }
     collectie["items"] = [
@@ -210,8 +213,7 @@ def _rss(titel: str, link: str, beschrijving: str | None, items: list[str]) -> R
 def _rss_jottem_item(m: Media) -> str:
     cfg = settings()
     link = f"{cfg.publieke_basis_url}/jottem/{m.mediaId}"
-    thumb = (f"{cfg.iiif_basis_url}/iiif/3/{m.mediaId}.tif/full/!400,400/0/default.jpg"
-             if m.breedte else None)
+    thumb = thumbnail_url(m)
     beschrijving = escape(m.beschrijving or m.titel)
     if thumb:
         beschrijving = f'&lt;img src="{escape(thumb)}"/&gt; {beschrijving}'
@@ -225,7 +227,9 @@ def _rss_jottem_item(m: Media) -> str:
     if m.publicatieDatum:
         item += f"<pubDate>{format_datetime(m.publicatieDatum)}</pubDate>\n"
     if thumb:
-        item += f'<enclosure url="{escape(thumb)}" type="image/jpeg" length="0"/>\n'
+        # bij een foto-URL-bron is de thumb de foto zelf, dus het eigen mimetype
+        soort = m.mimeType if m.bron == "url" and m.mimeType else "image/jpeg"
+        item += f'<enclosure url="{escape(thumb)}" type="{soort}" length="0"/>\n'
     return item + "</item>\n"
 
 
