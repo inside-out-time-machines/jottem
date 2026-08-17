@@ -42,7 +42,12 @@ def _is_open_data(pad: str) -> bool:
 
 @app.middleware("http")
 async def open_data_cors(request: Request, call_next):
-    if request.method not in ("GET", "HEAD", "OPTIONS") or not _is_open_data(request.url.path):
+    # bij een preflight telt de methode die de browser wil gebruiken: beheeracties
+    # (PUT/POST/DELETE, ook op /jottem/-paden) horen bij de CORSMiddleware hierboven,
+    # die ze alleen voor de eigen frontend toestaat
+    doel = (request.headers.get("access-control-request-method", "").upper()
+            if request.method == "OPTIONS" else request.method)
+    if doel not in ("GET", "HEAD", "OPTIONS", "") or not _is_open_data(request.url.path):
         return await call_next(request)
     if request.method == "OPTIONS":
         # preflight zelf beantwoorden, zodat ook viewers die met extra headers
