@@ -48,13 +48,15 @@ def _dataset_jsonld(db: Session, project: Project) -> dict:
         "@context": "https://schema.org/",
         "@id": dataset_url,
         "@type": "Dataset",
-        "name": f"{project.naam} ({organisatie.naam})",
-        "description": project.beschrijving or f"Jottems uit het project {project.naam}.",
+        # naam en beschrijving expliciet Nederlandstalig (JSON-LD language map)
+        "name": {"@value": f"{project.naam} ({organisatie.naam})", "@language": "nl"},
+        "description": {"@value": project.beschrijving or f"Jottems uit het project {project.naam}.",
+                        "@language": "nl"},
         "license": project.datasetLicentie,
         "publisher": {
             "@id": publisher_id,
             "@type": "Organization",
-            "name": organisatie.naam,
+            "name": {"@value": organisatie.naam, "@language": "nl"},
         },
         "inLanguage": ["nl"],
         "dateModified": laatste_wijziging.isoformat() if laatste_wijziging else None,
