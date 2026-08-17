@@ -224,7 +224,7 @@ dialog.dialoog h2 { font-family: var(--kop); font-size: 1.35rem; margin-bottom: 
 }
 .cta-knop:hover, .cta-knop:focus { background: var(--papier); border-left-color: var(--roest); }
 
-.annotatie-lijst { display: flex; flex-direction: column; gap: .9rem; margin-top: 1rem; max-width: 44rem; }
+.annotatie-lijst { display: flex; flex-direction: column; gap: .9rem; margin-top: 1rem; }
 .annotatie {
     background: var(--wit); border: 4px solid var(--oranje); border-radius: .45rem;
     padding: .9rem 1.1rem;
