@@ -131,6 +131,7 @@ class JottemDetail(BaseModel):
     organisatieSlug: str
     project: str
     projectSlug: str
+    projectId: uuid.UUID
     metadata: dict[str, str]
     afbeeldingUrl: str | None
     iiifService: str | None = None      # IIIF Image API-basis zodra het derivaat er is

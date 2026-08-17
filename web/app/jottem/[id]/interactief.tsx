@@ -14,6 +14,7 @@ export type Detail = {
   iiifService: string | null;
   annotatiesUrl: string | null;
   canvas: string | null;
+  projectId: string;
   verrijkingen: Verrijking[];
 };
 
@@ -143,7 +144,7 @@ export default function Interactief({ detail }: { detail: Detail }) {
   useEffect(() => {
     if (zoekTekst.length < 2) { setZoekResultaten([]); return; }
     const timer = setTimeout(() => {
-      fetch(`${API_PUBLIEK}/termennetwerk/zoek?query=${encodeURIComponent(zoekTekst)}`)
+      fetch(`${API_PUBLIEK}/termennetwerk/zoek?query=${encodeURIComponent(zoekTekst)}&project=${detail.projectId}`)
         .then((r) => (r.ok ? r.json() : []))
         .then(setZoekResultaten)
         .catch(() => setZoekResultaten([]));

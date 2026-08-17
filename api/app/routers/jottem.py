@@ -47,6 +47,7 @@ def _detail(db: Session, media: Media) -> JottemDetail:
         organisatieSlug=organisatie.slug,
         project=project.naam,
         projectSlug=project.slug,
+        projectId=project.projectId,
         metadata={r.veld: r.waarde for r in media.metadataRijen},
         afbeeldingUrl=s3.presigned_get(media.objectKey),
         iiifService=service,
