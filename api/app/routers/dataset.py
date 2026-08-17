@@ -65,6 +65,9 @@ def _dataset_jsonld(db: Session, project: Project) -> dict:
             "@type": "Organization",
             "name": {"@value": organisatie.naam, "@language": "nl"},
             "email": organisatie.email,   # verplicht, gevuld via het beheer
+            "contactPoint": {"@type": "ContactPoint",
+                             "name": {"@value": organisatie.naam, "@language": "nl"},
+                             "email": organisatie.email} if organisatie.email else None,
         }.items() if waarde is not None},
         # het platform zelf als maker van de dataset
         "creator": {
@@ -72,6 +75,9 @@ def _dataset_jsonld(db: Session, project: Project) -> dict:
             "@type": "Organization",
             "name": {"@value": "Jottem", "@language": "nl"},
             "email": "data@iotm.nl",
+            "contactPoint": {"@type": "ContactPoint",
+                             "name": {"@value": "Jottem", "@language": "nl"},
+                             "email": "data@iotm.nl"},
         },
         "inLanguage": ["nl"],
         # ISO 8601 op secondenprecisie (xsd:dateTime), bijv. 2026-04-14T10:30:00
