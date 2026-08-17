@@ -152,6 +152,13 @@ dialog.dialoog::backdrop { background: rgba(31, 30, 28, .55); }
 dialog.dialoog h2 { font-family: var(--kop); font-size: 1.35rem; margin-bottom: .8rem; }
 .dialoog-knoppen { display: flex; gap: .7rem; flex-wrap: wrap; margin-top: 1.1rem; }
 
+/* gevaarlijke acties (verwijderen): rood, alleen op bevestigingspagina's */
+.knop-gevaar {
+    background: #b3261e; color: #fff; border: 1px solid #b3261e;
+}
+.knop-gevaar:hover:not(:disabled), .knop-gevaar:focus:not(:disabled) { background: #8f1d17; }
+.knop-gevaar:disabled { opacity: .45; cursor: not-allowed; }
+
 /* verrijkingen (CTA's en annotaties, zie het verrijkingenhoofdstuk in het design) */
 .cta-balk { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: .8rem; max-width: 52rem; }
 .cta-knop {

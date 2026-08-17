@@ -99,6 +99,51 @@ async def organisatie_bewerken(
     return _uit(organisatie)
 
 
+@router.delete("/organisatie/{slug}")
+async def organisatie_verwijderen(
+    slug: str,
+    p: Principal = Depends(eis_rol(Rol.platformbeheerder)),
+    db: Session = Depends(get_db),
+):
+    """Verwijder een organisatie zonder jottems: de (lege) projecten en de
+    rolkoppelingen gaan mee; het Gebeurtenislog blijft (ontkoppeld) bestaan."""
+    from sqlalchemy import func, update
+    from ..models import Gebeurtenislog, Media
+
+    organisatie = _organisatie(db, slug)
+    aantal_jottems = db.scalar(
+        select(func.count()).select_from(Media).where(
+            Media.organisatieId == organisatie.organisatieId)
+    ) or 0
+    if aantal_jottems:
+        raise HTTPException(
+            409, f"Deze organisatie heeft {aantal_jottems} jottems en kan niet worden "
+                 "verwijderd; depubliceer en verwijder eerst alle jottems")
+
+    geraakte_gebruikers = db.scalars(
+        select(GebruikerRol.gebruikersId).where(
+            GebruikerRol.organisatieId == organisatie.organisatieId)
+    ).all()
+    db.execute(update(Gebeurtenislog)
+               .where(Gebeurtenislog.organisatieId == organisatie.organisatieId)
+               .values(organisatieId=None))
+    for project in list(organisatie.projecten):
+        db.execute(update(Gebeurtenislog)
+                   .where(Gebeurtenislog.projectId == project.projectId)
+                   .values(projectId=None))
+        db.delete(project)
+    for gebruikerrol in db.scalars(select(GebruikerRol).where(
+            GebruikerRol.organisatieId == organisatie.organisatieId)):
+        db.delete(gebruikerrol)
+    db.delete(organisatie)
+    log(db, "organisatie.verwijderd", gebruikers_id=p.gebruiker.gebruikersId,
+        payload={"slug": slug, "naam": organisatie.naam})
+    db.commit()
+    for gebruikers_id in set(geraakte_gebruikers):
+        invalideer_rollen_cache(gebruikers_id)
+    return {"status": "verwijderd"}
+
+
 @router.post("/organisatie/{slug}/huisstijl-upload")
 async def huisstijl_upload(
     slug: str,
