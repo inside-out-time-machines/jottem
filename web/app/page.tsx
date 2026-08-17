@@ -61,11 +61,7 @@ export default async function Home() {
           {/* PB-2: de organisatiehuisstijl (kleur + logo) over de Jottem-basislaag */}
           <h2 style={organisatie.kleurPrimair ? { color: organisatie.kleurPrimair } : undefined}>
             {organisatie.logoUrl && (
-              <img
-                src={organisatie.logoUrl}
-                alt=""
-                style={{ height: "1.6rem", width: "auto", marginRight: ".6rem", verticalAlign: "-0.2rem" }}
-              />
+              <img src={organisatie.logoUrl} alt="" className="organisatie-logo" />
             )}
             {organisatie.naam}
           </h2>

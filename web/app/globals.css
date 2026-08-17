@@ -120,6 +120,15 @@ main { max-width: 68rem; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
     border-radius: .35rem; background: var(--wit); width: 100%;
 }
 .veld { display: grid; gap: .25rem; }
+/* organisatielogo/favicon bij de projectoverzichten (start- en organisatiepagina) */
+.organisatie-logo {
+    height: 4.6rem;
+    float: left;
+    width: auto;
+    margin-right: .6rem;
+    vertical-align: -0.2rem;
+}
+
 .status-pil {
     display: inline-block; font-size: .8rem; font-weight: 700; letter-spacing: .06em;
     text-transform: uppercase; padding: .15rem .6rem; border-radius: 999px;

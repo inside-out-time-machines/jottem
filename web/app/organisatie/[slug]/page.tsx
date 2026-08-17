@@ -68,11 +68,7 @@ export default async function OrganisatiePagina({
     <main>
       <h1 style={organisatie.kleurPrimair ? { color: organisatie.kleurPrimair } : undefined}>
         {organisatie.logoUrl && (
-          <img
-            src={organisatie.logoUrl}
-            alt=""
-            style={{ height: "2rem", width: "auto", marginRight: ".6rem", verticalAlign: "-0.3rem" }}
-          />
+          <img src={organisatie.logoUrl} alt="" className="organisatie-logo" />
         )}
         {organisatie.naam}
       </h1>
