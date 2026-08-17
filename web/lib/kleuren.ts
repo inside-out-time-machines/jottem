@@ -31,6 +31,31 @@ export function tekstOp(vlak: string | null | undefined): string | null {
   return l > 0.179 ? INKT : WIT;
 }
 
+/** Contrastverhouding (WCAG) tussen twee #rrggbb-kleuren; null bij een onbekend formaat. */
+export function contrast(voorgrond: string, achtergrond: string): number | null {
+  const a = luminantie(voorgrond);
+  const b = luminantie(achtergrond);
+  if (a === null || b === null) return null;
+  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+}
+
+/**
+ * Dezelfde kleur, zo nodig donkerder gemaakt tot hij op wit leesbaar is (4.5:1).
+ * Nodig voor tekst in een secundaire kleur: een lichte huisstijlkleur als #00ccfe
+ * haalt op wit maar 1.9:1.
+ */
+export function leesbaarOpWit(kleur: string): string {
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(kleur.trim());
+  if (!m) return kleur;
+  let [r, g, b] = m.slice(1).map((h) => parseInt(h, 16));
+  for (let stap = 0; stap < 20; stap++) {
+    const hex = "#" + [r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("");
+    if ((contrast(hex, WIT) ?? 0) >= 4.5) return hex;
+    [r, g, b] = [r, g, b].map((c) => Math.round(c * 0.85));
+  }
+  return INKT;
+}
+
 /**
  * Inline stijl met de projectvariabelen: primair kleurt de annotaties, secundair de
  * knoppen (achtergrond bij een primaire knop, rand en tekst bij een secundaire).
@@ -44,7 +69,8 @@ export function projectStijl(
   if (primair) stijl["--project-primair"] = primair;
   if (secundair) {
     stijl["--knop-vlak"] = secundair;
-    stijl["--knop-tekst"] = secundair;
+    // de rand mag de kleur zelf zijn; tekst moet leesbaar blijven op wit
+    stijl["--knop-tekst"] = leesbaarOpWit(secundair);
     stijl["--knop-op-vlak"] = tekstOp(secundair) ?? WIT;
   }
   return stijl as CSSProperties;
