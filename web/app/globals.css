@@ -130,6 +130,8 @@ main { max-width: 68rem; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
 .knop-secundair, button.knop-secundair {
     background: transparent; color: var(--knop-tekst); border-color: var(--knop-vlak);
 }
+.knop-secundair:hover, .knop-secundair:focus,
+button.knop-secundair:hover, button.knop-secundair:focus { color: var(--inkt); }
 
 .memo {
     background: var(--geel); border: 1px solid var(--geelrand);
