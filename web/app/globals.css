@@ -133,6 +133,13 @@ main { max-width: 68rem; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
 .knop-secundair:hover, .knop-secundair:focus,
 button.knop-secundair:hover, button.knop-secundair:focus { color: var(--inkt); }
 
+/* delen via het deelmenu van het apparaat (Web Share API): primaire projectkleur */
+.knop-delen {
+    background: var(--project-primair); color: var(--project-op-primair, var(--wit));
+    white-space: nowrap;
+}
+.knop-delen:hover, .knop-delen:focus { filter: brightness(.92); }
+
 .memo {
     background: var(--geel); border: 1px solid var(--geelrand);
     padding: .8rem 1rem; font-family: var(--kop); font-style: italic;

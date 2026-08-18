@@ -3,6 +3,8 @@ import OpenGraph from "../../open-graph";
 import Deelnemer from "../../deelnemer";
 import { kopVoetCss, projectStijl } from "@/lib/kleuren";
 import Interactief, { Detail as InteractiefDetail } from "./interactief";
+import DeelKnop from "./deel-knop";
+import { SITE_URL } from "@/lib/api";
 
 type Detail = InteractiefDetail & {
   beschrijving: string | null;
@@ -98,6 +100,9 @@ export default async function JottemPagina({
 
   // header en footer staan in de root-layout: kleuren via CSS-variabelen in de head
   const kopVoet = kopVoetCss(jottem.organisatieKleurPrimair, jottem.organisatieKleurSecundair);
+  // wat het deelmenu van het apparaat meekrijgt (zelfde oproep als in de preview)
+  const deelUrl = `${SITE_URL}/jottem/${id}`;
+  const deelTekst = `${jottem.titel} - weet jij hier meer van?`;
 
   return (
     <main className="jottem-pagina"
@@ -125,7 +130,11 @@ export default async function JottemPagina({
         {" · "}
         <a href={`/organisatie/${jottem.organisatieSlug}/${jottem.projectSlug}`}>{jottem.project}</a>
       </p>
-      <h1>{jottem.titel}</h1>
+      <div style={{ display: "flex", gap: "1rem", alignItems: "flex-start",
+                    justifyContent: "space-between", flexWrap: "wrap" }}>
+        <h1>{jottem.titel}</h1>
+        <DeelKnop titel={jottem.titel} tekst={deelTekst} url={deelUrl} />
+      </div>
       <p style={{ marginTop: ".3rem" }}>
         <span className={`status-pil status-${jottem.status}`}>{jottem.status}</span>
       </p>
@@ -149,25 +158,31 @@ export default async function JottemPagina({
           wat="deze jottem"
         />
       </p>
-      <table className="lijst" style={{ maxWidth: "36rem", marginTop: ".6rem" }}>
-        <tbody>
-          {jottem.genre && (
-            <tr><th>Genre</th><td>{jottem.genre}</td></tr>
-          )}
-          {jottem.licentie && (
-            <tr><th>Licentie</th><td><a href={jottem.licentie}>{jottem.licentie}</a></td></tr>
-          )}
-          {jottem.bronUrl && (
-            <tr><th>Bron</th><td>
+      <div style={{ display: "flex", gap: "1rem", alignItems: "flex-start",
+                    justifyContent: "space-between", flexWrap: "wrap" }}>
+        <table className="lijst" style={{ maxWidth: "36rem", marginTop: ".6rem" }}>
+          <tbody>
+            {jottem.genre && (
+              <tr><th>Genre</th><td>{jottem.genre}</td></tr>
+            )}
+            {jottem.licentie && (
+              <tr><th>Licentie</th><td><a href={jottem.licentie}>{jottem.licentie}</a></td></tr>
+            )}
+            {jottem.bronUrl && (
+              <tr><th>Bron</th><td>
               <a href={jottem.bronUrl} rel="noopener noreferrer" target="_blank">{jottem.bronUrl}</a>
               {jottem.bron === "iiif" && <span style={{ fontSize: ".85rem", color: "var(--grijs)" }}> (IIIF, uit een beeldbank)</span>}
             </td></tr>
           )}
-          {Object.entries(jottem.metadata).map(([veld, waarde]) => (
-            <tr key={veld}><th>{veld}</th><td>{waarde}</td></tr>
-          ))}
-        </tbody>
-      </table>
+            {Object.entries(jottem.metadata).map(([veld, waarde]) => (
+              <tr key={veld}><th>{veld}</th><td>{waarde}</td></tr>
+            ))}
+          </tbody>
+        </table>
+        <p style={{ marginTop: "1.2rem" }}>
+          <DeelKnop titel={jottem.titel} tekst={deelTekst} url={deelUrl} />
+        </p>
+      </div>
     </main>
   );
 }

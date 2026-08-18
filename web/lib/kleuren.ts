@@ -67,7 +67,10 @@ export function projectStijl(
   secundair: string | null | undefined,
 ): CSSProperties {
   const stijl: Record<string, string> = {};
-  if (primair) stijl["--project-primair"] = primair;
+  if (primair) {
+    stijl["--project-primair"] = primair;
+    stijl["--project-op-primair"] = tekstOp(primair) ?? WIT;
+  }
   if (secundair) {
     stijl["--knop-vlak"] = secundair;
     // de rand mag de kleur zelf zijn; tekst moet leesbaar blijven op wit
