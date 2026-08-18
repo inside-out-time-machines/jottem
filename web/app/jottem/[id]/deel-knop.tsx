@@ -30,7 +30,7 @@ export default function DeelKnop({
       onClick={() => { void navigator.share({ title: titel, text: tekst, url }).catch(() => {}); }}
     >
       <span aria-hidden="true" style={{ marginRight: ".4rem" }}>⇪</span>
-      Delen
+      Deel deze jottem
     </button>
   );
 }

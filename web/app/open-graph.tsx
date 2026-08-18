@@ -9,7 +9,7 @@ export type OgBeeld = {
 
 // Open Graph-tags die we zelf in de head zetten (React hijst <meta> uit de
 // paginaboom naar de head). Bewuste keuze: de metadata-API van Next leidt uit een
-// openGraph-blok automatisch twitter:-tags af, en die willen we nergens.
+// openGraph-blok automatisch twitter:-tags af, en die willen we niet.
 export default function OpenGraph({
   titel,
   beschrijving,
