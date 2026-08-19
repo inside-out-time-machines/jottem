@@ -39,7 +39,10 @@ def jottem_jsonld(db: Session, media: Media) -> dict:
     iiif_service = f"{cfg.iiif_basis_url}/iiif/3/{media.mediaId}.tif"
 
     doc: dict = {
-        "@context": "https://schema.org/",
+        # de externe context https://schema.org/ mapt kale termen naar
+        # http://schema.org/; Turtle, de dump en de triplestore gebruiken
+        # https://schema.org/. Pinnen houdt alle serialisaties één graaf
+        "@context": {"@vocab": "https://schema.org/"},
         "@id": uri,
         "@type": "ImageObject",
         "name": media.titel,

@@ -52,7 +52,10 @@ def _dataset_jsonld(db: Session, project: Project) -> dict:
     def _nl(tekst: str) -> dict:
         return {"@value": tekst, "@language": "nl"}
     dataset = {
-        "@context": "https://schema.org/",
+        # de externe context https://schema.org/ mapt kale termen naar
+        # http://schema.org/; Turtle, de dump en de triplestore gebruiken
+        # https://schema.org/. Pinnen houdt alle serialisaties één graaf
+        "@context": {"@vocab": "https://schema.org/"},
         "@id": dataset_url,
         "@type": "Dataset",
         # naam en beschrijving expliciet Nederlandstalig (JSON-LD language map)

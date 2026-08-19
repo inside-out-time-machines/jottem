@@ -328,7 +328,7 @@ def datacatalogus(db: Session = Depends(get_db)):
         if aantal:
             datasets.append({"@id": rdf.dataset_uri(project.projectId), "@type": "Dataset"})
     catalogus = {
-        "@context": "https://schema.org/",
+        "@context": {"@vocab": "https://schema.org/"},
         "@id": f"{cfg.data_basis_url}/datacatalog",
         "@type": "DataCatalog",
         "name": "Jottem-datacatalogus",
