@@ -16,7 +16,9 @@ type Jottem = {
   toestemming: string | null;
 };
 
-const ORGANISATIE = "samh"; // fundament: één organisatie; later uit de ingelogde rol
+// De organisatie komt uit de rollen van de ingelogde moderator; hardgecodeerd werkte
+// alleen zolang er één organisatie was.
+type Rolregel = { rol: string; organisatieId: number | null; organisatieSlug?: string | null };
 
 type MeldingRij = {
   meldingId: number;
@@ -44,28 +46,38 @@ export default function ModeratiePagina() {
   const [meldingen, setMeldingen] = useState<MeldingRij[]>([]);
   const [melding, setMelding] = useState<string | null>(null);
   const [ingelogd, setIngelogd] = useState<boolean | null>(null);
+  const [organisatie, setOrganisatie] = useState<string | null>(null);
 
   useEffect(() => {
     setIngelogd(isIngelogd());
+    if (!isIngelogd()) return;
+    fetch(`${API_PUBLIEK}/mijn/profiel`, { headers: authHeaders() })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((profiel: { rollen?: Rolregel[] } | null) => {
+        const rol = profiel?.rollen?.find((r) => r.rol === "moderator" && r.organisatieSlug)
+          ?? profiel?.rollen?.find((r) => r.organisatieSlug);
+        setOrganisatie(rol?.organisatieSlug ?? null);
+      })
+      .catch(() => {});
   }, []);
 
-  const headers = { "Content-Type": "application/json", ...authHeaders("dev-mona", "Mona Moderator") };
+  const headers = { "Content-Type": "application/json", ...authHeaders() };
 
   const laden = useCallback(() => {
-    if (!isIngelogd()) return;
-    fetch(`${API_PUBLIEK}/organisatie/${ORGANISATIE}/moderatie/jottems`, { headers })
+    if (!isIngelogd() || !organisatie) return;
+    fetch(`${API_PUBLIEK}/organisatie/${organisatie}/moderatie/jottems`, { headers })
       .then(async (r) => {
         if (!r.ok) throw new Error((await r.json()).detail ?? r.statusText);
         return r.json();
       })
       .then(setJottems)
       .catch((fout) => setMelding(`Wachtrij laden mislukt: ${fout.message}`));
-    fetch(`${API_PUBLIEK}/organisatie/${ORGANISATIE}/meldingen`, { headers })
+    fetch(`${API_PUBLIEK}/organisatie/${organisatie}/meldingen`, { headers })
       .then((r) => (r.ok ? r.json() : []))
       .then(setMeldingen)
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [organisatie]);
 
   useEffect(laden, [laden]);
 

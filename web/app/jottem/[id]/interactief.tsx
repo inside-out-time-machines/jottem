@@ -36,9 +36,6 @@ type W3CAnnotatie = {
   "jottem:aard"?: string;
 };
 
-const DEV_SUB = "dev-anna";
-const DEV_NAAM = "Anna Uploader";
-
 function bodies(a: W3CAnnotatie): W3CBody[] {
   if (!a.body) return [];
   return Array.isArray(a.body) ? a.body : [a.body];
@@ -129,7 +126,7 @@ export default function Interactief({ detail }: { detail: Detail }) {
   const [fotos, setFotos] = useState<Record<string, string | null>>({});
   const dialoogRef = useRef<HTMLDialogElement>(null);
 
-  const headers = { "Content-Type": "application/json", ...authHeaders(DEV_SUB, DEV_NAAM) };
+  const headers = { "Content-Type": "application/json", ...authHeaders() };
 
   const laadAnnotaties = useCallback(async () => {
     if (!detail.annotatiesUrl) return;
@@ -156,7 +153,7 @@ export default function Interactief({ detail }: { detail: Detail }) {
     setIngelogd(isIngelogd());
     laadAnnotaties();
     if (isIngelogd()) {
-      fetch(`${API_PUBLIEK}/mijn/profiel`, { headers: authHeaders(DEV_SUB, DEV_NAAM) })
+      fetch(`${API_PUBLIEK}/mijn/profiel`, { headers: authHeaders() })
         .then((r) => (r.ok ? r.json() : null))
         .then((p) => setPubliekeId(p?.publiekeId ?? null))
         .catch(() => {});

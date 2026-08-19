@@ -18,7 +18,7 @@ export default function ProjectBewerkPagina() {
   const [dataset, setDataset] = useState<unknown | null>(null);
   const [melding, setMelding] = useState<string | null>(null);
 
-  const headers = { "Content-Type": "application/json", ...authHeaders("dev-otto", "Otto Organisatiebeheerder") };
+  const headers = { "Content-Type": "application/json", ...authHeaders() };
 
   const laden = useCallback(async () => {
     const r = await fetch(`${API_PUBLIEK}/organisatie/${org}/projecten`, { headers });

@@ -17,7 +17,7 @@ export default function OrganisatieBewerkPagina() {
   const [leden, setLeden] = useState<Lid[]>([]);
   const [melding, setMelding] = useState<string | null>(null);
 
-  const headers = { "Content-Type": "application/json", ...authHeaders("dev-piet", "Piet Platformbeheerder") };
+  const headers = { "Content-Type": "application/json", ...authHeaders() };
 
   const laden = useCallback(async () => {
     const r = await fetch(`${API_PUBLIEK}/organisatie`, { headers });

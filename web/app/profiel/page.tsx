@@ -23,7 +23,7 @@ export default function ProfielPagina() {
   const [naam, setNaam] = useState("");
   const [melding, setMelding] = useState<string | null>(null);
 
-  const headers = { "Content-Type": "application/json", ...authHeaders("dev-anna", "Anna Uploader") };
+  const headers = { "Content-Type": "application/json", ...authHeaders() };
 
   useEffect(() => {
     setIngelogd(isIngelogd());

@@ -12,7 +12,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .. import geo, s3
-from ..auth import Principal, eis_rol, invalideer_rollen_cache, principal
+from ..auth import (
+    Principal, eis_rol, eis_sterke_factor, invalideer_rollen_cache, principal,
+)
 from ..config import settings
 from ..db import get_db
 from ..models import Gebruiker, GebruikerRol, Organisatie, Project, Rol
@@ -192,6 +194,7 @@ async def gebruikers(
     db: Session = Depends(get_db),
 ):
     organisatie = _organisatie(db, slug)
+    eis_sterke_factor(p)
     if not (p.heeft_rol(Rol.platformbeheerder) or p.heeft_rol(Rol.organisatiebeheerder, organisatie.organisatieId)):
         raise HTTPException(403, "Alleen voor beheerders")
     vraag = select(GebruikerRol, Gebruiker).join(Gebruiker).where(
@@ -218,6 +221,7 @@ async def uitnodigen(
     organisatie = _organisatie(db, slug)
     doel_rol = Rol(vraag.rol)
     # platformbeheerders nodigen organisatiebeheerders uit; organisatiebeheerders moderatoren
+    eis_sterke_factor(p)
     if doel_rol == Rol.organisatiebeheerder and not p.heeft_rol(Rol.platformbeheerder):
         raise HTTPException(403, "Alleen de platformbeheerder nodigt organisatiebeheerders uit")
     if doel_rol == Rol.moderator and not (
@@ -272,6 +276,7 @@ async def rol_intrekken(
 ):
     organisatie = _organisatie(db, slug)
     doel_rol = rol
+    eis_sterke_factor(p)
     if doel_rol == Rol.organisatiebeheerder and not p.heeft_rol(Rol.platformbeheerder):
         raise HTTPException(403, "Alleen de platformbeheerder beheert organisatiebeheerders")
     if doel_rol == Rol.moderator and not (

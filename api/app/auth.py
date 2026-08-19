@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 
 from .config import settings
 from .db import get_db
-from .models import Gebruiker, GebruikerRol, Rol
+from .models import Gebruiker, GebruikerRol, Organisatie, Rol
 
 _valkey = redis.Redis.from_url(settings().valkey_url, decode_responses=True)
 _jwks_client: jwt.PyJWKClient | None = None
@@ -55,7 +55,8 @@ def _jwks() -> jwt.PyJWKClient:
 
 
 def _rollen_cache_key(gebruikers_id: int) -> str:
-    return f"rollen:{gebruikers_id}"
+    # v2: sinds de slug erbij zit; oude entries zonder slug vervallen zo vanzelf
+    return f"rollen2:{gebruikers_id}"
 
 
 def rollen_van(db: Session, gebruiker: Gebruiker) -> list[dict]:
@@ -67,9 +68,16 @@ def rollen_van(db: Session, gebruiker: Gebruiker) -> list[dict]:
             return json.loads(gecached)
     except redis.RedisError:
         pass
+    # de slug hoort erbij: de frontend bouwt er beheer-URL's mee en had anders een
+    # hardgecodeerde organisatie nodig
+    rijen = db.execute(
+        select(GebruikerRol, Organisatie.slug)
+        .outerjoin(Organisatie, Organisatie.organisatieId == GebruikerRol.organisatieId)
+        .where(GebruikerRol.gebruikersId == gebruiker.gebruikersId)
+    ).all()
     rollen = [
-        {"rol": r.rol.value, "organisatieId": r.organisatieId}
-        for r in db.scalars(select(GebruikerRol).where(GebruikerRol.gebruikersId == gebruiker.gebruikersId))
+        {"rol": r.rol.value, "organisatieId": r.organisatieId, "organisatieSlug": slug}
+        for r, slug in rijen
     ]
     try:
         _valkey.setex(sleutel, settings().rollen_cache_ttl, json.dumps(rollen))
@@ -145,6 +153,19 @@ async def principal(
     return Principal(gebruiker=gebruiker, rollen=rollen_van(db, gebruiker), amr=claims.get("amr", []))
 
 
+def eis_sterke_factor(p: Principal) -> None:
+    """Beheer- en moderatieacties vragen om TOTP of een passkey (design: amr-controle).
+
+    Stond eerder alleen in `eis_rol`, terwijl projectbeheer, de dataset-flow en het
+    rollenbeheer hun eigen `heeft_rol`-check doen: die passeerden de eis dus zonder
+    sterke factor. Deze helper hoort in elke handmatige tak.
+    """
+    cfg = settings()
+    sterk = bool(set(a.lower() for a in p.amr) & STERKE_FACTOREN)
+    if cfg.amr_verplicht and not sterk and not (cfg.dev_auth and "dev-bypass" in p.amr):
+        raise HTTPException(403, "Sterke factor (TOTP of passkey) vereist voor deze rol")
+
+
 def eis_rol(rol: Rol):
     """Dependency-factory: eist de rol én (conform design) een sterke factor via amr.
 
@@ -156,11 +177,6 @@ def eis_rol(rol: Rol):
     async def controle(p: Principal = Depends(principal)) -> Principal:
         if not p.heeft_rol(rol):
             raise HTTPException(403, f"Rol '{rol.value}' vereist")
-        cfg = settings()
-        sterk = bool(set(a.lower() for a in p.amr) & STERKE_FACTOREN)
-        # de dev-bypass levert bewust géén sterke factor meer; hij mag alleen in een
-        # dev-omgeving de poort passeren, en daar weigert de API te starten als dat niet zo is
-        if cfg.amr_verplicht and not sterk and not (cfg.dev_auth and "dev-bypass" in p.amr):
-            raise HTTPException(403, "Sterke factor (TOTP of passkey) vereist voor deze rol")
+        eis_sterke_factor(p)
         return p
     return controle

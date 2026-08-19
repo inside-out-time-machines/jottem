@@ -12,7 +12,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from .. import s3
-from ..auth import Principal, principal
+from ..auth import Principal, eis_sterke_factor, principal
 from ..config import settings
 from ..db import get_db
 from ..models import Media, Organisatie, Project, Rol
@@ -30,6 +30,7 @@ def _organisatie(db: Session, slug: str) -> Organisatie:
 
 
 def _eis_beheerder(p: Principal, organisatie_id: int) -> None:
+    eis_sterke_factor(p)
     if not (p.heeft_rol(Rol.platformbeheerder) or p.heeft_rol(Rol.organisatiebeheerder, organisatie_id)):
         raise HTTPException(403, "Alleen voor beheerders van deze organisatie")
 

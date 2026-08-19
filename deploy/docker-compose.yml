@@ -79,12 +79,12 @@ services:
       retries: 12
     labels:
       - traefik.enable=true
-      - traefik.http.routers.s3.rule=Host(`s3.dev.iotm.nl`)
+      - traefik.http.routers.s3.rule=Host(`s3.${BASISDOMEIN}`)
       - traefik.http.routers.s3.tls.certresolver=letsencrypt
       - traefik.http.services.s3.loadbalancer.server.port=9000
       # metrics en beheer-API horen niet op het publieke internet: alleen intern verkeer
       # (Prometheus praat rechtstreeks met minio:9000 en komt hier dus niet langs)
-      - traefik.http.routers.s3-metrics.rule=Host(`s3.dev.iotm.nl`) && PathPrefix(`/minio/`)
+      - traefik.http.routers.s3-metrics.rule=Host(`s3.${BASISDOMEIN}`) && PathPrefix(`/minio/`)
       - traefik.http.routers.s3-metrics.priority=100
       - traefik.http.routers.s3-metrics.tls.certresolver=letsencrypt
       - traefik.http.routers.s3-metrics.service=s3
@@ -123,7 +123,7 @@ services:
     image: ghcr.io/knaw-huc/annorepo-server:0.9.0
     restart: unless-stopped
     environment:
-      AR_EXTERNAL_BASE_URL: ${ANNO_PUBLIEK:-https://anno.dev.iotm.nl}
+      AR_EXTERNAL_BASE_URL: ${ANNO_PUBLIEK:-https://anno.${BASISDOMEIN}}
       AR_MONGODB_URL: mongodb://mongo/
       AR_DB_NAME: annorepo
       AR_PAGE_SIZE: "100"
@@ -133,7 +133,7 @@ services:
       - mongo
     labels:
       - traefik.enable=true
-      - traefik.http.routers.anno.rule=Host(`anno.dev.iotm.nl`)
+      - traefik.http.routers.anno.rule=Host(`anno.${BASISDOMEIN}`)
       - traefik.http.routers.anno.tls.certresolver=letsencrypt
       - traefik.http.services.anno.loadbalancer.server.port=8080
 
@@ -141,7 +141,7 @@ services:
     image: uclalibrary/cantaloupe:5.0.7-0
     restart: unless-stopped
     environment:
-      CANTALOUPE_BASE_URI: https://iiif.dev.iotm.nl
+      CANTALOUPE_BASE_URI: https://iiif.${BASISDOMEIN}
       CANTALOUPE_SOURCE_STATIC: S3Source
       CANTALOUPE_S3SOURCE_ENDPOINT: http://minio:9000
       CANTALOUPE_S3SOURCE_REGION: eu-central-1
@@ -165,7 +165,7 @@ services:
       - cantaloupe
     labels:
       - traefik.enable=true
-      - traefik.http.routers.iiif.rule=Host(`iiif.dev.iotm.nl`)
+      - traefik.http.routers.iiif.rule=Host(`iiif.${BASISDOMEIN}`)
       - traefik.http.routers.iiif.tls.certresolver=letsencrypt
       - traefik.http.services.iiif.loadbalancer.server.port=80
 
@@ -183,7 +183,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=jottem_default
-      - traefik.http.routers.datapagina.rule=Host(`data.dev.iotm.nl`)
+      - traefik.http.routers.datapagina.rule=Host(`data.${BASISDOMEIN}`)
       - traefik.http.routers.datapagina.priority=1
       - traefik.http.routers.datapagina.tls.certresolver=letsencrypt
       - traefik.http.services.datapagina.loadbalancer.server.port=80
@@ -193,7 +193,7 @@ services:
     image: mathiasvda/yasgui:latest
     restart: unless-stopped
     environment:
-      YASGUI_DEFAULT_ENDPOINT: https://data.dev.iotm.nl/sparql
+      YASGUI_DEFAULT_ENDPOINT: https://data.${BASISDOMEIN}/sparql
 
   fuseki:
     # triplestore voor de RDF-publicatie (schema.org AP NDE); publiek is ALLEEN het
@@ -252,7 +252,7 @@ services:
         condition: service_healthy
     labels:
       - traefik.enable=true
-      - traefik.http.routers.auth.rule=Host(`auth.dev.iotm.nl`)
+      - traefik.http.routers.auth.rule=Host(`auth.${BASISDOMEIN}`)
       - traefik.http.routers.auth.tls.certresolver=letsencrypt
       - traefik.http.services.auth.loadbalancer.server.port=9000
 
@@ -278,23 +278,23 @@ services:
       JOTTEM_DATABASE_URL: postgresql+psycopg://jottem:${POSTGRES_WACHTWOORD}@postgres:5432/jottem
       JOTTEM_VALKEY_URL: redis://valkey:6379/0
       JOTTEM_S3_ENDPOINT: http://minio:9000
-      JOTTEM_S3_ENDPOINT_PUBLIEK: ${S3_PUBLIEK:-https://s3.dev.iotm.nl}
+      JOTTEM_S3_ENDPOINT_PUBLIEK: ${S3_PUBLIEK:-https://s3.${BASISDOMEIN}}
       JOTTEM_S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       JOTTEM_S3_SECRET_KEY: ${S3_SECRET_KEY}
-      JOTTEM_PUBLIEKE_BASIS_URL: ${WEB_PUBLIEK:-https://dev.iotm.nl}
-      JOTTEM_API_BASIS_URL: ${API_PUBLIEK:-https://api.dev.iotm.nl}
-      JOTTEM_OIDC_ISSUER: https://auth.dev.iotm.nl/application/o/jottem/
+      JOTTEM_PUBLIEKE_BASIS_URL: ${WEB_PUBLIEK:-https://${BASISDOMEIN}}
+      JOTTEM_API_BASIS_URL: ${API_PUBLIEK:-https://api.${BASISDOMEIN}}
+      JOTTEM_OIDC_ISSUER: https://auth.${BASISDOMEIN}/application/o/jottem/
       JOTTEM_DEV_AUTH: ${DEV_AUTH:-0}
       # bij een lege database wordt dit adres platformbeheerder (uitnodigingspatroon)
       JOTTEM_BOOTSTRAP_BEHEERDER: ${BOOTSTRAP_BEHEERDER:-}
       JOTTEM_AMR_VERPLICHT: ${AMR_VERPLICHT:-1}
-      JOTTEM_IIIF_BASIS_URL: ${IIIF_PUBLIEK:-https://iiif.dev.iotm.nl}
+      JOTTEM_IIIF_BASIS_URL: ${IIIF_PUBLIEK:-https://iiif.${BASISDOMEIN}}
       JOTTEM_HERKENBAAR_URL: http://herkenbaar:4050
       JOTTEM_ANNO_URL: http://annorepo:8080
-      JOTTEM_ANNO_BASIS_URL: ${ANNO_PUBLIEK:-https://anno.dev.iotm.nl}
+      JOTTEM_ANNO_BASIS_URL: ${ANNO_PUBLIEK:-https://anno.${BASISDOMEIN}}
       JOTTEM_ANNO_API_KEY: ${ANNO_API_KEY}
       JOTTEM_FUSEKI_URL: http://fuseki:3030/ds
-      JOTTEM_DATA_BASIS_URL: ${DATA_PUBLIEK:-https://data.dev.iotm.nl}
+      JOTTEM_DATA_BASIS_URL: ${DATA_PUBLIEK:-https://data.${BASISDOMEIN}}
       JOTTEM_SMTP_HOST: mailpit
       JOTTEM_SMTP_PORT: 1025
     depends_on:
@@ -305,11 +305,11 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=jottem_default
-      - traefik.http.routers.api.rule=Host(`api.dev.iotm.nl`)
+      - traefik.http.routers.api.rule=Host(`api.${BASISDOMEIN}`)
       - traefik.http.routers.api.tls.certresolver=letsencrypt
       # datasetbeschrijving, dump en datacatalogus ook op data.dev (URI-strategie);
       # de rest van data.dev is de statische open-data-pagina (service datapagina)
-      - traefik.http.routers.data.rule=Host(`data.dev.iotm.nl`) && (PathPrefix(`/project`) || Path(`/datacatalog`))
+      - traefik.http.routers.data.rule=Host(`data.${BASISDOMEIN}`) && (PathPrefix(`/project`) || Path(`/datacatalog`))
       - traefik.http.routers.data.priority=10
       - traefik.http.routers.data.tls.certresolver=letsencrypt
       - traefik.http.routers.data.service=api
@@ -326,13 +326,13 @@ services:
       JOTTEM_S3_ENDPOINT: http://minio:9000
       JOTTEM_S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       JOTTEM_S3_SECRET_KEY: ${S3_SECRET_KEY}
-      JOTTEM_PUBLIEKE_BASIS_URL: ${WEB_PUBLIEK:-https://dev.iotm.nl}
-      JOTTEM_IIIF_BASIS_URL: ${IIIF_PUBLIEK:-https://iiif.dev.iotm.nl}
+      JOTTEM_PUBLIEKE_BASIS_URL: ${WEB_PUBLIEK:-https://${BASISDOMEIN}}
+      JOTTEM_IIIF_BASIS_URL: ${IIIF_PUBLIEK:-https://iiif.${BASISDOMEIN}}
       JOTTEM_ANNO_URL: http://annorepo:8080
-      JOTTEM_ANNO_BASIS_URL: ${ANNO_PUBLIEK:-https://anno.dev.iotm.nl}
+      JOTTEM_ANNO_BASIS_URL: ${ANNO_PUBLIEK:-https://anno.${BASISDOMEIN}}
       JOTTEM_ANNO_API_KEY: ${ANNO_API_KEY}
       JOTTEM_FUSEKI_URL: http://fuseki:3030/ds
-      JOTTEM_DATA_BASIS_URL: ${DATA_PUBLIEK:-https://data.dev.iotm.nl}
+      JOTTEM_DATA_BASIS_URL: ${DATA_PUBLIEK:-https://data.${BASISDOMEIN}}
       JOTTEM_SMTP_HOST: mailpit
       JOTTEM_SMTP_PORT: 1025
     depends_on:
@@ -343,8 +343,13 @@ services:
     build:
       context: ../web
       args:
-        NEXT_PUBLIC_API_URL: ${API_PUBLIEK:-https://api.dev.iotm.nl}
+        NEXT_PUBLIC_API_URL: ${API_PUBLIEK:-https://api.${BASISDOMEIN}}
         NEXT_PUBLIC_DEV_AUTH: ${DEV_AUTH:-0}
+        # de browser had de issuer nooit meegekregen en viel terug op de compile-time
+        # standaard uit web/Dockerfile: bij een ander domein logde je op dev in
+        NEXT_PUBLIC_OIDC_ISSUER: ${OIDC_ISSUER:-https://auth.${BASISDOMEIN}/application/o/jottem/}
+        # welke dev-identiteit de bypass gebruikt (alleen zinvol met DEV_AUTH=1)
+        NEXT_PUBLIC_DEV_SUB: ${DEV_SUB:-dev-piet}
     restart: unless-stopped
     environment:
       JOTTEM_API_INTERN: http://api:8000
@@ -352,7 +357,7 @@ services:
       - api
     labels:
       - traefik.enable=true
-      - traefik.http.routers.web.rule=Host(`dev.iotm.nl`)
+      - traefik.http.routers.web.rule=Host(`${BASISDOMEIN}`)
       - traefik.http.routers.web.tls.certresolver=letsencrypt
       - traefik.http.services.web.loadbalancer.server.port=3000
 
@@ -366,7 +371,7 @@ services:
       MP_UI_AUTH: ${MAILPIT_UI_AUTH:?zet MAILPIT_UI_AUTH in .env (gebruiker:bcrypt-hash of gebruiker:wachtwoord)}
     labels:
       - traefik.enable=true
-      - traefik.http.routers.mail.rule=Host(`mail.dev.iotm.nl`)
+      - traefik.http.routers.mail.rule=Host(`mail.${BASISDOMEIN}`)
       - traefik.http.routers.mail.tls.certresolver=letsencrypt
       - traefik.http.services.mail.loadbalancer.server.port=8025
 
@@ -421,7 +426,7 @@ services:
     image: grafana/grafana:11.2.0
     restart: unless-stopped
     environment:
-      GF_SERVER_ROOT_URL: https://grafana.dev.iotm.nl
+      GF_SERVER_ROOT_URL: https://grafana.${BASISDOMEIN}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_WACHTWOORD}
       GF_SMTP_ENABLED: "true"
       GF_SMTP_HOST: mailpit:1025
@@ -433,17 +438,17 @@ services:
       GF_AUTH_GENERIC_OAUTH_CLIENT_ID: grafana
       GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: ${GRAFANA_OIDC_SECRET}
       GF_AUTH_GENERIC_OAUTH_SCOPES: openid profile email
-      GF_AUTH_GENERIC_OAUTH_AUTH_URL: https://auth.dev.iotm.nl/application/o/authorize/
-      GF_AUTH_GENERIC_OAUTH_TOKEN_URL: https://auth.dev.iotm.nl/application/o/token/
-      GF_AUTH_GENERIC_OAUTH_API_URL: https://auth.dev.iotm.nl/application/o/userinfo/
+      GF_AUTH_GENERIC_OAUTH_AUTH_URL: https://auth.${BASISDOMEIN}/application/o/authorize/
+      GF_AUTH_GENERIC_OAUTH_TOKEN_URL: https://auth.${BASISDOMEIN}/application/o/token/
+      GF_AUTH_GENERIC_OAUTH_API_URL: https://auth.${BASISDOMEIN}/application/o/userinfo/
       GF_AUTH_GENERIC_OAUTH_LOGIN_ATTRIBUTE_PATH: preferred_username
       GF_AUTH_GENERIC_OAUTH_NAME_ATTRIBUTE_PATH: name
       GF_AUTH_GENERIC_OAUTH_EMAIL_ATTRIBUTE_PATH: email
       GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: "contains(groups[*], 'Platformbeheerders') && 'Admin'"
       GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_STRICT: "true"
     extra_hosts:
-      # hairpin: de token-exchange naar auth.dev.iotm.nl moet via de host (Traefik)
-      - "auth.dev.iotm.nl:host-gateway"
+      # hairpin: de token-exchange naar de auth-host moet via de host (Traefik)
+      - "auth.${BASISDOMEIN}:host-gateway"
     volumes:
       - grafana:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
@@ -452,7 +457,7 @@ services:
       - prometheus
     labels:
       - traefik.enable=true
-      - traefik.http.routers.grafana.rule=Host(`grafana.dev.iotm.nl`)
+      - traefik.http.routers.grafana.rule=Host(`grafana.${BASISDOMEIN}`)
       - traefik.http.routers.grafana.tls.certresolver=letsencrypt
       - traefik.http.services.grafana.loadbalancer.server.port=3000
 
