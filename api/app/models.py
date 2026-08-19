@@ -185,6 +185,12 @@ class MediaMetadata(Base):
 
 
 class Favoriet(Base):
+    """Voorbereid datamodel voor GE-4 (favorieten); nog geen endpoints.
+
+    Bewust laten staan: het ERD in de data-architectuur beschrijft deze tabel en de
+    functie staat in het realisatieplan. Wie hier langskomt en denkt "dode code": het is
+    grondwerk, geen restant.
+    """
     __tablename__ = "favoriet"
 
     favorietId: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -196,6 +202,11 @@ class Favoriet(Base):
 
 
 class Verwijderverzoek(Base):
+    """Voorbereid datamodel voor de verwijderverzoeken-flow; nog geen endpoints.
+
+    De bijbehorende mailsjablonen staan al in api/templates/mail/. Depubliceren zelf kan
+    inmiddels wel: zie DELETE /jottem/{id}/publicatie in de moderatierouter.
+    """
     __tablename__ = "verwijderverzoek"
 
     verzoekId: Mapped[int] = mapped_column(Integer, primary_key=True)

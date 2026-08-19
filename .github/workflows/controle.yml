@@ -1,0 +1,51 @@
+# Wat er tot nu toe met de hand gebeurde, gebeurt hier automatisch: bouwen, linten,
+# typechecken en de afhankelijkheden op bekende kwetsbaarheden controleren.
+# De contract- en rooktests staan bewust in een aparte workflow: die praten met een
+# draaiende omgeving en horen niet aan elke push te hangen.
+name: Controle
+
+on:
+  push:
+    branches: [main, uplift]
+  pull_request:
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npm run build
+      - name: Bekende kwetsbaarheden (hoog en kritiek)
+        run: npm audit --audit-level=high
+
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Afhankelijkheden installeren
+        run: pip install -r api/requirements.txt
+      - name: Importcontrole (elke module laadt)
+        working-directory: api
+        env:
+          JOTTEM_DATABASE_URL: postgresql+psycopg://x:x@localhost/x
+          JOTTEM_S3_SECRET_KEY: ci
+          JOTTEM_ANNO_API_KEY: ci
+        run: python -c "import app.main, app.worker, app.seed; print('modules laden')"
+      - name: Bekende kwetsbaarheden
+        run: |
+          pip install pip-audit
+          pip-audit -r api/requirements.txt

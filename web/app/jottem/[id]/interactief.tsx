@@ -158,7 +158,7 @@ export default function Interactief({ detail }: { detail: Detail }) {
         .then((p) => setPubliekeId(p?.publiekeId ?? null))
         .catch(() => {});
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [laadAnnotaties]);
 
   // vlak-annotaties op de viewer tonen zodra beide er zijn (de laag is soms later

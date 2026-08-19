@@ -54,6 +54,35 @@ async def wachtrij(
     ]
 
 
+@router.delete("/jottem/{media_id}/publicatie", status_code=200)
+async def depubliceren(
+    media_id: uuid.UUID,
+    p: Principal = Depends(eis_rol(Rol.moderator)),
+    db: Session = Depends(get_db),
+):
+    """Een gepubliceerde jottem terugtrekken (verwijderverzoek, portretrecht, bezwaar).
+
+    Tot nu toe bestond `gedepubliceerd` alleen als status: de 410-tombstone en de
+    `Delete`-tak van de Change Discovery waren onbereikbaar omdat niets die status ooit
+    zette. Deze route sluit dat gat, zodat een honorering van een bezwaar ook echt door de
+    open data heen loopt.
+    """
+    media = db.get(Media, media_id)
+    if not media:
+        raise HTTPException(404, "Jottem onbekend")
+    if not p.heeft_rol(Rol.moderator, media.organisatieId):
+        raise HTTPException(403, "Geen moderator van deze organisatie")
+    if media.status != MediaStatus.goedgekeurd:
+        raise HTTPException(409, "Alleen een gepubliceerde jottem kan worden gedepubliceerd")
+    media.status = MediaStatus.gedepubliceerd
+    log(db, "jottem.gedepubliceerd",
+        organisatie_id=media.organisatieId, project_id=media.projectId,
+        gebruikers_id=p.gebruiker.gebruikersId,
+        payload={"mediaId": str(media.mediaId)})
+    db.commit()
+    return {"status": media.status.value}
+
+
 @router.put("/jottem/{media_id}/status")
 async def beoordelen(
     media_id: uuid.UUID,
