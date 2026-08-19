@@ -1,7 +1,7 @@
 """Ingelogde-gebruiker-endpoints en publieke hulplijsten voor de frontend."""
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -50,7 +50,9 @@ class ProfielIn(BaseModel):
     naam: str | None = Field(default=None, min_length=1, max_length=200)
     naamPubliek: bool | None = None
     attenderingen: bool | None = None
-    afbeelding: str | None = None    # S3-sleutel uit de profiel-afbeelding-upload
+    # S3-sleutel uit de profiel-afbeelding-upload. Alleen het eigen prefix is toegestaan:
+    # anders kan iemand elke sleutel in de gedeelde thumbs-bucket laten voorondertekenen.
+    afbeelding: str | None = Field(default=None, max_length=300)
 
 
 @router.put("/mijn/profiel")
@@ -69,6 +71,8 @@ async def profiel_bewerken(
     if vraag.attenderingen is not None:
         gebruiker.attenderingen = vraag.attenderingen
     if vraag.afbeelding is not None:
+        if vraag.afbeelding and not vraag.afbeelding.startswith("profielen/"):
+            raise HTTPException(422, "Ongeldige verwijzing naar een profielafbeelding")
         gebruiker.afbeelding = vraag.afbeelding or None
     if naam_geraakt:
         # de worker werkt creator.name bij in alle annotaties van deze gebruiker (GE-2)
@@ -86,7 +90,7 @@ async def profiel_afbeelding_upload(
     p: Principal = Depends(principal),
 ):
     # niet-raadbare sleutel (uuid4), losgekoppeld van het gebruikers-id
-    extensie = vraag.bestandsnaam.rsplit(".", 1)[-1].lower() if "." in vraag.bestandsnaam else "jpg"
+    extensie = s3.extensie_voor(vraag.contentType, "jpg")
     object_key = f"profielen/{uuid.uuid4()}.{extensie}"
     return {
         "objectKey": object_key,

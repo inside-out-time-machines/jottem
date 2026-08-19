@@ -9,7 +9,7 @@ import gzip
 import math
 import uuid
 from email.utils import format_datetime
-from xml.sax.saxutils import escape
+from xml.sax.saxutils import escape, quoteattr
 
 import redis
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -216,7 +216,7 @@ def _rss_jottem_item(m: Media) -> str:
     thumb = thumbnail_url(m)
     beschrijving = escape(m.beschrijving or m.titel)
     if thumb:
-        beschrijving = f'&lt;img src="{escape(thumb)}"/&gt; {beschrijving}'
+        beschrijving = f"&lt;img src={escape(quoteattr(thumb))}/&gt; {beschrijving}"
     item = (
         "<item>\n"
         f"<title>{escape(m.titel)}</title>\n"
@@ -229,7 +229,7 @@ def _rss_jottem_item(m: Media) -> str:
     if thumb:
         # bij een foto-URL-bron is de thumb de foto zelf, dus het eigen mimetype
         soort = m.mimeType if m.bron == "url" and m.mimeType else "image/jpeg"
-        item += f'<enclosure url="{escape(thumb)}" type="{soort}" length="0"/>\n'
+        item += f"<enclosure url={quoteattr(thumb)} type={quoteattr(soort)} length=\"0\"/>\n"
     return item + "</item>\n"
 
 

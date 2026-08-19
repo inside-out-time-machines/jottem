@@ -89,22 +89,30 @@ app.include_router(opendata.router)
 
 @app.get("/healthz", tags=["Systeem"])
 async def healthz():
+    """Publiek bereikbaar, dus alleen ok/fout per component.
+
+    De uitzonderingstekst noemt interne hostnamen, poorten en drivergegevens; die hoort in
+    het logboek, niet in het antwoord.
+    """
     status: dict[str, str] = {}
     try:
         with engine.connect() as verbinding:
             verbinding.execute(text("SELECT 1"))
         status["database"] = "ok"
     except Exception as fout:  # noqa: BLE001 - health rapporteert, faalt niet
-        status["database"] = f"fout: {fout}"
+        print(f"healthz: database niet bereikbaar: {fout}")
+        status["database"] = "fout"
     try:
         redis.Redis.from_url(settings().valkey_url).ping()
         status["valkey"] = "ok"
     except Exception as fout:  # noqa: BLE001
-        status["valkey"] = f"fout: {fout}"
+        print(f"healthz: valkey niet bereikbaar: {fout}")
+        status["valkey"] = "fout"
     try:
         s3.intern().head_bucket(Bucket=settings().s3_bucket_originals)
         status["s3"] = "ok"
     except Exception as fout:  # noqa: BLE001
-        status["s3"] = f"fout: {fout}"
+        print(f"healthz: object storage niet bereikbaar: {fout}")
+        status["s3"] = "fout"
     gezond = all(w == "ok" for w in status.values())
     return {"status": "ok" if gezond else "degraded", "componenten": status}

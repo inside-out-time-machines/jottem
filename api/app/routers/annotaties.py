@@ -22,7 +22,7 @@ from ..config import settings
 from ..db import get_db
 from ..models import Gebruiker, Media, MediaStatus, Melding, Project, Rol
 from ..outbox import log
-from ..schemas import MeldingBesluit, MeldingIn, MeldingUit
+from ..schemas import HTTP_URL, MeldingBesluit, MeldingIn, MeldingUit
 from ..verrijkingen import PER_SLEUTEL, REAGEREN_MOTIVATION, actieve_sleutels
 from .jottem import canvas_iri
 
@@ -53,9 +53,9 @@ class AnnotatieIn(BaseModel):
     verrijking: str                      # sleutel uit de catalogus, of "reactie"
     tekst: str | None = Field(default=None, max_length=4000)
     aard: str | None = Field(default=None, pattern="^(herinnering|feit)$")  # V-4
-    termUri: str | None = Field(default=None, max_length=500)
+    termUri: str | None = Field(default=None, max_length=500, pattern=HTTP_URL)
     termLabel: str | None = Field(default=None, max_length=200)
-    bronUrl: str | None = Field(default=None, max_length=500)
+    bronUrl: str | None = Field(default=None, max_length=500, pattern=HTTP_URL)
     bronLabel: str | None = Field(default=None, max_length=200)
     jaarVan: str | None = Field(default=None, max_length=10)   # EDTF, bijv. 1973 of 196X
     jaarTot: str | None = Field(default=None, max_length=10)

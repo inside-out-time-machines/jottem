@@ -176,7 +176,7 @@ async def huisstijl_upload(
     db: Session = Depends(get_db),
 ):
     _organisatie(db, slug)
-    extensie = vraag.bestandsnaam.rsplit(".", 1)[-1].lower() if "." in vraag.bestandsnaam else "png"
+    extensie = s3.extensie_voor(vraag.contentType, "png")
     object_key = f"huisstijl/{slug}/{vraag.soort}.{extensie}"
     return {
         "objectKey": object_key,
@@ -187,7 +187,7 @@ async def huisstijl_upload(
 @router.get("/organisatie/{slug}/gebruikers", response_model=list[GebruikerRolUit])
 async def gebruikers(
     slug: str,
-    rol: str | None = None,
+    rol: Rol | None = None,
     p: Principal = Depends(principal),
     db: Session = Depends(get_db),
 ):
@@ -198,7 +198,7 @@ async def gebruikers(
         GebruikerRol.organisatieId == organisatie.organisatieId
     )
     if rol:
-        vraag = vraag.where(GebruikerRol.rol == Rol(rol))
+        vraag = vraag.where(GebruikerRol.rol == rol)
     return [
         GebruikerRolUit(
             gebruikersId=gebruiker.gebruikersId, naam=gebruiker.naam, email=gebruiker.email,
@@ -266,12 +266,12 @@ async def uitnodigen(
 async def rol_intrekken(
     slug: str,
     gebruikers_id: int,
-    rol: str,
+    rol: Rol,
     p: Principal = Depends(principal),
     db: Session = Depends(get_db),
 ):
     organisatie = _organisatie(db, slug)
-    doel_rol = Rol(rol)
+    doel_rol = rol
     if doel_rol == Rol.organisatiebeheerder and not p.heeft_rol(Rol.platformbeheerder):
         raise HTTPException(403, "Alleen de platformbeheerder beheert organisatiebeheerders")
     if doel_rol == Rol.moderator and not (

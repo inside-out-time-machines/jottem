@@ -26,7 +26,7 @@ def duurzame_url(media_id: uuid.UUID) -> str:
 @router.get("/organisatie/{slug}/moderatie/jottems", response_model=list[JottemKort])
 async def wachtrij(
     slug: str,
-    status: str | None = None,
+    status: MediaStatus | None = None,
     p: Principal = Depends(eis_rol(Rol.moderator)),
     db: Session = Depends(get_db),
 ):
@@ -37,7 +37,7 @@ async def wachtrij(
         raise HTTPException(403, "Geen moderator van deze organisatie")
     vraag = select(Media).where(Media.organisatieId == organisatie.organisatieId)
     if status:
-        vraag = vraag.where(Media.status == MediaStatus(status))
+        vraag = vraag.where(Media.status == status)
     return [
         JottemKort(
             mediaId=m.mediaId, titel=m.titel, status=m.status.value, genre=m.genre,

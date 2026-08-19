@@ -35,7 +35,7 @@ async def upload_url(vraag: UploadUrlVraag, p: Principal = Depends(principal)):
     if vraag.contentType not in TOEGESTANE_TYPES:
         raise HTTPException(415, "Alleen JPG, PNG of TIFF (PDF en audio volgen in fase 2)")
     media_id = uuid.uuid4()
-    extensie = vraag.bestandsnaam.rsplit(".", 1)[-1].lower() if "." in vraag.bestandsnaam else "bin"
+    extensie = s3.extensie_voor(vraag.contentType)
     object_key = f"{media_id}/origineel.{extensie}"
     return UploadUrlAntwoord(
         mediaId=media_id,

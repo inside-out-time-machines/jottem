@@ -154,7 +154,7 @@ async def afbeelding_upload(
     db: Session = Depends(get_db),
 ):
     project, _ = project_met_rechten(db, project_id, p)
-    extensie = vraag.bestandsnaam.rsplit(".", 1)[-1].lower() if "." in vraag.bestandsnaam else "jpg"
+    extensie = s3.extensie_voor(vraag.contentType, "jpg")
     object_key = f"projecten/{project.projectId}/afbeelding.{extensie}"
     return {
         "objectKey": object_key,

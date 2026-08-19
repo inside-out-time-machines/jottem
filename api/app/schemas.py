@@ -3,6 +3,18 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator
 
+# Alleen http(s) in velden die als link of als RDF-identifier naar buiten gaan: een
+# `javascript:`-URI belandt anders in de publieke annotatie, het IIIF-manifest en de RDF.
+HTTP_URL = r"^https?://\S+$"
+
+# Vrije metadata is invoer van de uploader en komt in de RDF terecht. Zonder grenzen
+# breekt één ongeldige waarde (bijv. lat="abc") de dump, de datasetbeschrijving en de
+# nachtelijke Fuseki-sync van het hele project.
+MAX_METADATA_VELDEN = 40
+MAX_METADATA_SLEUTEL = 60
+MAX_METADATA_WAARDE = 2000
+MAX_STEEKWOORDEN = 50
+
 TOEGESTANE_TYPES = {"image/jpeg", "image/png", "image/tiff"}  # MVP: JPG/PNG/TIFF (PDF/audio fase 2)
 MAX_BESTAND_MB = 50
 
@@ -21,7 +33,7 @@ class UploadUrlAntwoord(BaseModel):
 
 class ExterneBronVraag(BaseModel):
     soort: str = Field(pattern="^(beeldbank|url)$")
-    url: str = Field(min_length=8, max_length=1000)
+    url: str = Field(min_length=8, max_length=1000, pattern=HTTP_URL)
 
 
 class JottemIndienen(BaseModel):
@@ -31,10 +43,34 @@ class JottemIndienen(BaseModel):
     beschrijving: str | None = None
     genre: str | None = None
     licentieBevestigd: bool = Field(description="Uploader bevestigt de projectlicentie")
-    steekwoorden: list[str] = []
+    steekwoorden: list[str] = Field(default=[], max_length=MAX_STEEKWOORDEN)
     metadata: dict[str, str] = {}     # adres, jaarVan, jaarTot, lat, lon, ...
     toestemming: str | None = None    # "ja" of "nee" wanneer herkenbaar gemeld is
     externeBron: ExterneBronVraag | None = None   # i.p.v. een geupload bestand
+
+    @field_validator("metadata")
+    @classmethod
+    def _metadata_binnen_de_perken(cls, waarde: dict[str, str]) -> dict[str, str]:
+        if len(waarde) > MAX_METADATA_VELDEN:
+            raise ValueError(f"Maximaal {MAX_METADATA_VELDEN} metadatavelden")
+        for sleutel, inhoud in waarde.items():
+            if len(sleutel) > MAX_METADATA_SLEUTEL or len(inhoud) > MAX_METADATA_WAARDE:
+                raise ValueError(f"Metadataveld '{sleutel[:20]}' is te lang")
+        # lat/lon gaan als getal de RDF in; een onparsebare waarde zou daar pas klappen
+        for veld in ("lat", "lon"):
+            if veld in waarde:
+                try:
+                    getal = float(waarde[veld])
+                except ValueError as fout:
+                    raise ValueError(f"'{veld}' moet een getal zijn") from fout
+                grens = 90 if veld == "lat" else 180
+                if not -grens <= getal <= grens:
+                    raise ValueError(f"'{veld}' valt buiten het bereik")
+        # velden die als URI naar buiten gaan, moeten een echte http(s)-URL zijn
+        for veld, inhoud in waarde.items():
+            if veld.endswith("Uri") and inhoud and not inhoud.startswith(("http://", "https://")):
+                raise ValueError(f"'{veld}' moet een http(s)-URL zijn")
+        return waarde
 
 
 class JottemKort(BaseModel):
@@ -56,7 +92,7 @@ class ProjectIn(BaseModel):
     oproep: str | None = None
     periode: str | None = None
     afbeelding: str | None = None          # S3-sleutel in de thumbs-bucket
-    datasetLicentie: str | None = None
+    datasetLicentie: str | None = Field(default=None, max_length=200, pattern=HTTP_URL)
     status: str = Field(default="actief", pattern="^(actief|afgerond)$")
     terminologiebronnen: list[str] = []
     # ingeschakelde verrijkingen (V-1); None = alle MVP-verrijkingen aan
@@ -90,13 +126,13 @@ class OrganisatieIn(BaseModel):
     naam: str = Field(min_length=1, max_length=200)
     slug: str = Field(min_length=2, max_length=80, pattern="^[a-z0-9-]+$")
     beschrijving: str | None = None
-    website: str | None = None
+    website: str | None = Field(default=None, max_length=400, pattern=HTTP_URL)
     # publiek contactadres als publisher in de datasetbeschrijving (verplicht)
     email: str = Field(max_length=320, pattern=r"^\S+@\S+\.\S+$")
     # optionele organisatie-identificatie (bijv. ISIL of KvK-nummer)
     identifier: str | None = Field(default=None, max_length=200)
     # optionele plaats (GeoNames via het Termennetwerk) voor schema:spatialCoverage
-    spatialUri: str | None = Field(default=None, max_length=400)
+    spatialUri: str | None = Field(default=None, max_length=400, pattern=HTTP_URL)
     spatialNaam: str | None = Field(default=None, max_length=200)
     kleurPrimair: str | None = Field(default=None, pattern="^#[0-9a-fA-F]{6}$")
     kleurSecundair: str | None = Field(default=None, pattern="^#[0-9a-fA-F]{6}$")
