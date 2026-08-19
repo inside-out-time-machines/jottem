@@ -123,7 +123,10 @@ def verwerk_outbox() -> int:
             .with_for_update(skip_locked=True)
         ).all()
         for regel in regels:
-            regel.pogingen = (regel.pogingen or 0) + 1
+            # het opgehoogde getal vóór de poging vastleggen: na een rollback leest de
+            # sessie de oude waarde terug, en dan blijft de teller eeuwig op 1 staan
+            log_id, poging = regel.logId, (regel.pogingen or 0) + 1
+            regel.pogingen = poging
             try:
                 _verwerk_regel(db, regel)
                 regel.verwerktOp = nu()
@@ -132,15 +135,14 @@ def verwerk_outbox() -> int:
                 db.commit()
             except Exception as fout:  # noqa: BLE001 - één regel mag de rij niet ophouden
                 db.rollback()
-                # de pogingenteller moet wél blijven staan, anders blijft hij eeuwig retryen
                 db.execute(
                     update(Gebeurtenislog)
-                    .where(Gebeurtenislog.logId == regel.logId)
-                    .values(pogingen=(regel.pogingen or 1), laatsteFout=str(fout)[:2000])
+                    .where(Gebeurtenislog.logId == log_id)
+                    .values(pogingen=poging, laatsteFout=str(fout)[:2000])
                 )
                 db.commit()
-                print(f"outbox: regel {regel.logId} ({regel.type}) mislukt "
-                      f"(poging {regel.pogingen}/{MAX_POGINGEN}): {fout}")
+                print(f"outbox: regel {log_id} ({regel.type}) mislukt "
+                      f"(poging {poging}/{MAX_POGINGEN}): {fout}")
 
         # 4. RDF-sync: geraakte projectgrafen herbouwen (outbox-regel uit de
         #    data-architectuur; ook annotatiemutaties raken dateModified)
