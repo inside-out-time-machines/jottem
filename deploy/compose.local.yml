@@ -1,6 +1,7 @@
 # Override voor lokale smoke-tests ZONDER Traefik: alles alleen op 127.0.0.1 (81xx-reeks,
 # botst niet met bestaande diensten op de host). Gebruik:
 #   docker compose -f docker-compose.yml -f compose.local.yml --env-file .env.local up -d
+# (.env.local zet COMPOSE_PROFILES=dev, nodig voor MinIO en Mailpit)
 services:
   traefik:
     profiles: ["server"]   # niet starten in de lokale variant

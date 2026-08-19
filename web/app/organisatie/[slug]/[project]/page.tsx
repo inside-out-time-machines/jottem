@@ -1,4 +1,4 @@
-import { API_PUBLIEK, apiServer } from "@/lib/api";
+import { API_PUBLIEK, DATA_URL, apiServer } from "@/lib/api";
 import { notFound } from "next/navigation";
 import OpenGraph from "../../../open-graph";
 import { kopVoetCss, projectStijl } from "@/lib/kleuren";
@@ -160,13 +160,13 @@ export default async function ProjectPagina({
 
       <p style={{ fontSize: ".85rem", color: "var(--grijs)", marginTop: "2rem" }}>
         Open data:{" "}
-        <a href={`${process.env.NEXT_PUBLIC_API_URL ?? "https://api.dev.iotm.nl"}/project/${project.projectId}/rss`}>RSS</a>
+        <a href={`${API_PUBLIEK}/project/${project.projectId}/rss`}>RSS</a>
         {" · "}
-        <a href={`${process.env.NEXT_PUBLIC_API_URL ?? "https://api.dev.iotm.nl"}/project/${project.projectId}/iiif/collection`}>IIIF-collectie</a>
+        <a href={`${API_PUBLIEK}/project/${project.projectId}/iiif/collection`}>IIIF-collectie</a>
         {" · "}
-        <a href={`${process.env.NEXT_PUBLIC_DATA_URL ?? "https://data.dev.iotm.nl"}/project/${project.projectId}/dataset`}>datasetbeschrijving</a>
+        <a href={`${DATA_URL}/project/${project.projectId}/dataset`}>datasetbeschrijving</a>
         {" · "}
-        <a href={`${process.env.NEXT_PUBLIC_DATA_URL ?? "https://data.dev.iotm.nl"}/project/${project.projectId}/dump.nt.gz`}>datadump (RDF)</a>
+        <a href={`${DATA_URL}/project/${project.projectId}/dump.nt.gz`}>datadump (RDF)</a>
       </p>
 
       {project.paginas > 1 && (

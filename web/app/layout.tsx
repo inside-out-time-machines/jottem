@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { SITE_URL } from "@/lib/api";
+import { OMGEVING, SITE_URL } from "@/lib/api";
 import HoofdMenu from "./hoofd-menu";
 
 const BESCHRIJVING =
@@ -28,7 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <img src="/logo/jottem-o-wit.svg" alt="Jottem" />
             </a>
             <a href="/">Jottem</a>
-            <span className="proto">dev</span>
+            {OMGEVING !== "productie" && <span className="proto">{OMGEVING}</span>}
             <HoofdMenu />
           </div>
         </header>
@@ -37,9 +37,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="binnen">
             <p>
               <strong>Jottem</strong> is een initiatief van{" "}
-              <strong>Inside Out Time Machines (IOTM)</strong>. Dit is de
-              ontwikkelomgeving van de MVP; gegevens kunnen op elk moment
-              verdwijnen. <a href="https://design.iotm.nl/">Ontwerp</a> ·{" "}
+              <strong>Inside Out Time Machines (IOTM)</strong>.{" "}
+              {OMGEVING !== "productie" && (
+                <>
+                  Dit is de ontwikkelomgeving van de MVP; gegevens kunnen op elk
+                  moment verdwijnen.{" "}
+                </>
+              )}
+              <a href="https://design.iotm.nl/">Ontwerp</a> ·{" "}
               <a href="https://brand.iotm.nl/">Merkgids</a>
             </p>
           </div>

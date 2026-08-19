@@ -70,9 +70,10 @@ def _dataset_jsonld(db: Session, project: Project) -> dict:
                              "name": {"@value": organisatie.naam, "@language": "nl"},
                              "email": organisatie.email} if organisatie.email else None,
         }.items() if waarde is not None},
-        # het platform zelf als maker van de dataset
+        # het platform zelf als maker van de dataset; dezelfde IRI als de publisher van
+        # de datacatalogus (opendata.py), zodat het om één organisatie in de graaf gaat
         "creator": {
-            "@id": "https://iotm.nl/",
+            "@id": f"{cfg.publieke_basis_url}/",
             "@type": "Organization",
             "name": {"@value": "Jottem", "@language": "nl"},
             "email": "data@iotm.nl",

@@ -26,7 +26,7 @@ entries:
       sub_mode: hashed_user_id
       redirect_uris:
         - matching_mode: strict
-          url: !Format ["https://%s/auth/callback", !Env [BASISDOMEIN, dev.iotm.nl]]
+          url: !Format ["https://%s/auth/callback", !Env [WEB_HOST, dev.iotm.nl]]
       property_mappings:
         - !Find [authentik_providers_oauth2.scopemapping, [managed, "goauthentik.io/providers/oauth2/scope-openid"]]
         - !Find [authentik_providers_oauth2.scopemapping, [managed, "goauthentik.io/providers/oauth2/scope-email"]]
@@ -40,5 +40,5 @@ entries:
       name: Jottem
       provider: !Find [authentik_providers_oauth2.oauth2provider, [name, jottem-web]]
       # ?sso=1 laat de frontend automatisch de OIDC-flow starten (sessie bestaat al)
-      meta_launch_url: !Format ["https://%s/?sso=1", !Env [BASISDOMEIN, dev.iotm.nl]]
+      meta_launch_url: !Format ["https://%s/?sso=1", !Env [WEB_HOST, dev.iotm.nl]]
       policy_engine_mode: any

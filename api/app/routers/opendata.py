@@ -334,8 +334,9 @@ def datacatalogus(db: Session = Depends(get_db)):
         "name": "Jottem-datacatalogus",
         "description": "Alle projectdatasets van het Jottem-platform; elke gepubliceerde "
                        "jottem hoort bij precies één projectdataset.",
-        "publisher": {"@type": "Organization", "name": "Inside Out Time Machines",
-                      "url": "https://www.iotm.nl/"},
+        "publisher": {"@id": f"{cfg.publieke_basis_url}/", "@type": "Organization",
+                      "name": "Inside Out Time Machines",
+                      "url": f"{cfg.publieke_basis_url}/"},
         "inLanguage": "nl",
         "dataset": datasets,
     }

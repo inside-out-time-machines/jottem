@@ -2,6 +2,9 @@
 export const API_INTERN = process.env.JOTTEM_API_INTERN ?? "http://api:8000";
 export const API_PUBLIEK = process.env.NEXT_PUBLIC_API_URL ?? "https://api.dev.iotm.nl";
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://dev.iotm.nl";
+export const DATA_URL = process.env.NEXT_PUBLIC_DATA_URL ?? "https://data.dev.iotm.nl";
+/** "dev" toont de omgevingsbadge en de disclaimer; in productie staat hier "productie". */
+export const OMGEVING = process.env.NEXT_PUBLIC_OMGEVING ?? "dev";
 
 // Dev-bypass (alleen actief als de API met JOTTEM_DEV_AUTH=1 draait): identiteit voor
 // browser-calls tijdens het fundament, totdat de Authentik-loginflow is aangesloten.

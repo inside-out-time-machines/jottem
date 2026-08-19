@@ -13,8 +13,8 @@ entries:
     state: present
     attrs:
       branding_title: Jottem
-      branding_logo: !Format ["https://%s/logo/jottem-woordmerk.svg", !Env [BASISDOMEIN, dev.iotm.nl]]
-      branding_favicon: !Format ["https://%s/favicon.ico", !Env [BASISDOMEIN, dev.iotm.nl]]
+      branding_logo: !Format ["https://%s/logo/jottem-woordmerk.svg", !Env [WEB_HOST, dev.iotm.nl]]
+      branding_favicon: !Format ["https://%s/favicon.ico", !Env [WEB_HOST, dev.iotm.nl]]
       attributes:
         settings:
           locale: nl
@@ -99,12 +99,12 @@ entries:
              paint van /application/o/authorize/) krijgen de papieren achtergrond
              i.p.v. de standaard Authentik-foto */
           :root { --ak-flow-background: url("https://%s/papier.png") !important; }
-        - !Env [BASISDOMEIN, dev.iotm.nl]
-        - !Env [BASISDOMEIN, dev.iotm.nl]
-        - !Env [BASISDOMEIN, dev.iotm.nl]
-        - !Env [BASISDOMEIN, dev.iotm.nl]
-        - !Env [BASISDOMEIN, dev.iotm.nl]
-        - !Env [BASISDOMEIN, dev.iotm.nl]
+        - !Env [WEB_HOST, dev.iotm.nl]
+        - !Env [WEB_HOST, dev.iotm.nl]
+        - !Env [WEB_HOST, dev.iotm.nl]
+        - !Env [WEB_HOST, dev.iotm.nl]
+        - !Env [WEB_HOST, dev.iotm.nl]
+        - !Env [WEB_HOST, dev.iotm.nl]
 
   # Nederlandse titel + papieren achtergrond op de bestaande loginflow
   - model: authentik_flows.flow
@@ -113,7 +113,7 @@ entries:
     state: present
     attrs:
       title: "Welkom bij Jottem"
-      background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]
+      background: !Format ["https://%s/papier.png", !Env [WEB_HOST, dev.iotm.nl]]
 
   # papieren achtergrond op alle overige flows die in de gebruikersreis voorbij kunnen
   # komen (consent, social-login-terugkeer, uitloggen, wachtwoord, instellingen), zodat
@@ -121,43 +121,43 @@ entries:
   - model: authentik_flows.flow
     identifiers: {slug: default-provider-authorization-implicit-consent}
     state: present
-    attrs: {background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]}
+    attrs: {background: !Format ["https://%s/papier.png", !Env [WEB_HOST, dev.iotm.nl]]}
   - model: authentik_flows.flow
     identifiers: {slug: default-provider-authorization-explicit-consent}
     state: present
-    attrs: {background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]}
+    attrs: {background: !Format ["https://%s/papier.png", !Env [WEB_HOST, dev.iotm.nl]]}
   - model: authentik_flows.flow
     identifiers: {slug: default-source-authentication}
     state: present
-    attrs: {background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]}
+    attrs: {background: !Format ["https://%s/papier.png", !Env [WEB_HOST, dev.iotm.nl]]}
   - model: authentik_flows.flow
     identifiers: {slug: default-source-enrollment}
     state: present
-    attrs: {background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]}
+    attrs: {background: !Format ["https://%s/papier.png", !Env [WEB_HOST, dev.iotm.nl]]}
   - model: authentik_flows.flow
     identifiers: {slug: default-source-pre-authentication}
     state: present
-    attrs: {background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]}
+    attrs: {background: !Format ["https://%s/papier.png", !Env [WEB_HOST, dev.iotm.nl]]}
   - model: authentik_flows.flow
     identifiers: {slug: default-invalidation-flow}
     state: present
-    attrs: {background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]}
+    attrs: {background: !Format ["https://%s/papier.png", !Env [WEB_HOST, dev.iotm.nl]]}
   - model: authentik_flows.flow
     identifiers: {slug: default-provider-invalidation-flow}
     state: present
-    attrs: {background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]}
+    attrs: {background: !Format ["https://%s/papier.png", !Env [WEB_HOST, dev.iotm.nl]]}
   - model: authentik_flows.flow
     identifiers: {slug: default-password-change}
     state: present
-    attrs: {background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]}
+    attrs: {background: !Format ["https://%s/papier.png", !Env [WEB_HOST, dev.iotm.nl]]}
   - model: authentik_flows.flow
     identifiers: {slug: default-user-settings-flow}
     state: present
-    attrs: {background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]}
+    attrs: {background: !Format ["https://%s/papier.png", !Env [WEB_HOST, dev.iotm.nl]]}
   - model: authentik_flows.flow
     identifiers: {slug: default-authenticator-static-setup}
     state: present
-    attrs: {background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]}
+    attrs: {background: !Format ["https://%s/papier.png", !Env [WEB_HOST, dev.iotm.nl]]}
 
 # Nederlandse titels + papieren achtergrond op de MFA-setup-flows (TOTP en passkey);
   # de flows en stages zelf zijn Authentik-standaard en al gekoppeld (configure_flow)
@@ -167,14 +167,14 @@ entries:
     state: present
     attrs:
       title: "Stel tweestapsverificatie in (authenticator-app)"
-      background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]
+      background: !Format ["https://%s/papier.png", !Env [WEB_HOST, dev.iotm.nl]]
   - model: authentik_flows.flow
     identifiers:
       slug: default-authenticator-webauthn-setup
     state: present
     attrs:
       title: "Stel je passkey in"
-      background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]
+      background: !Format ["https://%s/papier.png", !Env [WEB_HOST, dev.iotm.nl]]
 
   # ---------- prompts voor de registratie ----------
   - model: authentik_stages_prompt.prompt
@@ -287,7 +287,7 @@ entries:
       title: "Maak je Jottem-account"
       designation: enrollment
       authentication: require_unauthenticated
-      background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]
+      background: !Format ["https://%s/papier.png", !Env [WEB_HOST, dev.iotm.nl]]
 
   - model: authentik_flows.flowstagebinding
     identifiers:

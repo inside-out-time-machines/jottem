@@ -1,6 +1,9 @@
-# Jottem dev-stack (MVP-fundament) - draait op de dev-server achter Traefik.
-# Tijdelijke afwijkingen t.o.v. het design: dev.iotm.nl i.p.v. www, MinIO als losstaande
-# S3-object-storage. Secrets in .env (zie .env.example), nooit in git.
+# Jottem-stack - draait achter Traefik. Eén bestand voor beide omgevingen: de hostnamen
+# leiden af van BASISDOMEIN (en WEB_HOST voor de frontend), en de diensten die alleen in
+# de ontwikkelomgeving horen (MinIO, Mailpit) staan in het profiel dev.
+#   ontwikkelomgeving: docker compose --profile dev up -d
+#   productie:         docker compose --profile prod up -d
+# Secrets in .env (zie .env.example), nooit in git.
 name: jottem
 
 services:
@@ -55,6 +58,9 @@ services:
       - valkey:/data
 
   minio:
+    # alleen in de ontwikkelomgeving: in productie staat de objectopslag bij een externe
+    # dienst (S3_ENDPOINT en S3_PUBLIEK wijzen daar dan naartoe), dus start deze niet mee
+    profiles: ["dev"]
     image: minio/minio:latest
     restart: unless-stopped
     command: server /data --console-address ":9001"
@@ -92,6 +98,7 @@ services:
       - traefik.http.middlewares.alleen-intern.ipallowlist.sourcerange=127.0.0.1/32,172.16.0.0/12
 
   minio-init:
+    profiles: ["dev"]
     image: minio/mc:latest
     depends_on:
       minio:
@@ -141,9 +148,9 @@ services:
     image: uclalibrary/cantaloupe:5.0.7-0
     restart: unless-stopped
     environment:
-      CANTALOUPE_BASE_URI: https://iiif.${BASISDOMEIN}
+      CANTALOUPE_BASE_URI: ${IIIF_PUBLIEK:-https://iiif.${BASISDOMEIN}}
       CANTALOUPE_SOURCE_STATIC: S3Source
-      CANTALOUPE_S3SOURCE_ENDPOINT: http://minio:9000
+      CANTALOUPE_S3SOURCE_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
       CANTALOUPE_S3SOURCE_REGION: eu-central-1
       CANTALOUPE_S3SOURCE_ACCESS_KEY_ID: ${S3_ACCESS_KEY}
       CANTALOUPE_S3SOURCE_SECRET_KEY: ${S3_SECRET_KEY}
@@ -153,6 +160,7 @@ services:
     depends_on:
       minio:
         condition: service_healthy
+        required: false
 
   varnish:
     image: varnish:7.6
@@ -193,7 +201,7 @@ services:
     image: mathiasvda/yasgui:latest
     restart: unless-stopped
     environment:
-      YASGUI_DEFAULT_ENDPOINT: https://data.${BASISDOMEIN}/sparql
+      YASGUI_DEFAULT_ENDPOINT: ${DATA_PUBLIEK:-https://data.${BASISDOMEIN}}/sparql
 
   fuseki:
     # triplestore voor de RDF-publicatie (schema.org AP NDE); publiek is ALLEEN het
@@ -221,8 +229,10 @@ services:
     environment: &authentik-env
       AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
       # de blueprints bouwen hun URL's hiermee op (!Env + !Format), zodat een
-      # domeinwissel niet in vier yaml-bestanden hoeft
+      # domeinwissel niet in vier yaml-bestanden hoeft. WEB_HOST is de host van de
+      # frontend: in dev gelijk aan het basisdomein, in productie www.<basisdomein>
       BASISDOMEIN: ${BASISDOMEIN}
+      WEB_HOST: ${WEB_HOST:-${BASISDOMEIN}}
       AUTHENTIK_POSTGRESQL__HOST: postgres
       AUTHENTIK_POSTGRESQL__USER: authentik
       AUTHENTIK_POSTGRESQL__NAME: authentik
@@ -230,9 +240,9 @@ services:
       AUTHENTIK_REDIS__HOST: valkey
       AUTHENTIK_BOOTSTRAP_PASSWORD: ${AUTHENTIK_BOOTSTRAP_WACHTWOORD}
       AUTHENTIK_BOOTSTRAP_EMAIL: ${ACME_EMAIL}
-      AUTHENTIK_EMAIL__HOST: mailpit
-      AUTHENTIK_EMAIL__PORT: 1025
-      AUTHENTIK_EMAIL__FROM: noreply@iotm.nl
+      AUTHENTIK_EMAIL__HOST: ${SMTP_HOST:-mailpit}
+      AUTHENTIK_EMAIL__PORT: ${SMTP_PORT:-1025}
+      AUTHENTIK_EMAIL__FROM: ${MAIL_AFZENDER:-noreply@iotm.nl}
       GRAFANA_OIDC_SECRET: ${GRAFANA_OIDC_SECRET}
       # social login (client-ids/secrets uit .env; gebruikt door jottem-social-login.yaml)
       SOCIAL_GOOGLE_CLIENT_ID: ${SOCIAL_GOOGLE_CLIENT_ID:-}
@@ -280,13 +290,13 @@ services:
     environment:
       JOTTEM_DATABASE_URL: postgresql+psycopg://jottem:${POSTGRES_WACHTWOORD}@postgres:5432/jottem
       JOTTEM_VALKEY_URL: redis://valkey:6379/0
-      JOTTEM_S3_ENDPOINT: http://minio:9000
+      JOTTEM_S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
       JOTTEM_S3_ENDPOINT_PUBLIEK: ${S3_PUBLIEK:-https://s3.${BASISDOMEIN}}
       JOTTEM_S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       JOTTEM_S3_SECRET_KEY: ${S3_SECRET_KEY}
-      JOTTEM_PUBLIEKE_BASIS_URL: ${WEB_PUBLIEK:-https://${BASISDOMEIN}}
+      JOTTEM_PUBLIEKE_BASIS_URL: ${WEB_PUBLIEK:-https://${WEB_HOST:-${BASISDOMEIN}}}
       JOTTEM_API_BASIS_URL: ${API_PUBLIEK:-https://api.${BASISDOMEIN}}
-      JOTTEM_OIDC_ISSUER: https://auth.${BASISDOMEIN}/application/o/jottem/
+      JOTTEM_OIDC_ISSUER: ${OIDC_ISSUER:-https://auth.${BASISDOMEIN}/application/o/jottem/}
       JOTTEM_DEV_AUTH: ${DEV_AUTH:-0}
       # bij een lege database wordt dit adres platformbeheerder (uitnodigingspatroon)
       JOTTEM_BOOTSTRAP_BEHEERDER: ${BOOTSTRAP_BEHEERDER:-}
@@ -298,13 +308,14 @@ services:
       JOTTEM_ANNO_API_KEY: ${ANNO_API_KEY}
       JOTTEM_FUSEKI_URL: http://fuseki:3030/ds
       JOTTEM_DATA_BASIS_URL: ${DATA_PUBLIEK:-https://data.${BASISDOMEIN}}
-      JOTTEM_SMTP_HOST: mailpit
-      JOTTEM_SMTP_PORT: 1025
+      JOTTEM_SMTP_HOST: ${SMTP_HOST:-mailpit}
+      JOTTEM_SMTP_PORT: ${SMTP_PORT:-1025}
     depends_on:
       postgres:
         condition: service_healthy
       minio-init:
         condition: service_completed_successfully
+        required: false
     labels:
       - traefik.enable=true
       - traefik.docker.network=jottem_default
@@ -326,18 +337,22 @@ services:
     environment:
       JOTTEM_DATABASE_URL: postgresql+psycopg://jottem:${POSTGRES_WACHTWOORD}@postgres:5432/jottem
       JOTTEM_VALKEY_URL: redis://valkey:6379/0
-      JOTTEM_S3_ENDPOINT: http://minio:9000
+      JOTTEM_S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
+      # de worker maakt presigned URL's (s3.py) en de uitschrijflink in attenderingsmails
+      # (worker.py), dus hij heeft dezelfde publieke basis-URL's nodig als de api
+      JOTTEM_S3_ENDPOINT_PUBLIEK: ${S3_PUBLIEK:-https://s3.${BASISDOMEIN}}
       JOTTEM_S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       JOTTEM_S3_SECRET_KEY: ${S3_SECRET_KEY}
-      JOTTEM_PUBLIEKE_BASIS_URL: ${WEB_PUBLIEK:-https://${BASISDOMEIN}}
+      JOTTEM_PUBLIEKE_BASIS_URL: ${WEB_PUBLIEK:-https://${WEB_HOST:-${BASISDOMEIN}}}
+      JOTTEM_API_BASIS_URL: ${API_PUBLIEK:-https://api.${BASISDOMEIN}}
       JOTTEM_IIIF_BASIS_URL: ${IIIF_PUBLIEK:-https://iiif.${BASISDOMEIN}}
       JOTTEM_ANNO_URL: http://annorepo:8080
       JOTTEM_ANNO_BASIS_URL: ${ANNO_PUBLIEK:-https://anno.${BASISDOMEIN}}
       JOTTEM_ANNO_API_KEY: ${ANNO_API_KEY}
       JOTTEM_FUSEKI_URL: http://fuseki:3030/ds
       JOTTEM_DATA_BASIS_URL: ${DATA_PUBLIEK:-https://data.${BASISDOMEIN}}
-      JOTTEM_SMTP_HOST: mailpit
-      JOTTEM_SMTP_PORT: 1025
+      JOTTEM_SMTP_HOST: ${SMTP_HOST:-mailpit}
+      JOTTEM_SMTP_PORT: ${SMTP_PORT:-1025}
     depends_on:
       postgres:
         condition: service_healthy
@@ -347,6 +362,12 @@ services:
       context: ../web
       args:
         NEXT_PUBLIC_API_URL: ${API_PUBLIEK:-https://api.${BASISDOMEIN}}
+        # NEXT_PUBLIC_* is build-time: de waarden worden in de clientbundel gebakken, dus
+        # een domeinwissel vraagt altijd een herbouw (docker compose up -d --build web)
+        NEXT_PUBLIC_SITE_URL: ${WEB_PUBLIEK:-https://${WEB_HOST:-${BASISDOMEIN}}}
+        NEXT_PUBLIC_DATA_URL: ${DATA_PUBLIEK:-https://data.${BASISDOMEIN}}
+        # 'dev' toont de omgevingsbadge en de disclaimer in de voettekst; 'productie' niet
+        NEXT_PUBLIC_OMGEVING: ${OMGEVING:-dev}
         NEXT_PUBLIC_DEV_AUTH: ${DEV_AUTH:-0}
         # de browser had de issuer nooit meegekregen en viel terug op de compile-time
         # standaard uit web/Dockerfile: bij een ander domein logde je op dev in
@@ -360,11 +381,29 @@ services:
       - api
     labels:
       - traefik.enable=true
-      - traefik.http.routers.web.rule=Host(`${BASISDOMEIN}`)
+      - traefik.http.routers.web.rule=Host(`${WEB_HOST:-${BASISDOMEIN}}`)
       - traefik.http.routers.web.tls.certresolver=letsencrypt
       - traefik.http.services.web.loadbalancer.server.port=3000
 
+  apex-redirect:
+    # alleen in productie: daar is de frontend www.iotm.nl en moet de kale iotm.nl
+    # doorverwijzen. In dev is WEB_HOST gelijk aan BASISDOMEIN en bestaat deze router niet.
+    profiles: ["prod"]
+    image: traefik/whoami:v1.10
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.web-apex.rule=Host(`${BASISDOMEIN}`)
+      - traefik.http.routers.web-apex.tls.certresolver=letsencrypt
+      - traefik.http.routers.web-apex.middlewares=naar-www@docker
+      - traefik.http.middlewares.naar-www.redirectregex.regex=^https?://[^/]+/(.*)
+      - traefik.http.middlewares.naar-www.redirectregex.replacement=https://${WEB_HOST:-${BASISDOMEIN}}/$${1}
+      - traefik.http.middlewares.naar-www.redirectregex.permanent=true
+      - traefik.http.services.web-apex.loadbalancer.server.port=80
+
   mailpit:
+    # alleen in de ontwikkelomgeving: in productie loopt mail via de eigen MTA (SMTP_HOST)
+    profiles: ["dev"]
     image: axllent/mailpit:latest
     restart: unless-stopped
     environment:
@@ -429,11 +468,11 @@ services:
     image: grafana/grafana:11.2.0
     restart: unless-stopped
     environment:
-      GF_SERVER_ROOT_URL: https://grafana.${BASISDOMEIN}
+      GF_SERVER_ROOT_URL: https://status.${BASISDOMEIN}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_WACHTWOORD}
       GF_SMTP_ENABLED: "true"
-      GF_SMTP_HOST: mailpit:1025
-      GF_SMTP_FROM_ADDRESS: grafana@iotm.nl
+      GF_SMTP_HOST: ${SMTP_HOST:-mailpit}:${SMTP_PORT:-1025}
+      GF_SMTP_FROM_ADDRESS: ${MONITORING_AFZENDER:-grafana@iotm.nl}
       GF_SMTP_FROM_NAME: Jottem-monitoring
       GF_SMTP_SKIP_VERIFY: "true"
       GF_AUTH_GENERIC_OAUTH_ENABLED: "true"
@@ -460,7 +499,7 @@ services:
       - prometheus
     labels:
       - traefik.enable=true
-      - traefik.http.routers.grafana.rule=Host(`grafana.${BASISDOMEIN}`)
+      - traefik.http.routers.grafana.rule=Host(`status.${BASISDOMEIN}`)
       - traefik.http.routers.grafana.tls.certresolver=letsencrypt
       - traefik.http.services.grafana.loadbalancer.server.port=3000
 
