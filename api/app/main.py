@@ -12,6 +12,14 @@ from .routers import (
     projectbeheer, publiek, termennetwerk, upload,
 )
 
+# De dev-bypass (X-Dev-Sub) omzeilt authenticatie volledig. Buiten een dev-omgeving mag
+# de API daar niet mee starten: liever hard falen dan stilzwijgend openstaan.
+if settings().dev_auth and settings().omgeving != "dev":
+    raise RuntimeError(
+        "JOTTEM_DEV_AUTH staat aan terwijl JOTTEM_OMGEVING niet 'dev' is; "
+        "de dev-bypass is dan een authenticatie-omweg. Zet dev_auth uit."
+    )
+
 app = FastAPI(
     title="Jottem API",
     version="0.1.0",

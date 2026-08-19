@@ -339,7 +339,10 @@ services:
     image: axllent/mailpit:latest
     restart: unless-stopped
     environment:
-      MP_UI_AUTH: ${MAILPIT_UI_AUTH:-}   # "gebruiker:wachtwoord" voor de web-UI
+      # Mailpit staat op een publieke hostnaam en vangt óók de wachtwoordherstelmails van
+      # Authentik op. Een lege waarde zou de mailbox voor iedereen openzetten, dus is de
+      # variabele verplicht: zonder waarde weigert compose te starten.
+      MP_UI_AUTH: ${MAILPIT_UI_AUTH:?zet MAILPIT_UI_AUTH in .env (gebruiker:bcrypt-hash of gebruiker:wachtwoord)}
     labels:
       - traefik.enable=true
       - traefik.http.routers.mail.rule=Host(`mail.dev.iotm.nl`)

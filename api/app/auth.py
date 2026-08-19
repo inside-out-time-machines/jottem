@@ -84,12 +84,18 @@ def invalideer_rollen_cache(gebruikers_id: int) -> None:
         pass
 
 
-def _gebruiker_voor_sub(db: Session, sub: str, naam: str, email: str) -> Gebruiker:
+def _gebruiker_voor_sub(db: Session, sub: str, naam: str, email: str,
+                        email_geverifieerd: bool = False) -> Gebruiker:
     gebruiker = db.scalar(select(Gebruiker).where(Gebruiker.sub == sub))
     if gebruiker:
         return gebruiker
-    # eerste login: koppel aan een uitgenodigde rij (zelfde e-mail) of maak een nieuwe
-    gebruiker = db.scalar(select(Gebruiker).where(Gebruiker.email == email, Gebruiker.sub.is_(None)))
+    # Eerste login: koppelen aan een uitgenodigde rij mag alleen als de identiteitsprovider
+    # het e-mailadres heeft geverifieerd. Anders zou iemand die zich met andermans adres
+    # registreert (bij een social login die het adres niet controleert) de klaargezette
+    # rollen van die persoon erven.
+    gebruiker = (db.scalar(select(Gebruiker).where(Gebruiker.email == email,
+                                                   Gebruiker.sub.is_(None)))
+                 if email_geverifieerd and email else None)
     if gebruiker:
         gebruiker.sub = sub
     else:
@@ -110,8 +116,13 @@ async def principal(
     cfg = settings()
 
     if cfg.dev_auth and x_dev_sub:
-        gebruiker = _gebruiker_voor_sub(db, x_dev_sub, x_dev_naam or x_dev_sub, x_dev_email or f"{x_dev_sub}@dev.local")
-        return Principal(gebruiker=gebruiker, rollen=rollen_van(db, gebruiker), amr=["totp"])
+        # de bypass bestaat alleen voor de dev-omgeving; buiten dev weigert de API te starten
+        # (zie main.py), dus hier hoeft alleen de amr-leugen weg: geen sterke factor cadeau
+        gebruiker = _gebruiker_voor_sub(
+            db, x_dev_sub, x_dev_naam or x_dev_sub,
+            x_dev_email or f"{x_dev_sub}@dev.local", email_geverifieerd=True)
+        return Principal(gebruiker=gebruiker, rollen=rollen_van(db, gebruiker),
+                         amr=["dev-bypass"])
 
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(401, "Niet ingelogd")
@@ -127,7 +138,7 @@ async def principal(
 
     gebruiker = _gebruiker_voor_sub(
         db, claims["sub"], claims.get("name") or claims.get("preferred_username", ""),
-        claims.get("email", ""),
+        claims.get("email", ""), email_geverifieerd=claims.get("email_verified") is True,
     )
     return Principal(gebruiker=gebruiker, rollen=rollen_van(db, gebruiker), amr=claims.get("amr", []))
 
@@ -137,7 +148,11 @@ def eis_rol(rol: Rol):
     async def controle(p: Principal = Depends(principal), organisatieId: int | None = None) -> Principal:
         if not p.heeft_rol(rol, organisatieId):
             raise HTTPException(403, f"Rol '{rol.value}' vereist")
-        if settings().amr_verplicht and not set(a.lower() for a in p.amr) & STERKE_FACTOREN:
+        cfg = settings()
+        sterk = bool(set(a.lower() for a in p.amr) & STERKE_FACTOREN)
+        # de dev-bypass levert bewust géén sterke factor meer; hij mag alleen in een
+        # dev-omgeving de poort passeren, en daar weigert de API te starten als dat niet zo is
+        if cfg.amr_verplicht and not sterk and not (cfg.dev_auth and "dev-bypass" in p.amr):
             raise HTTPException(403, "Sterke factor (TOTP of passkey) vereist voor deze rol")
         return p
     return controle

@@ -6,14 +6,15 @@ geeft een 303 naar de publiekspagina). Gedepubliceerd = 410 tombstone.
 """
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from .. import anno, iiif, s3
+from ..auth import Principal, principal
 from ..config import settings
 from ..db import get_db
-from ..models import Gebruiker, Media, MediaStatus, Organisatie, Project
+from ..models import Gebruiker, Media, MediaStatus, Organisatie, Project, Rol
 from ..schemas import JottemDetail, VerrijkingUit
 from ..verrijkingen import actieve_verrijkingen
 
@@ -229,9 +230,38 @@ async def jottem_annotaties(media_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.get("/jottem/{media_id}/detail", response_model=JottemDetail)
-async def jottem_detail(media_id: uuid.UUID, db: Session = Depends(get_db)):
-    """Interne detailweergave voor de frontend (ook voor moderatie/preview)."""
+async def jottem_detail(
+    media_id: uuid.UUID,
+    request: Request,
+    db: Session = Depends(get_db),
+    authorization: str | None = Header(default=None),
+    x_dev_sub: str | None = Header(default=None),
+):
+    """Detailweergave voor de frontend.
+
+    Gepubliceerd materiaal is publiek: de publiekspagina rendert hiermee zonder login.
+    Alles daarbuiten (nieuw, afgekeurd) is alleen voor de inzender, een moderator van de
+    eigen organisatie of een platformbeheerder - anders zou deze route presigned
+    originelen van ongemodereerd materiaal weggeven. Gedepubliceerd is voor iedereen weg
+    (410, zonder inhoud), ook voor beheerders: die id's staan publiek in de
+    Change Discovery-stroom.
+    """
     media = db.get(Media, media_id)
     if not media:
         raise HTTPException(404, "Jottem onbekend")
+    if media.status == MediaStatus.gedepubliceerd:
+        raise HTTPException(410, "Deze jottem is verwijderd")
+    if media.status == MediaStatus.goedgekeurd:
+        return _detail(db, media)
+
+    if not authorization and not x_dev_sub:
+        raise HTTPException(401, "Niet ingelogd")
+    p: Principal = await principal(request, db, authorization, x_dev_sub, None, None)
+    eigen = media.uploaderId == p.gebruiker.gebruikersId
+    mag = (eigen
+           or p.heeft_rol(Rol.moderator, media.organisatieId)
+           or p.heeft_rol(Rol.organisatiebeheerder, media.organisatieId)
+           or p.heeft_rol(Rol.platformbeheerder))
+    if not mag:
+        raise HTTPException(403, "Geen toegang tot deze jottem")
     return _detail(db, media)
