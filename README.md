@@ -16,8 +16,8 @@ tests/      contract- en end-to-end-tests
 
 ## Dev-omgeving (MVP-fundament)
 
-De stack draait op **dev.iotm.nl** achter Traefik (TLS via wildcard *.dev.iotm.nl,
-TransIP DNS-challenge): `api.dev.iotm.nl`, `auth.dev.iotm.nl` (Authentik),
+De stack draait op **dev.iotm.nl** achter Traefik (TLS per hostnaam via Let's Encrypt
+met de HTTP-01-challenge): `api.dev.iotm.nl`, `auth.dev.iotm.nl` (Authentik),
 `s3.dev.iotm.nl` (tijdelijk MinIO als S3-object-storage), `mail.dev.iotm.nl` (Mailpit).
 
 ```sh
@@ -33,7 +33,7 @@ Lokale smoke-test zonder Traefik (alles op 127.0.0.1:81xx):
 
 ```sh
 cd deploy
-cp .env.example .env.local  # zet de 127.0.0.1-URL's onderin aan en TRANSIP_KEY_BESTAND=/dev/null
+cp .env.example .env.local  # zet de 127.0.0.1-URL's onderin aan
 docker compose -f docker-compose.yml -f compose.local.yml --env-file .env.local up -d --build
 ```
 
