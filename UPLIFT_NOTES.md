@@ -176,11 +176,38 @@ dus dat staat nu expliciet in een label.
 
 **Nulmeting na deze fase:** 33/33 contract, 27/27 rooktest.
 
-## Nog te doen in dit traject
+## Fase 7 - Schuld 6 tot en met 10
 
-| Fase | Inhoud |
+| # | Fix | Bewijs |
+|---|---|---|
+| 6 | Gedeelde `eis_sterke_factor(p)`; projectbeheer, de dataset-flow en het rollenbeheer deden hun eigen rolcontrole en sloegen de amr-eis dus over | alle handmatige takken roepen hem nu aan |
+| 7 | 60 handlers zonder `await` zijn gewone `def`: Starlette draait ze in de threadpool, zodat blokkerende SQLAlchemy-, boto3- en httpx-aanroepen de event loop niet meer stilzetten | contract- en rooktests ongewijzigd groen |
+| 8 | Eén `${BASISDOMEIN}` voor alle Traefik-hostregels en basis-URL's (was 33 keer hardgecodeerd), `NEXT_PUBLIC_OIDC_ISSUER` gaat eindelijk mee in de webbuild, de dev-identiteit staat in één variabele in plaats van in elf pagina's, en de moderatiepagina haalt de organisatie uit de rollen van de ingelogde gebruiker (`rollen` bevat nu ook de slug) | alle acht subdomeinen antwoorden na de wissel; moderatie werkt zonder vaste slug |
+| 9 | ESLint draait echt (`npm run lint`), inclusief `reportUnusedDisableDirectives`; dat vond meteen een `eslint-disable` die niets meer onderdrukte. CI: bouwen, typechecken, linten, `npm audit --audit-level=high` en `pip-audit` bij elke push, plus een nachtelijke nulmeting tegen dev | 0 fouten, 49 waarschuwingen |
+| 10 | Annotatiemodel uit `interactief.tsx` naar `annotatie-model.ts` (717 → 624 regels), met één gedeelde `parseZichtveld` in plaats van twee bijna identieke parsers. Depubliceren bestaat nu echt: `DELETE /jottem/{id}/publicatie` zet de status en het gebeurtenislog, waarmee de 410-tombstone en de `Delete`-tak van de Change Discovery bereikbaar worden | annotatielijst, zichtveldkaart en popup ongewijzigd op dev |
+
+**Twee keuzes die uitleg verdienen:**
+1. **TypeScript terug van 7.0.2 naar 6.0.3.** typescript-eslint ondersteunt TS 7 nog niet
+   (upstream issue), en `eslint-config-next` trekt die binnen. Linten met de Next-regels
+   weegt zwaarder dan de nieuwste compiler; 6.0.3 is nog steeds een major-uplift vanaf 5.9.
+2. **`Favoriet` en `Verwijderverzoek` blijven staan.** De audit noemde ze dode code, maar
+   het ERD beschrijft ze en het realisatieplan plant de functies; ze hebben nu een
+   docstring die dat zegt, zodat de volgende lezer ze niet voor restanten aanziet.
+
+**Niet gedaan, met reden:** de dialoog- en formulierlaag van `interactief.tsx` (nog ~620
+regels) is niet opgesplitst. Die code zit volledig achter een login en wordt door de
+huidige nulmeting niet gedekt; hem uit elkaar trekken zonder dekking ruilt beoordeelde
+schuld in voor onbeoordeeld risico. Eerst tests voor de ingelogde stromen, dan splitsen.
+
+## Restlijst na dit traject
+
+| Onderwerp | Waarom nu niet |
 |---|---|
-| 7 | Schuld 6-10: sterke factor, blokkerende I/O, omgevingsvariabelen, CI, god-component |
+| Persoonsgegevens in `Gebeurtenislog` (SEC-014) | vraagt een bewaartermijn plus een opruimtaak, en alleen identifiers in de payload: een gegevensmigratie |
+| MinIO-service-account in plaats van de rootsleutel (SEC-020) | nieuwe credentials in `.env` en een rotatiemoment |
+| Uitnodigingen op een eenmalig token (SEC-005) | raakt de uitnodigingsmail en de eerste-login-flow |
+| CSP zonder `unsafe-inline` (nonce) en zonder de `unsafe-eval`-uitzondering | vraagt aanpassing in Next en upstream in Annotorious |
+| Dialooglaag van `interactief.tsx` splitsen | eerst tests voor de ingelogde stromen |
 
 ## Bewust niet gedaan (kleinste diff)
 
