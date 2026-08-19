@@ -13,7 +13,7 @@
     "leaflet": "^1.9.4",
     "leaflet-geotag-photo": "^0.6.2",
     "maplibre-gl": "^5.0.0",
-    "next": "15.5.23",
+    "next": "16.3.1",
     "openseadragon": "^5.0.1",
     "react": "19.2.8",
     "react-dom": "19.2.8"
@@ -22,6 +22,6 @@
     "@types/leaflet": "^1.9.22",
     "@types/node": "^22",
     "@types/react": "^19",
-    "typescript": "^5.7"
+    "typescript": "7.0.2"
   }
 }
