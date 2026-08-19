@@ -208,6 +208,7 @@ schuld in voor onbeoordeeld risico. Eerst tests voor de ingelogde stromen, dan s
 | Uitnodigingen op een eenmalig token (SEC-005) | raakt de uitnodigingsmail en de eerste-login-flow |
 | CSP zonder `unsafe-inline` (nonce) en zonder de `unsafe-eval`-uitzondering | vraagt aanpassing in Next en upstream in Annotorious |
 | Dialooglaag van `interactief.tsx` splitsen | eerst tests voor de ingelogde stromen |
+| **JSON-LD-context verhuizen** (`https://dev.iotm.nl/ns/jottem.jsonld`) | die URI staat in élke gepubliceerde annotatie. Bij de gang naar het definitieve domein moeten het bestand én de bestaande annotaties mee, of `dev.iotm.nl/ns/` moet blijven doorverwijzen. Bewust nu niet gewijzigd: een halve verhuizing breekt de context van wat er al staat |
 
 ## Bewust niet gedaan (kleinste diff)
 

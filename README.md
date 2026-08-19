@@ -26,6 +26,11 @@ cp .env.example .env        # vul de secrets in
 docker compose up -d --build
 ```
 
+Alle hostnamen leiden af van `BASISDOMEIN` in `.env`, ook die in de
+Authentik-blueprints (via `!Env` + `!Format`). Een domeinwissel is dus één variabele,
+plus opnieuw toepassen van de blueprints:
+`docker compose exec authentik-worker ak apply_blueprint /blueprints/custom/<bestand>.yaml`.
+
 Secrets staan uitsluitend in `.env` (buiten git); de deploy-configuratie zelf is
 publiek en hoort dus nooit geheimen te bevatten.
 
