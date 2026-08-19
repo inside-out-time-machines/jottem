@@ -170,6 +170,7 @@ services:
       - traefik.http.services.iiif.loadbalancer.server.port=80
 
   datapagina:
+    networks: [default, rdf]
     # statische open-data-landingspagina (repo inside-out-time-machines/data,
     # working copy naast de jottem-checkout: ~/data); alles op data.dev behalve
     # /project/* en /datacatalog (api, prio 10); ook /sparql en /yasgui/ (zie
@@ -195,7 +196,10 @@ services:
 
   fuseki:
     # triplestore voor de RDF-publicatie (schema.org AP NDE); publiek is ALLEEN het
-    # /sparql-leespad via de datapagina-nginx, updates lopen intern via de worker
+    # /sparql-leespad via de datapagina-nginx, updates lopen intern via de worker.
+    # Eigen netwerk: een SPARQL-query mag met SERVICE <...> zelf verbindingen opzetten,
+    # dus Fuseki mag alleen bij wie hem aanroept, niet bij MinIO, Postgres of Authentik.
+    networks: [rdf]
     image: secoresearch/fuseki:6.2.0
     restart: unless-stopped
     environment:
@@ -265,6 +269,7 @@ services:
         condition: service_healthy
 
   api:
+    networks: [default, rdf]
     build: ../api
     restart: unless-stopped
     command: sh -c "alembic upgrade head && python -m app.seed && uvicorn app.main:app --host 0.0.0.0 --port 8000"
@@ -307,6 +312,7 @@ services:
       - traefik.http.services.api.loadbalancer.server.port=8000
 
   worker:
+    networks: [default, rdf]
     build: ../api
     restart: unless-stopped
     command: celery -A app.worker worker --beat --loglevel=info
@@ -455,3 +461,8 @@ volumes:
   fuseki:
   prometheus:
   grafana:
+
+networks:
+  # standaardnetwerk blijft impliciet; `rdf` is het smalle netwerk rond Fuseki
+  rdf:
+    driver: bridge
