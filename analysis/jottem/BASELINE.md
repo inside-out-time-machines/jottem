@@ -4,7 +4,7 @@
 de dev-omgeving: `https://api.dev.iotm.nl`, `https://dev.iotm.nl`, `https://data.dev.iotm.nl`.
 Dit is de oracle voor elke volgende fase: na een versiewissel of een fix moet elke regel
 hieronder dezelfde uitkomst geven. Een verschil is een regressie of een bewust
-gedragsverschil, en wordt in `UPLIFT_NOTES.md` verantwoord.*
+gedragsverschil, en wordt in de commitboodschap verantwoord.*
 
 **Vorm van het bewijs:** dit is géén dual-run van een bestaande suite (die bestond niet).
 De suite is hier gebouwd en pint het gedrag van de huidige versies vast; latere fasen

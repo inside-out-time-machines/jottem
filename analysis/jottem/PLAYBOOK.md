@@ -31,8 +31,8 @@ met 3 (Next 15.5, de Python-stack, Next 16). Bijwerken zodra een fase iets nieuw
 5. **Uitrollen**: `ssh idx@coretidx-de 'cd ~/jottem && git pull -q && cd deploy && docker
    compose up -d --build web'` (of `api worker`). Wacht 15 seconden voordat je test.
 6. **Nulmeting opnieuw draaien.** Elke afwijking van `BASELINE.md` is een bevinding: los
-   hem op of verantwoord hem in `UPLIFT_NOTES.md`.
-7. **Aantekening bijwerken** in `UPLIFT_NOTES.md` en, bij een nieuw inzicht, hier.
+   hem op of verantwoord hem in de commitboodschap.
+7. **Aantekening bijwerken** in de commitboodschap en, bij een nieuw inzicht, hier.
 
 ## Buildcommando's die bewijzen dat een eenheid klaar is
 

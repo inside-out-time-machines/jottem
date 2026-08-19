@@ -56,8 +56,8 @@ def test_detail_geeft_geen_rechten_via_de_dev_header(api: httpx.Client, jottem_i
 
     Zwart-doos kan deze suite geen niet-gepubliceerde jottem vinden: die zijn per
     definitie niet zichtbaar. Dat pad (401 zonder token, geen presigned origineel in het
-    antwoord) is met de hand geverifieerd door tijdelijk een status om te zetten; zie
-    UPLIFT_NOTES.md, fase 4. Wat hier wél te toetsen is: de dev-bypass staat uit.
+    antwoord) is met de hand geverifieerd door tijdelijk een status om te zetten; zie de
+    commits van het uplift-traject. Wat hier wél te toetsen is: de dev-bypass staat uit.
     """
     met_header = api.get(f"/jottem/{jottem_id}/detail", headers={"X-Dev-Sub": "dev-piet"})
     assert met_header.status_code == 200        # gepubliceerd blijft publiek

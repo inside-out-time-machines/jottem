@@ -61,7 +61,9 @@ def test_content_negotiation(api: httpx.Client, jottem_id: str):
     assert jsonld.status_code == 200
     doc = jsonld.json()
     assert doc["@type"] == "ImageObject"
-    assert doc["@context"] == "https://schema.org/"
+    # de namespace is gepind op https, gelijk aan Turtle, de dump en de triplestore;
+    # de externe context https://schema.org/ zou naar http://schema.org/ mappen
+    assert doc["@context"] == {"@vocab": "https://schema.org/"}
     assert {"name", "isPartOf", "mainEntityOfPage"} <= set(doc)
 
     turtle = api.get(f"/jottem/{jottem_id}", headers={"Accept": "text/turtle"})
@@ -85,7 +87,11 @@ def test_annotatie_aggregaties(api: httpx.Client, organisatie: dict, project: di
         assert antwoord.status_code == 200
         collectie = antwoord.json()
         assert collectie["type"] == "AnnotationCollection"
-        assert collectie["@context"] == "http://www.w3.org/ns/anno.jsonld"
+        # anno-context plus de jottem-prefix: zonder die prefix zijn jottem:verrijking
+        # en jottem:aard in deze representatie geen resolvebare termen
+        context = collectie["@context"]
+        assert context[0] == "http://www.w3.org/ns/anno.jsonld"
+        assert context[1]["jottem"].endswith("/ns/jottem.jsonld#")
         assert "total" in collectie
 
 
