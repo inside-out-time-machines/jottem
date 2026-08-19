@@ -158,11 +158,28 @@ dus dat staat nu expliciet in een label.
 - De CSP heeft nog `unsafe-inline` voor scripts; een nonce vraagt aanpassing van de
   Next-configuratie.
 
+## Fase 6 - Schuld 2 tot en met 5
+
+| # | Fix | Bewijs |
+|---|---|---|
+| 2 | Outbox verwerkt en commit per regel, met `pogingen`/`laatsteFout` en een dood-brievenbus bij 5 pogingen (migratie 0010) | met een kunstmatige rotte regel: teller liep naar 5, daarna werd de regel niet meer opgepakt, terwijl de rest van de outbox gewoon doorging (7 geslaagde taken in hetzelfde minuutvenster) |
+| 3 | `GET /organisaties` doet nu drie queries in totaal (organisaties, actieve projecten, één `GROUP BY`-telling) in plaats van een query per organisatie plus een telling per project; de annotatietellers komen uit de Valkey-cache die de worker vult, dus geen HTTP-aanroep per jottem meer op het publieke pad | startpagina toont weer 6 jottems en 9 annotaties |
+| 4 | Indexen op `media(projectId,status)`, `media(organisatieId,status)`, `media(uploaderId)`, `media_metadata(mediaId)` en `gebruiker_rol(gebruikersId)`; paginering (50 per pagina) op de moderatiewachtrij en "mijn jottems" | `pg_indexes` toont de nieuwe indexen; migratie op 0010 |
+| 5 | Het bootstrap-beheerdersadres komt uit `JOTTEM_BOOTSTRAP_BEHEERDER` en wordt alleen gezet bij een lege database; een ingetrokken rol komt niet meer terug bij een herstart | seed logt niets meer bij een bestaande database |
+
+**Twee fouten die pas bij het draaien zichtbaar werden:**
+1. De pogingenteller bleef op 1 staan: na `db.rollback()` leest de sessie de oude waarde
+   terug, dus schreef elke ronde opnieuw 1 weg. Nu wordt het opgehoogde getal vóór de
+   poging vastgelegd.
+2. Met de teller uit de cache toonde de startpagina 0 annotaties tot de eerste geplande
+   ronde (elk kwartier). De worker vult de cache nu ook direct bij het starten.
+
+**Nulmeting na deze fase:** 33/33 contract, 27/27 rooktest.
+
 ## Nog te doen in dit traject
 
 | Fase | Inhoud |
 |---|---|
-| 6 | Schuld 2-5: outbox-dead-letter, N+1, indexen en paginering, seed |
 | 7 | Schuld 6-10: sterke factor, blokkerende I/O, omgevingsvariabelen, CI, god-component |
 
 ## Bewust niet gedaan (kleinste diff)
