@@ -24,7 +24,7 @@ PAGINA_GROOTTE = 24
 
 
 @router.get("/verrijkingen")
-async def verrijkingen_catalogus():
+def verrijkingen_catalogus():
     """De MVP-verrijkingencatalogus (labels + CTA's), o.a. voor het projectbeheer (V-1)."""
     from ..verrijkingen import CATALOGUS
     return [
@@ -57,7 +57,7 @@ def _aantal_gepubliceerd(db: Session, project_id: uuid.UUID) -> int:
 
 
 @router.get("/organisatie/{slug}/publiek", response_model=OrganisatiePubliek)
-async def organisatie_publiek(slug: str, db: Session = Depends(get_db)):
+def organisatie_publiek(slug: str, db: Session = Depends(get_db)):
     organisatie = db.scalar(select(Organisatie).where(Organisatie.slug == slug))
     if not organisatie:
         raise HTTPException(404, "Organisatie onbekend")
@@ -104,7 +104,7 @@ def _project(db: Session, org_slug: str, project_slug: str) -> tuple[Organisatie
 
 
 @router.get("/organisatie/{org_slug}/project/{project_slug}/publiek", response_model=ProjectPubliek)
-async def project_publiek(
+def project_publiek(
     org_slug: str, project_slug: str,
     pagina: int = Query(default=1, ge=1),
     db: Session = Depends(get_db),
@@ -183,7 +183,7 @@ def _aggregatie(db: Session, media_ids: list[uuid.UUID], collectie_id: str, labe
 
 
 @router.get("/project/{project_id}/annotations")
-async def project_annotaties(project_id: uuid.UUID, db: Session = Depends(get_db)):
+def project_annotaties(project_id: uuid.UUID, db: Session = Depends(get_db)):
     project = db.get(Project, project_id)
     if not project:
         raise HTTPException(404, "Project onbekend")
@@ -200,7 +200,7 @@ async def project_annotaties(project_id: uuid.UUID, db: Session = Depends(get_db
 
 
 @router.get("/organisatie/{slug}/annotations")
-async def organisatie_annotaties(slug: str, db: Session = Depends(get_db)):
+def organisatie_annotaties(slug: str, db: Session = Depends(get_db)):
     organisatie = db.scalar(select(Organisatie).where(Organisatie.slug == slug))
     if not organisatie:
         raise HTTPException(404, "Organisatie onbekend")

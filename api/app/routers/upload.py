@@ -31,7 +31,7 @@ def _object_key_voor(media_id: uuid.UUID) -> str | None:
 
 
 @router.post("/upload-url", response_model=UploadUrlAntwoord)
-async def upload_url(vraag: UploadUrlVraag, p: Principal = Depends(principal)):
+def upload_url(vraag: UploadUrlVraag, p: Principal = Depends(principal)):
     if vraag.contentType not in TOEGESTANE_TYPES:
         raise HTTPException(415, "Alleen JPG, PNG of TIFF (PDF en audio volgen in fase 2)")
     media_id = uuid.uuid4()
@@ -45,7 +45,7 @@ async def upload_url(vraag: UploadUrlVraag, p: Principal = Depends(principal)):
 
 
 @router.post("/upload/externe-bron")
-async def externe_bron(vraag: ExterneBronVraag, p: Principal = Depends(principal)):
+def externe_bron(vraag: ExterneBronVraag, p: Principal = Depends(principal)):
     """Valideer een beeldbank-permalink (IIIF) of foto-URL en geef terug wat er
     opgeslagen en getoond gaat worden (voor de popup in het uploadformulier)."""
     resultaat = bronnen.resolve(vraag.soort, vraag.url)
@@ -60,7 +60,7 @@ async def externe_bron(vraag: ExterneBronVraag, p: Principal = Depends(principal
 
 
 @router.post("/herkenbaar-check", response_model=HerkenbaarCheckAntwoord)
-async def herkenbaar_check(vraag: HerkenbaarCheckVraag, p: Principal = Depends(principal)):
+def herkenbaar_check(vraag: HerkenbaarCheckVraag, p: Principal = Depends(principal)):
     """Directe controle op herkenbare personen, na de upload en vóór het indienen
     (Herkenbaar API); bij "ja" vraagt de frontend om de toestemmingsverklaring."""
     object_key = _object_key_voor(vraag.mediaId)
@@ -95,7 +95,7 @@ def _controleer_geupload_bestand(object_key: str) -> None:
 
 
 @router.post("/jottem", status_code=201)
-async def jottem_indienen(
+def jottem_indienen(
     vraag: JottemIndienen,
     p: Principal = Depends(principal),
     db: Session = Depends(get_db),

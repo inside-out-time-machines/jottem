@@ -109,7 +109,7 @@ def _detail(db: Session, media: Media) -> JottemDetail:
 
 
 @router.get("/jottem/{media_id}")
-async def jottem(media_id: uuid.UUID, request: Request, db: Session = Depends(get_db)):
+def jottem(media_id: uuid.UUID, request: Request, db: Session = Depends(get_db)):
     media = db.get(Media, media_id)
     if not media:
         raise HTTPException(404, "Jottem onbekend")
@@ -145,7 +145,7 @@ async def jottem(media_id: uuid.UUID, request: Request, db: Session = Depends(ge
 
 
 @router.get("/jottem/{media_id}/iiif/manifest")
-async def iiif_manifest(media_id: uuid.UUID, db: Session = Depends(get_db)):
+def iiif_manifest(media_id: uuid.UUID, db: Session = Depends(get_db)):
     """IIIF Presentation API 3.0-manifest van een gepubliceerde jottem."""
     media = db.get(Media, media_id)
     if not media or media.status != MediaStatus.goedgekeurd:
@@ -220,7 +220,7 @@ async def iiif_manifest(media_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.get("/jottem/{media_id}/annotations")
-async def jottem_annotaties(media_id: uuid.UUID, db: Session = Depends(get_db)):
+def jottem_annotaties(media_id: uuid.UUID, db: Session = Depends(get_db)):
     """W3C AnnotationCollection van een jottem: doorverwijzing naar de container op de
     annotatieserver (conform openapi.yaml)."""
     media = db.get(Media, media_id)

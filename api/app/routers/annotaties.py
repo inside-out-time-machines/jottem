@@ -238,7 +238,7 @@ def _log_annotatie(db: Session, type_: str, media: Media, gebruikers_id: int | N
 
 
 @router.post("/jottem/{media_id}/annotation", status_code=201)
-async def maak_annotatie(
+def maak_annotatie(
     media_id: uuid.UUID,
     invoer: AnnotatieIn,
     p: Principal = Depends(principal),
@@ -271,7 +271,7 @@ def _eis_maker(annotatie: dict, p: Principal) -> None:
 
 
 @router.put("/annotation/{media_id}/{naam}")
-async def wijzig_annotatie(
+def wijzig_annotatie(
     media_id: uuid.UUID,
     naam: str,
     invoer: AnnotatieIn,
@@ -292,7 +292,7 @@ async def wijzig_annotatie(
 
 
 @router.delete("/annotation/{media_id}/{naam}", status_code=204)
-async def verwijder_annotatie(
+def verwijder_annotatie(
     media_id: uuid.UUID,
     naam: str,
     p: Principal = Depends(principal),
@@ -327,7 +327,7 @@ def _rate_limit(request: Request) -> None:
 
 
 @router.post("/annotation/{media_id}/{naam}/melding", status_code=201)
-async def meld_annotatie(
+def meld_annotatie(
     media_id: uuid.UUID,
     naam: str,
     invoer: MeldingIn,
@@ -351,7 +351,7 @@ async def meld_annotatie(
 
 
 @router.get("/organisatie/{slug}/meldingen", response_model=list[MeldingUit])
-async def meldingen(
+def meldingen(
     slug: str,
     p: Principal = Depends(eis_rol(Rol.moderator)),
     db: Session = Depends(get_db),
@@ -384,7 +384,7 @@ async def meldingen(
 
 
 @router.put("/melding/{melding_id}", response_model=MeldingUit)
-async def handel_melding_af(
+def handel_melding_af(
     melding_id: int,
     besluit: MeldingBesluit,
     p: Principal = Depends(eis_rol(Rol.moderator)),

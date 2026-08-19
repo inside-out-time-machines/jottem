@@ -126,7 +126,7 @@ def _dataset_jsonld(db: Session, project: Project) -> dict:
 
 
 @router.get("/project/{project_id}/dataset")
-async def dataset_publiek(project_id: uuid.UUID, db: Session = Depends(get_db)):
+def dataset_publiek(project_id: uuid.UUID, db: Session = Depends(get_db)):
     """Publieke datasetbeschrijving; alleen beschikbaar met gepubliceerde jottems."""
     project = db.get(Project, project_id)
     if not project:
@@ -137,7 +137,7 @@ async def dataset_publiek(project_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.get("/project/{project_id}/datasetbeschrijving")
-async def datasetbeschrijving(
+def datasetbeschrijving(
     project_id: uuid.UUID,
     p: Principal = Depends(principal),
     db: Session = Depends(get_db),
@@ -157,7 +157,7 @@ class DatasetbeschrijvingIn(BaseModel):
 
 
 @router.put("/project/{project_id}/datasetbeschrijving")
-async def datasetbeschrijving_bewerken(
+def datasetbeschrijving_bewerken(
     project_id: uuid.UUID,
     vraag: DatasetbeschrijvingIn,
     p: Principal = Depends(principal),
@@ -177,7 +177,7 @@ async def datasetbeschrijving_bewerken(
 
 
 @router.post("/project/{project_id}/datasetbeschrijving/aanmelden", status_code=202)
-async def aanmelden(
+def aanmelden(
     project_id: uuid.UUID,
     p: Principal = Depends(principal),
     db: Session = Depends(get_db),
@@ -230,7 +230,7 @@ async def aanmelden(
 
 
 @router.delete("/project/{project_id}/datasetbeschrijving/aanmelden", status_code=204)
-async def afmelden(
+def afmelden(
     project_id: uuid.UUID,
     p: Principal = Depends(principal),
     db: Session = Depends(get_db),

@@ -27,7 +27,7 @@ def duurzame_url(media_id: uuid.UUID) -> str:
 
 
 @router.get("/organisatie/{slug}/moderatie/jottems", response_model=list[JottemKort])
-async def wachtrij(
+def wachtrij(
     slug: str,
     status: MediaStatus | None = None,
     pagina: int = Query(default=1, ge=1),
@@ -55,7 +55,7 @@ async def wachtrij(
 
 
 @router.delete("/jottem/{media_id}/publicatie", status_code=200)
-async def depubliceren(
+def depubliceren(
     media_id: uuid.UUID,
     p: Principal = Depends(eis_rol(Rol.moderator)),
     db: Session = Depends(get_db),
@@ -84,7 +84,7 @@ async def depubliceren(
 
 
 @router.put("/jottem/{media_id}/status")
-async def beoordelen(
+def beoordelen(
     media_id: uuid.UUID,
     besluit: ModeratieBesluit,
     p: Principal = Depends(eis_rol(Rol.moderator)),
@@ -131,7 +131,7 @@ async def beoordelen(
 
 
 @router.put("/jottem/{media_id}")
-async def herindienen(
+def herindienen(
     media_id: uuid.UUID,
     p: Principal = Depends(principal),   # de uploader zelf, geen moderatierol nodig
     db: Session = Depends(get_db),

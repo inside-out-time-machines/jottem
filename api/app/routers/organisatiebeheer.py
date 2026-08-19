@@ -67,7 +67,7 @@ def _organisatie(db: Session, slug: str) -> Organisatie:
 
 
 @router.get("/organisatie", response_model=list[OrganisatieUit])
-async def organisaties_beheer(
+def organisaties_beheer(
     p: Principal = Depends(eis_rol(Rol.platformbeheerder)),
     db: Session = Depends(get_db),
 ):
@@ -75,7 +75,7 @@ async def organisaties_beheer(
 
 
 @router.post("/organisatie", response_model=OrganisatieUit, status_code=201)
-async def organisatie_aanmaken(
+def organisatie_aanmaken(
     vraag: OrganisatieIn,
     p: Principal = Depends(eis_rol(Rol.platformbeheerder)),
     db: Session = Depends(get_db),
@@ -102,7 +102,7 @@ async def organisatie_aanmaken(
 
 
 @router.put("/organisatie/{slug}", response_model=OrganisatieUit)
-async def organisatie_bewerken(
+def organisatie_bewerken(
     slug: str,
     vraag: OrganisatieIn,
     p: Principal = Depends(eis_rol(Rol.platformbeheerder)),
@@ -126,7 +126,7 @@ async def organisatie_bewerken(
 
 
 @router.delete("/organisatie/{slug}")
-async def organisatie_verwijderen(
+def organisatie_verwijderen(
     slug: str,
     p: Principal = Depends(eis_rol(Rol.platformbeheerder)),
     db: Session = Depends(get_db),
@@ -171,7 +171,7 @@ async def organisatie_verwijderen(
 
 
 @router.post("/organisatie/{slug}/huisstijl-upload")
-async def huisstijl_upload(
+def huisstijl_upload(
     slug: str,
     vraag: HuisstijlUploadVraag,
     p: Principal = Depends(eis_rol(Rol.platformbeheerder)),
@@ -187,7 +187,7 @@ async def huisstijl_upload(
 
 
 @router.get("/organisatie/{slug}/gebruikers", response_model=list[GebruikerRolUit])
-async def gebruikers(
+def gebruikers(
     slug: str,
     rol: Rol | None = None,
     p: Principal = Depends(principal),
@@ -212,7 +212,7 @@ async def gebruikers(
 
 
 @router.post("/organisatie/{slug}/gebruikers", status_code=201)
-async def uitnodigen(
+def uitnodigen(
     slug: str,
     vraag: UitnodigingIn,
     p: Principal = Depends(principal),
@@ -267,7 +267,7 @@ async def uitnodigen(
 
 
 @router.delete("/organisatie/{slug}/gebruiker/{gebruikers_id}")
-async def rol_intrekken(
+def rol_intrekken(
     slug: str,
     gebruikers_id: int,
     rol: Rol,

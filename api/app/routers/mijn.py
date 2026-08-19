@@ -38,12 +38,12 @@ def _profiel(p: Principal) -> dict:
 
 
 @router.get("/mijn/profiel")
-async def profiel(p: Principal = Depends(principal)):
+def profiel(p: Principal = Depends(principal)):
     return _profiel(p)
 
 
 @router.get("/attenderingen/uit", response_class=HTMLResponse)
-async def attenderingen_uit_bevestigen(token: uuid.UUID, db: Session = Depends(get_db)):
+def attenderingen_uit_bevestigen(token: uuid.UUID, db: Session = Depends(get_db)):
     """Bevestigingspagina bij de uitschakellink uit de attenderingsmails.
 
     Een GET mag niets wijzigen: mailgateways en scanners halen links in een mail
@@ -66,7 +66,7 @@ async def attenderingen_uit_bevestigen(token: uuid.UUID, db: Session = Depends(g
 
 
 @router.post("/attenderingen/uit", response_class=HTMLResponse)
-async def attenderingen_uit(token: uuid.UUID, db: Session = Depends(get_db)):
+def attenderingen_uit(token: uuid.UUID, db: Session = Depends(get_db)):
     gebruiker = db.scalar(select(Gebruiker).where(Gebruiker.mailToken == token))
     if not gebruiker:
         return HTMLResponse(
@@ -89,7 +89,7 @@ class ProfielIn(BaseModel):
 
 
 @router.put("/mijn/profiel")
-async def profiel_bewerken(
+def profiel_bewerken(
     vraag: ProfielIn,
     p: Principal = Depends(principal),
     db: Session = Depends(get_db),
@@ -118,7 +118,7 @@ async def profiel_bewerken(
 
 
 @router.post("/mijn/profiel-afbeelding-upload")
-async def profiel_afbeelding_upload(
+def profiel_afbeelding_upload(
     vraag: AfbeeldingUploadVraag,
     p: Principal = Depends(principal),
 ):
@@ -132,7 +132,7 @@ async def profiel_afbeelding_upload(
 
 
 @router.get("/mijn/jottems", response_model=list[JottemKort])
-async def mijn_jottems(
+def mijn_jottems(
     p: Principal = Depends(principal),
     pagina: int = Query(default=1, ge=1),
     db: Session = Depends(get_db),
@@ -183,7 +183,7 @@ def _aantal_annotaties(db: Session, project_id, verversen: bool = True) -> int:
 
 
 @router.get("/deelnemers")
-async def deelnemers(
+def deelnemers(
     ids: str = Query(description="komma-gescheiden publiekeId's uit de creator-IRI's"),
     db: Session = Depends(get_db),
 ):
@@ -215,7 +215,7 @@ async def deelnemers(
 
 
 @router.get("/organisaties")
-async def organisaties(db: Session = Depends(get_db)):
+def organisaties(db: Session = Depends(get_db)):
     """Publiek: organisaties met huisstijl en actieve projecten (home, uploadformulier
     en de open-data-pagina op data.dev.iotm.nl)."""
     from sqlalchemy import func

@@ -67,7 +67,7 @@ def project_met_rechten(db: Session, project_id: uuid.UUID, p: Principal) -> tup
 
 
 @router.get("/organisatie/{slug}/projecten", response_model=list[ProjectUit])
-async def projecten(
+def projecten(
     slug: str,
     p: Principal = Depends(principal),
     db: Session = Depends(get_db),
@@ -81,7 +81,7 @@ async def projecten(
 
 
 @router.post("/organisatie/{slug}/projecten", response_model=ProjectUit, status_code=201)
-async def project_aanmaken(
+def project_aanmaken(
     slug: str,
     vraag: ProjectIn,
     p: Principal = Depends(principal),
@@ -102,7 +102,7 @@ async def project_aanmaken(
 
 
 @router.put("/project/{project_id}", response_model=ProjectUit)
-async def project_bewerken(
+def project_bewerken(
     project_id: uuid.UUID,
     vraag: ProjectIn,
     p: Principal = Depends(principal),
@@ -123,7 +123,7 @@ async def project_bewerken(
 
 
 @router.delete("/project/{project_id}")
-async def project_verwijderen(
+def project_verwijderen(
     project_id: uuid.UUID,
     p: Principal = Depends(principal),
     db: Session = Depends(get_db),
@@ -148,7 +148,7 @@ async def project_verwijderen(
 
 
 @router.post("/project/{project_id}/afbeelding-upload")
-async def afbeelding_upload(
+def afbeelding_upload(
     project_id: uuid.UUID,
     vraag: AfbeeldingUploadVraag,
     p: Principal = Depends(principal),
