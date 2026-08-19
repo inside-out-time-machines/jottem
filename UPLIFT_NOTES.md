@@ -67,11 +67,27 @@ Turtle-uitvoer zijn ongewijzigd.
 **Restant `pip list --outdated`:** alleen `pip` zelf en `pydantic_core` (transitief via
 pydantic, dat fastapi pint).
 
+## Fase 3 - Next 15.5.23 → 16.3.1 en TypeScript 5.9 → 7.0.2
+
+| Delta | Aard | Afgehandeld |
+|---|---|---|
+| De laatste 3 hoge advisories (`sharp <0.35.0`, libvips) hingen aan Next 15 | dependency | `next@16.3.1`; **`npm audit` meldt nu 0 kwetsbaarheden** |
+| Async request-API's, herziene caching, `next.config.ts`-opties | mechanisch | geen codewijziging nodig: `params`/`searchParams` waren al async, `cache: "no-store"` staat expliciet, `output: "standalone"` en de `headers()`-hook blijven geldig |
+| TypeScript 5.9 → 7.0.2 (native compiler) | mechanisch | `tsc --noEmit` en `next build` schoon met dezelfde `tsconfig.json` |
+
+De hele klasse Next 16-breuken raakt deze code niet: er is geen middleware, geen
+`instrumentation.ts`, geen route-segmentconfig, geen `next/font` en geen `next/image`. De
+enige imports uit Next zijn de `Metadata`- en `NextConfig`-typen en `next/navigation`.
+
+**Nulmeting na deze fase:** 31/31 contract, 27/27 rooktest. Extra gecontroleerd op de
+draaiende omgeving: 10 Open Graph-tags en 0 twitter-tags in de head, canonical aanwezig,
+header in de organisatiekleur, beide deelknoppen present met een nagebootste Share API, en
+de annotatiepopup opent met de juiste inhoud.
+
 ## Nog te doen in dit traject
 
 | Fase | Inhoud |
 |---|---|
-| 3 | Next 15.5.23 → 16.3.1 (ruimt de laatste 3 hoge advisories via `sharp` op), TypeScript 5.9 → 7.0 |
 | 4 | Security hoog: Mailpit-default, `/jottem/{id}/detail`, SSRF-resolver, DEV_AUTH, `email_verified` |
 | 5 | Security midden en laag: 17 bevindingen, gegroepeerd naar plek |
 | 6 | Schuld 2-5: outbox-dead-letter, N+1, indexen en paginering, seed |
