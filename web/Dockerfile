@@ -1,8 +1,10 @@
 # Jottem web - EUPL-1.2
 FROM node:22-alpine AS bouw
 WORKDIR /bouw
-COPY package.json ./
-RUN npm install --no-audit --no-fund
+COPY package.json package-lock.json ./
+# npm ci gebruikt de gecommitte lockfile: reproduceerbare build, exact dezelfde
+# afhankelijkheden als lokaal getest
+RUN npm ci --no-audit --no-fund
 COPY . .
 ARG NEXT_PUBLIC_API_URL=https://api.dev.iotm.nl
 ARG NEXT_PUBLIC_DEV_AUTH=0
