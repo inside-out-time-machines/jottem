@@ -8,7 +8,8 @@ const config: NextConfig = {
         // Securityheaders voor de hele site. De OIDC-tokens staan in sessionStorage en de
         // pagina laadt drie externe viewerbundels (OpenSeadragon, Annotorious, MapLibre),
         // dus een script-injectie zou een geldig token kunnen wegsturen.
-        source: "/:path*",
+        // alles behalve de jottempagina's: daar geldt de uitzondering hieronder
+        source: "/:pad((?!jottem/).*)",
         headers: [
           {
             key: "Content-Security-Policy",
@@ -23,6 +24,8 @@ const config: NextConfig = {
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
               "connect-src 'self' https:",
+              // MapLibre draait zijn tegelverwerking in een worker uit een blob-URL
+              "worker-src 'self' blob:",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
@@ -37,6 +40,36 @@ const config: NextConfig = {
             key: "Strict-Transport-Security",
             value: "max-age=31536000; includeSubDomains",
           },
+        ],
+      },
+      {
+        // Jottempagina's: dezelfde CSP, maar met 'unsafe-eval' erbij. De annotatielaag
+        // (Annotorious) tekent met PIXI, en dat compileert shaders via new Function;
+        // zonder deze uitzondering blijft het kader op de foto onzichtbaar. Zodra
+        // Annotorious @pixi/unsafe-eval meelevert, kan dit weer weg.
+        source: "/jottem/:pad*",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: blob: https:",
+              "font-src 'self' data:",
+              "connect-src 'self' https:",
+              "worker-src 'self' blob:",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "object-src 'none'",
+            ].join("; "),
+          },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Permissions-Policy", value: "camera=(self), geolocation=(self), microphone=()" },
+          { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
         ],
       },
       {
