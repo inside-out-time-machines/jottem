@@ -12,7 +12,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from .. import s3
-from ..auth import Principal, principal
+from ..auth import Principal, eis_sterke_factor, principal
 from ..config import settings
 from ..db import get_db
 from ..models import Media, Organisatie, Project, Rol
@@ -30,6 +30,7 @@ def _organisatie(db: Session, slug: str) -> Organisatie:
 
 
 def _eis_beheerder(p: Principal, organisatie_id: int) -> None:
+    eis_sterke_factor(p)
     if not (p.heeft_rol(Rol.platformbeheerder) or p.heeft_rol(Rol.organisatiebeheerder, organisatie_id)):
         raise HTTPException(403, "Alleen voor beheerders van deze organisatie")
 
@@ -66,7 +67,7 @@ def project_met_rechten(db: Session, project_id: uuid.UUID, p: Principal) -> tup
 
 
 @router.get("/organisatie/{slug}/projecten", response_model=list[ProjectUit])
-async def projecten(
+def projecten(
     slug: str,
     p: Principal = Depends(principal),
     db: Session = Depends(get_db),
@@ -80,7 +81,7 @@ async def projecten(
 
 
 @router.post("/organisatie/{slug}/projecten", response_model=ProjectUit, status_code=201)
-async def project_aanmaken(
+def project_aanmaken(
     slug: str,
     vraag: ProjectIn,
     p: Principal = Depends(principal),
@@ -101,7 +102,7 @@ async def project_aanmaken(
 
 
 @router.put("/project/{project_id}", response_model=ProjectUit)
-async def project_bewerken(
+def project_bewerken(
     project_id: uuid.UUID,
     vraag: ProjectIn,
     p: Principal = Depends(principal),
@@ -122,7 +123,7 @@ async def project_bewerken(
 
 
 @router.delete("/project/{project_id}")
-async def project_verwijderen(
+def project_verwijderen(
     project_id: uuid.UUID,
     p: Principal = Depends(principal),
     db: Session = Depends(get_db),
@@ -147,14 +148,14 @@ async def project_verwijderen(
 
 
 @router.post("/project/{project_id}/afbeelding-upload")
-async def afbeelding_upload(
+def afbeelding_upload(
     project_id: uuid.UUID,
     vraag: AfbeeldingUploadVraag,
     p: Principal = Depends(principal),
     db: Session = Depends(get_db),
 ):
     project, _ = project_met_rechten(db, project_id, p)
-    extensie = vraag.bestandsnaam.rsplit(".", 1)[-1].lower() if "." in vraag.bestandsnaam else "jpg"
+    extensie = s3.extensie_voor(vraag.contentType, "jpg")
     object_key = f"projecten/{project.projectId}/afbeelding.{extensie}"
     return {
         "objectKey": object_key,

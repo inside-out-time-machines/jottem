@@ -7,13 +7,17 @@ export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://dev.iotm.nl
 // browser-calls tijdens het fundament, totdat de Authentik-loginflow is aangesloten.
 export const DEV_AUTH = process.env.NEXT_PUBLIC_DEV_AUTH === "1";
 
-export function devHeaders(sub: string, naam?: string): Record<string, string> {
+// Welke dev-identiteit de bypass gebruikt, staat in één omgevingsvariabele in plaats van
+// per pagina in de code: zo staat er nergens meer een testaccount hardgecodeerd.
+export const DEV_SUB = process.env.NEXT_PUBLIC_DEV_SUB ?? "dev-piet";
+
+export function devHeaders(sub: string = DEV_SUB, naam?: string): Record<string, string> {
   if (!DEV_AUTH) return {};
   return { "X-Dev-Sub": sub, ...(naam ? { "X-Dev-Naam": naam } : {}) };
 }
 
 // Auth-headers voor browser-calls: dev-bypass in dev, anders het OIDC-access-token.
-export function authHeaders(devSub: string, devNaam?: string): Record<string, string> {
+export function authHeaders(devSub: string = DEV_SUB, devNaam?: string): Record<string, string> {
   if (DEV_AUTH) return devHeaders(devSub, devNaam);
   if (typeof window !== "undefined") {
     const token = sessionStorage.getItem("oidc_access_token");

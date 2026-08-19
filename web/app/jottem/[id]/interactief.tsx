@@ -6,8 +6,11 @@ import { startLogin } from "@/lib/oidc";
 import Viewer, { OsdAnnotator, ViewerBesturing } from "./viewer";
 import ZichtveldKiezer from "./zichtveld-kiezer";
 import Deelnemer from "../../deelnemer";
+import {
+  LEEG_FORMULIER, bodies, heeftVlak, naamUitIri, parseZichtveld, weergave,
+  type Verrijking, type W3CAnnotatie, type W3CBody,
+} from "./annotatie-model";
 
-type Verrijking = { sleutel: string; label: string; cta: string; motivation: string; doel: string };
 export type Detail = {
   mediaId: string;
   titel: string;
@@ -22,91 +25,6 @@ export type Detail = {
   projectId: string;
   metadata: Record<string, string>;
   verrijkingen: Verrijking[];
-};
-
-type W3CBody = { type?: string; value?: string; purpose?: string; format?: string; source?: string };
-type W3CAnnotatie = {
-  id: string;
-  motivation?: string;
-  target?: unknown;
-  body?: W3CBody | W3CBody[];
-  creator?: { id?: string; name?: string };
-  created?: string;
-  "jottem:verrijking"?: string;
-  "jottem:aard"?: string;
-};
-
-const DEV_SUB = "dev-anna";
-const DEV_NAAM = "Anna Uploader";
-
-function bodies(a: W3CAnnotatie): W3CBody[] {
-  if (!a.body) return [];
-  return Array.isArray(a.body) ? a.body : [a.body];
-}
-
-function heeftVlak(a: W3CAnnotatie): boolean {
-  const t = a.target as { selector?: unknown } | string | undefined;
-  return typeof t === "object" && t !== null && "selector" in t;
-}
-
-function naamUitIri(iri: string): string {
-  return iri.split("/").filter(Boolean).pop() ?? "";
-}
-
-// leesbare weergave per annotatie (V-2/V-4): tekst, links en een typelabel
-function weergave(a: W3CAnnotatie, catalogus: Verrijking[]) {
-  const sleutel = a["jottem:verrijking"];
-  const uitCatalogus = catalogus.find((v) => v.sleutel === sleutel);
-  let label = uitCatalogus?.label ?? (sleutel === "reactie" ? "Reactie" : a.motivation ?? "Annotatie");
-  const teksten: string[] = [];
-  const links: { label: string; url: string }[] = [];
-  // zichtveld: geen coördinatentekst maar dezelfde kaartcomponent als bij het
-  // bewerken, alleen-lezen en ingezoomd op de driehoek
-  let zichtveld: { lat: number; lon: number; richting?: number; fov?: number;
-                   doelLat?: number; doelLon?: number } | null = null;
-  for (const b of bodies(a)) {
-    if (b.type === "TextualBody" && b.value) {
-      if (b.format === "application/geo+json") {
-        try {
-          const geo = JSON.parse(b.value) as {
-            geometry?: { coordinates?: [number, number] };
-            properties?: { bearing?: number; fov?: number; target?: [number, number] };
-          };
-          const [lon, lat] = geo.geometry?.coordinates ?? [];
-          if (lat !== undefined && lon !== undefined) {
-            zichtveld = {
-              lat, lon,
-              richting: geo.properties?.bearing,
-              fov: geo.properties?.fov,
-              doelLon: geo.properties?.target?.[0],
-              doelLat: geo.properties?.target?.[1],
-            };
-          }
-        } catch { teksten.push(b.value); }
-      } else if (sleutel === "periode" && /^[0-9X]{3,4}/.test(b.value)) {
-        teksten.push(`Datering: ${b.value}`);
-      } else {
-        teksten.push(b.value);
-      }
-    }
-    if (b.type === "SpecificResource" && b.source) {
-      links.push({ label: b.source.replace(/^https?:\/\//, "").slice(0, 60), url: b.source });
-    }
-  }
-  if (sleutel === "tag") label = "Steekwoord";
-  return { label, teksten, links, zichtveld };
-}
-
-const LEEG_FORMULIER = {
-  tekst: "", aard: "", termUri: "", termLabel: "", bronUrl: "", bronLabel: "",
-  jaarVan: "", jaarTot: "", lat: null as number | null, lon: null as number | null,
-  richting: null as number | null,
-  fov: null as number | null,
-  doelLat: null as number | null,
-  doelLon: null as number | null,
-  vlak: null as { x: number; y: number; w: number; h: number } | null,
-  doelAnnotatie: null as string | null,
-  bewerkNaam: null as string | null,
 };
 
 export default function Interactief({ detail }: { detail: Detail }) {
@@ -129,7 +47,7 @@ export default function Interactief({ detail }: { detail: Detail }) {
   const [fotos, setFotos] = useState<Record<string, string | null>>({});
   const dialoogRef = useRef<HTMLDialogElement>(null);
 
-  const headers = { "Content-Type": "application/json", ...authHeaders(DEV_SUB, DEV_NAAM) };
+  const headers = { "Content-Type": "application/json", ...authHeaders() };
 
   const laadAnnotaties = useCallback(async () => {
     if (!detail.annotatiesUrl) return;
@@ -156,12 +74,12 @@ export default function Interactief({ detail }: { detail: Detail }) {
     setIngelogd(isIngelogd());
     laadAnnotaties();
     if (isIngelogd()) {
-      fetch(`${API_PUBLIEK}/mijn/profiel`, { headers: authHeaders(DEV_SUB, DEV_NAAM) })
+      fetch(`${API_PUBLIEK}/mijn/profiel`, { headers: authHeaders() })
         .then((r) => (r.ok ? r.json() : null))
         .then((p) => setPubliekeId(p?.publiekeId ?? null))
         .catch(() => {});
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [laadAnnotaties]);
 
   // vlak-annotaties op de viewer tonen zodra beide er zijn (de laag is soms later
@@ -316,24 +234,10 @@ export default function Interactief({ detail }: { detail: Detail }) {
     const tekstBody = alleBodies.find((b) => b.type === "TextualBody" && b.format !== "application/geo+json");
     const bron = alleBodies.find((b) => b.type === "SpecificResource");
     // zichtveld: de geo+json-body terugparsen zodat de camera op de kaart terugkomt
-    let geoVorm: Partial<typeof LEEG_FORMULIER> = {};
+    // dezelfde parser als de weergave gebruikt (annotatie-model.ts)
     const geoBody = alleBodies.find((b) => b.format === "application/geo+json");
-    if (sleutel === "zichtveld" && geoBody?.value) {
-      try {
-        const geo = JSON.parse(geoBody.value) as {
-          geometry?: { coordinates?: [number, number] };
-          properties?: { bearing?: number; fov?: number; target?: [number, number] };
-        };
-        const [lon, lat] = geo.geometry?.coordinates ?? [];
-        geoVorm = {
-          lat: lat ?? null, lon: lon ?? null,
-          richting: geo.properties?.bearing ?? null,
-          fov: geo.properties?.fov ?? null,
-          doelLon: geo.properties?.target?.[0] ?? null,
-          doelLat: geo.properties?.target?.[1] ?? null,
-        };
-      } catch { /* zonder parsebare geo start de kaart op de standaardpositie */ }
-    }
+    const gelezen = sleutel === "zichtveld" ? parseZichtveld(geoBody?.value) : null;
+    const geoVorm: Partial<typeof LEEG_FORMULIER> = gelezen ?? {};
     setVorm({
       ...LEEG_FORMULIER,
       ...geoVorm,
@@ -511,9 +415,14 @@ export default function Interactief({ detail }: { detail: Detail }) {
                 {w.zichtveld && (
                   <div style={{ marginTop: ".5rem" }}>
                     <ZichtveldKiezer
-                      begin={{ lat: w.zichtveld.lat, lon: w.zichtveld.lon,
-                               richting: w.zichtveld.richting, fov: w.zichtveld.fov,
-                               doelLat: w.zichtveld.doelLat, doelLon: w.zichtveld.doelLon }}
+                      begin={{
+                        lat: w.zichtveld.lat ?? undefined,
+                        lon: w.zichtveld.lon ?? undefined,
+                        richting: w.zichtveld.richting ?? undefined,
+                        fov: w.zichtveld.fov ?? undefined,
+                        doelLat: w.zichtveld.doelLat ?? undefined,
+                        doelLon: w.zichtveld.doelLon ?? undefined,
+                      }}
                       readonly
                       hoogte="16rem"
                     />

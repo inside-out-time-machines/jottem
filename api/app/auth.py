@@ -7,7 +7,9 @@ invalidatie bij rolwijziging). Voor beheer-/moderatie-endpoints wordt via `amr` 
 factor (TOTP of passkey) geëist. Zie de systeemarchitectuur.
 
 Dev-bypass: alleen met JOTTEM_DEV_AUTH=1 accepteert de API de headers X-Dev-Sub,
-X-Dev-Naam en X-Dev-Email (voor smoke-tests zonder browserflow). Nooit in productie.
+X-Dev-Naam en X-Dev-Email (voor smoke-tests zonder browserflow). De bypass levert géén
+sterke factor: hij passeert de amr-poort alleen zolang dev_auth aanstaat, en de API
+weigert te starten als dat buiten een dev-omgeving gebeurt (zie main.py).
 """
 import json
 from dataclasses import dataclass, field
@@ -20,7 +22,7 @@ from sqlalchemy.orm import Session
 
 from .config import settings
 from .db import get_db
-from .models import Gebruiker, GebruikerRol, Rol
+from .models import Gebruiker, GebruikerRol, Organisatie, Rol
 
 _valkey = redis.Redis.from_url(settings().valkey_url, decode_responses=True)
 _jwks_client: jwt.PyJWKClient | None = None
@@ -53,7 +55,8 @@ def _jwks() -> jwt.PyJWKClient:
 
 
 def _rollen_cache_key(gebruikers_id: int) -> str:
-    return f"rollen:{gebruikers_id}"
+    # v2: sinds de slug erbij zit; oude entries zonder slug vervallen zo vanzelf
+    return f"rollen2:{gebruikers_id}"
 
 
 def rollen_van(db: Session, gebruiker: Gebruiker) -> list[dict]:
@@ -65,9 +68,16 @@ def rollen_van(db: Session, gebruiker: Gebruiker) -> list[dict]:
             return json.loads(gecached)
     except redis.RedisError:
         pass
+    # de slug hoort erbij: de frontend bouwt er beheer-URL's mee en had anders een
+    # hardgecodeerde organisatie nodig
+    rijen = db.execute(
+        select(GebruikerRol, Organisatie.slug)
+        .outerjoin(Organisatie, Organisatie.organisatieId == GebruikerRol.organisatieId)
+        .where(GebruikerRol.gebruikersId == gebruiker.gebruikersId)
+    ).all()
     rollen = [
-        {"rol": r.rol.value, "organisatieId": r.organisatieId}
-        for r in db.scalars(select(GebruikerRol).where(GebruikerRol.gebruikersId == gebruiker.gebruikersId))
+        {"rol": r.rol.value, "organisatieId": r.organisatieId, "organisatieSlug": slug}
+        for r, slug in rijen
     ]
     try:
         _valkey.setex(sleutel, settings().rollen_cache_ttl, json.dumps(rollen))
@@ -84,12 +94,18 @@ def invalideer_rollen_cache(gebruikers_id: int) -> None:
         pass
 
 
-def _gebruiker_voor_sub(db: Session, sub: str, naam: str, email: str) -> Gebruiker:
+def _gebruiker_voor_sub(db: Session, sub: str, naam: str, email: str,
+                        email_geverifieerd: bool = False) -> Gebruiker:
     gebruiker = db.scalar(select(Gebruiker).where(Gebruiker.sub == sub))
     if gebruiker:
         return gebruiker
-    # eerste login: koppel aan een uitgenodigde rij (zelfde e-mail) of maak een nieuwe
-    gebruiker = db.scalar(select(Gebruiker).where(Gebruiker.email == email, Gebruiker.sub.is_(None)))
+    # Eerste login: koppelen aan een uitgenodigde rij mag alleen als de identiteitsprovider
+    # het e-mailadres heeft geverifieerd. Anders zou iemand die zich met andermans adres
+    # registreert (bij een social login die het adres niet controleert) de klaargezette
+    # rollen van die persoon erven.
+    gebruiker = (db.scalar(select(Gebruiker).where(Gebruiker.email == email,
+                                                   Gebruiker.sub.is_(None)))
+                 if email_geverifieerd and email else None)
     if gebruiker:
         gebruiker.sub = sub
     else:
@@ -110,8 +126,13 @@ async def principal(
     cfg = settings()
 
     if cfg.dev_auth and x_dev_sub:
-        gebruiker = _gebruiker_voor_sub(db, x_dev_sub, x_dev_naam or x_dev_sub, x_dev_email or f"{x_dev_sub}@dev.local")
-        return Principal(gebruiker=gebruiker, rollen=rollen_van(db, gebruiker), amr=["totp"])
+        # de bypass bestaat alleen voor de dev-omgeving; buiten dev weigert de API te starten
+        # (zie main.py), dus hier hoeft alleen de amr-leugen weg: geen sterke factor cadeau
+        gebruiker = _gebruiker_voor_sub(
+            db, x_dev_sub, x_dev_naam or x_dev_sub,
+            x_dev_email or f"{x_dev_sub}@dev.local", email_geverifieerd=True)
+        return Principal(gebruiker=gebruiker, rollen=rollen_van(db, gebruiker),
+                         amr=["dev-bypass"])
 
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(401, "Niet ingelogd")
@@ -127,17 +148,35 @@ async def principal(
 
     gebruiker = _gebruiker_voor_sub(
         db, claims["sub"], claims.get("name") or claims.get("preferred_username", ""),
-        claims.get("email", ""),
+        claims.get("email", ""), email_geverifieerd=claims.get("email_verified") is True,
     )
     return Principal(gebruiker=gebruiker, rollen=rollen_van(db, gebruiker), amr=claims.get("amr", []))
 
 
+def eis_sterke_factor(p: Principal) -> None:
+    """Beheer- en moderatieacties vragen om TOTP of een passkey (design: amr-controle).
+
+    Stond eerder alleen in `eis_rol`, terwijl projectbeheer, de dataset-flow en het
+    rollenbeheer hun eigen `heeft_rol`-check doen: die passeerden de eis dus zonder
+    sterke factor. Deze helper hoort in elke handmatige tak.
+    """
+    cfg = settings()
+    sterk = bool(set(a.lower() for a in p.amr) & STERKE_FACTOREN)
+    if cfg.amr_verplicht and not sterk and not (cfg.dev_auth and "dev-bypass" in p.amr):
+        raise HTTPException(403, "Sterke factor (TOTP of passkey) vereist voor deze rol")
+
+
 def eis_rol(rol: Rol):
-    """Dependency-factory: eist de rol én (conform design) een sterke factor via amr."""
-    async def controle(p: Principal = Depends(principal), organisatieId: int | None = None) -> Principal:
-        if not p.heeft_rol(rol, organisatieId):
+    """Dependency-factory: eist de rol én (conform design) een sterke factor via amr.
+
+    Bewust organisatie-onafhankelijk: de organisatie hoort bij de resource uit het pad en
+    wordt door de route zelf gecontroleerd (`p.heeft_rol(rol, organisatie.organisatieId)`).
+    Eerder kwam die uit de querystring, wat een aanroeper de indruk gaf dat de scope al
+    was afgedwongen terwijl de client hem zelf koos.
+    """
+    async def controle(p: Principal = Depends(principal)) -> Principal:
+        if not p.heeft_rol(rol):
             raise HTTPException(403, f"Rol '{rol.value}' vereist")
-        if settings().amr_verplicht and not set(a.lower() for a in p.amr) & STERKE_FACTOREN:
-            raise HTTPException(403, "Sterke factor (TOTP of passkey) vereist voor deze rol")
+        eis_sterke_factor(p)
         return p
     return controle

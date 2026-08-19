@@ -1,0 +1,23 @@
+# De nulmeting tegen een draaiende omgeving: handmatig te starten en elke nacht, zodat
+# een stille regressie op dev binnen een dag opvalt. Zie analysis/jottem/BASELINE.md.
+name: Nulmeting
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * *"
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pytest httpx
+      - run: python -m pytest
+        env:
+          JOTTEM_API_URL: https://api.dev.iotm.nl
+          JOTTEM_SITE_URL: https://dev.iotm.nl
+          JOTTEM_DATA_URL: https://data.dev.iotm.nl

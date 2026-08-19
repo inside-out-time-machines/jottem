@@ -42,6 +42,18 @@ Altijd beschikbaar: `organisatie.naam`, `organisatie.logoUrl`, `organisatie.kleu
 | `attendering-jottem` | `jottemTitel`, `jottemUrl`, `aantalNieuw`, `uitschakelUrl` |
 | `attendering-annotatie` | `jottemTitel`, `annotatieUrl`, `aantalNieuw`, `uitschakelUrl` |
 
+## Welke sjablonen worden al verstuurd?
+
+Vijf sjablonen staan klaar voor functies die nog niet gebouwd zijn en hebben dus (nog)
+geen afzender in de code: `export-gereed`, `moderatie-digest`,
+`verwijderverzoek-bevestiging`, `verwijderverzoek-melding` en
+`verwijderverzoek-uitkomst`. Ze zijn bewust bewaard: het realisatieplan plant die
+functies, en de teksten zijn al op B1-niveau geredigeerd. Wie op zoek is naar dode code:
+dit is grondwerk, geen restant.
+
+De rest wordt wél verstuurd, vanuit `api/app/routers/moderatie.py`,
+`api/app/routers/organisatiebeheer.py` en `api/app/worker.py`.
+
 ## Regels
 
 - Transactionele mails (uitnodigingen, moderatie-uitkomsten, verwijderverzoeken, export) zijn

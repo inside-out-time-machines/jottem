@@ -10,7 +10,7 @@ export default function NieuwProjectPagina() {
   const router = useRouter();
   const { org } = useParams<{ org: string }>();
   const [ingelogd, setIngelogd] = useState<boolean | null>(null);
-  const headers = { "Content-Type": "application/json", ...authHeaders("dev-otto", "Otto Organisatiebeheerder") };
+  const headers = { "Content-Type": "application/json", ...authHeaders() };
 
   useEffect(() => setIngelogd(isIngelogd()), []);
   if (ingelogd === null) return <main><h1>Nieuw project</h1></main>;

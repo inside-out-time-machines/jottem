@@ -61,7 +61,7 @@ def _haal_bronnen() -> list[dict]:
 
 
 @router.get("/termennetwerk/bronnen")
-async def bronnen():
+def bronnen():
     return _haal_bronnen()
 
 
@@ -103,7 +103,7 @@ query Zoek($bronnen: [ID]!, $tekst: String!) {
 
 
 @router.get("/termennetwerk/zoek")
-async def zoek(
+def zoek(
     query: str = Query(min_length=2, max_length=200),
     project: uuid.UUID | None = None,
     bron: str | None = Query(default=None, max_length=200),

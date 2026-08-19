@@ -1,0 +1,62 @@
+%% Jottem - domeinafhankelijkheden (structuuranalyse 19 augustus 2026)
+%% Twee cycli zijn bewust: ANNO <-> PUB (canvas-IRI versus advertentie van de
+%% annotatiecontainer) en OPEN <-> BEH (dataset-flow versus projectrechten).
+graph TD
+  subgraph Fundament
+    DATA[DATA datamodel en persistentie]
+    IAM[IAM identiteit en autorisatie]
+    EVENT[EVENT outbox worker mail]
+    PLAT[PLAT deploy en observability]
+  end
+  subgraph Bijdrageketen
+    UPLOAD[UPLOAD aanleveren]
+    MOD[MOD moderatie]
+    ANNO[ANNO verrijkingen en annotaties]
+  end
+  subgraph Publicatie
+    PUB[PUB publieke presentatie]
+    IIIF[IIIF beeldpipeline]
+    OPEN[OPEN open data en RDF]
+  end
+  subgraph Beheer
+    BEH[BEH platform- en projectbeheer]
+    TERM[TERM terminologie en geo]
+  end
+
+  IAM --> DATA
+  IAM --> PLAT
+  UPLOAD --> IAM
+  UPLOAD --> DATA
+  UPLOAD --> EVENT
+  UPLOAD --> IIIF
+  MOD --> IAM
+  MOD --> DATA
+  MOD --> EVENT
+  MOD --> ANNO
+  ANNO --> IAM
+  ANNO --> DATA
+  ANNO --> EVENT
+  ANNO --> TERM
+  ANNO --> PUB
+  PUB --> DATA
+  PUB --> ANNO
+  PUB --> IIIF
+  PUB --> OPEN
+  IIIF --> DATA
+  IIIF --> EVENT
+  OPEN --> DATA
+  OPEN --> ANNO
+  OPEN --> IIIF
+  OPEN --> PUB
+  OPEN --> BEH
+  BEH --> IAM
+  BEH --> DATA
+  BEH --> EVENT
+  BEH --> TERM
+  BEH --> ANNO
+  TERM --> DATA
+  EVENT --> DATA
+  EVENT --> IIIF
+  EVENT --> ANNO
+  EVENT --> OPEN
+  EVENT --> PLAT

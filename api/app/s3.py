@@ -25,6 +25,24 @@ def intern():
     return _client(settings().s3_endpoint)
 
 
+# De extensie komt uit het gecontroleerde content-type, niet uit de bestandsnaam: die is
+# invoer van de client en kan met "../" buiten het bedoelde prefix schrijven.
+EXTENSIE_PER_TYPE = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/tiff": "tif",
+    "image/webp": "webp",
+    "image/gif": "gif",
+    "image/svg+xml": "svg",
+    "image/x-icon": "ico",
+    "image/vnd.microsoft.icon": "ico",
+}
+
+
+def extensie_voor(content_type: str, standaard: str = "bin") -> str:
+    return EXTENSIE_PER_TYPE.get((content_type or "").split(";")[0].strip().lower(), standaard)
+
+
 def presigned_put(
     object_key: str, content_type: str, verloop_seconden: int = 900, bucket: str | None = None
 ) -> str:

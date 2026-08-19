@@ -22,7 +22,7 @@ from ..config import settings
 from ..db import get_db
 from ..models import Gebruiker, Media, MediaStatus, Melding, Project, Rol
 from ..outbox import log
-from ..schemas import MeldingBesluit, MeldingIn, MeldingUit
+from ..schemas import HTTP_URL, MeldingBesluit, MeldingIn, MeldingUit
 from ..verrijkingen import PER_SLEUTEL, REAGEREN_MOTIVATION, actieve_sleutels
 from .jottem import canvas_iri
 
@@ -53,9 +53,9 @@ class AnnotatieIn(BaseModel):
     verrijking: str                      # sleutel uit de catalogus, of "reactie"
     tekst: str | None = Field(default=None, max_length=4000)
     aard: str | None = Field(default=None, pattern="^(herinnering|feit)$")  # V-4
-    termUri: str | None = Field(default=None, max_length=500)
+    termUri: str | None = Field(default=None, max_length=500, pattern=HTTP_URL)
     termLabel: str | None = Field(default=None, max_length=200)
-    bronUrl: str | None = Field(default=None, max_length=500)
+    bronUrl: str | None = Field(default=None, max_length=500, pattern=HTTP_URL)
     bronLabel: str | None = Field(default=None, max_length=200)
     jaarVan: str | None = Field(default=None, max_length=10)   # EDTF, bijv. 1973 of 196X
     jaarTot: str | None = Field(default=None, max_length=10)
@@ -238,7 +238,7 @@ def _log_annotatie(db: Session, type_: str, media: Media, gebruikers_id: int | N
 
 
 @router.post("/jottem/{media_id}/annotation", status_code=201)
-async def maak_annotatie(
+def maak_annotatie(
     media_id: uuid.UUID,
     invoer: AnnotatieIn,
     p: Principal = Depends(principal),
@@ -271,7 +271,7 @@ def _eis_maker(annotatie: dict, p: Principal) -> None:
 
 
 @router.put("/annotation/{media_id}/{naam}")
-async def wijzig_annotatie(
+def wijzig_annotatie(
     media_id: uuid.UUID,
     naam: str,
     invoer: AnnotatieIn,
@@ -292,7 +292,7 @@ async def wijzig_annotatie(
 
 
 @router.delete("/annotation/{media_id}/{naam}", status_code=204)
-async def verwijder_annotatie(
+def verwijder_annotatie(
     media_id: uuid.UUID,
     naam: str,
     p: Principal = Depends(principal),
@@ -310,9 +310,13 @@ async def verwijder_annotatie(
 # ---------- melden (BE-7: ook zonder account) en moderatie (MO-6) ----------
 
 def _rate_limit(request: Request) -> None:
-    """Meldingen: 2 req/s met burst 5 (systeemarchitectuur), per IP via Valkey."""
-    ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "?")
-    ip = ip.split(",")[0].strip()
+    """Meldingen: 2 req/s met burst 5 (systeemarchitectuur), per IP via Valkey.
+
+    Het adres komt van de verbinding zelf (Traefik als enige proxy ervoor), niet uit
+    X-Forwarded-For: die header stuurt de client mee en met een willekeurige waarde per
+    verzoek was de limiet in één regel te omzeilen.
+    """
+    ip = request.client.host if request.client else "?"
     sleutel = f"melding-rate:{ip}"
     teller = _valkey.incr(sleutel)
     if teller == 1:
@@ -323,7 +327,7 @@ def _rate_limit(request: Request) -> None:
 
 
 @router.post("/annotation/{media_id}/{naam}/melding", status_code=201)
-async def meld_annotatie(
+def meld_annotatie(
     media_id: uuid.UUID,
     naam: str,
     invoer: MeldingIn,
@@ -347,7 +351,7 @@ async def meld_annotatie(
 
 
 @router.get("/organisatie/{slug}/meldingen", response_model=list[MeldingUit])
-async def meldingen(
+def meldingen(
     slug: str,
     p: Principal = Depends(eis_rol(Rol.moderator)),
     db: Session = Depends(get_db),
@@ -380,7 +384,7 @@ async def meldingen(
 
 
 @router.put("/melding/{melding_id}", response_model=MeldingUit)
-async def handel_melding_af(
+def handel_melding_af(
     melding_id: int,
     besluit: MeldingBesluit,
     p: Principal = Depends(eis_rol(Rol.moderator)),

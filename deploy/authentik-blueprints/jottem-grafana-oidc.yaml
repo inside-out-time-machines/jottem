@@ -35,7 +35,7 @@ entries:
       access_token_validity: hours=1
       redirect_uris:
         - matching_mode: strict
-          url: https://grafana.dev.iotm.nl/login/generic_oauth
+          url: !Format ["https://grafana.%s/login/generic_oauth", !Env [BASISDOMEIN, dev.iotm.nl]]
       property_mappings:
         - !Find [authentik_providers_oauth2.scopemapping, [managed, "goauthentik.io/providers/oauth2/scope-openid"]]
         - !Find [authentik_providers_oauth2.scopemapping, [managed, "goauthentik.io/providers/oauth2/scope-email"]]
@@ -49,7 +49,7 @@ entries:
     attrs:
       name: Grafana
       provider: !Find [authentik_providers_oauth2.oauth2provider, [name, grafana]]
-      meta_launch_url: https://grafana.dev.iotm.nl/
+      meta_launch_url: !Format ["https://grafana.%s/", !Env [BASISDOMEIN, dev.iotm.nl]]
       policy_engine_mode: any
 
   # alleen de groep Platformbeheerders mag de applicatie gebruiken

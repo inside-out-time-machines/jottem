@@ -20,7 +20,7 @@ export default function OrganisatiebeheerPagina() {
   const [moderatoren, setModeratoren] = useState<Record<string, Lid[]>>({});
   const [melding, setMelding] = useState<string | null>(null);
 
-  const headers = { "Content-Type": "application/json", ...authHeaders("dev-otto", "Otto Organisatiebeheerder") };
+  const headers = { "Content-Type": "application/json", ...authHeaders() };
 
   const laden = useCallback(async () => {
     const publiek = await fetch(`${API_PUBLIEK}/organisaties`).then((r) => r.json());

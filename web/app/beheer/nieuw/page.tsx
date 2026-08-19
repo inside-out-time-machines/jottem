@@ -9,7 +9,7 @@ import OrganisatieFormulier, { LEGE_ORGANISATIE } from "../organisatie-formulier
 export default function NieuweOrganisatiePagina() {
   const router = useRouter();
   const [ingelogd, setIngelogd] = useState<boolean | null>(null);
-  const headers = { "Content-Type": "application/json", ...authHeaders("dev-piet", "Piet Platformbeheerder") };
+  const headers = { "Content-Type": "application/json", ...authHeaders() };
 
   useEffect(() => setIngelogd(isIngelogd()), []);
   if (ingelogd === null) return <main><h1>Nieuwe organisatie</h1></main>;

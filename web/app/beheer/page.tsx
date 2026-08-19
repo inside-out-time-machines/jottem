@@ -23,7 +23,7 @@ export default function BeheerPagina() {
   const [beheerders, setBeheerders] = useState<Record<string, Lid[]>>({});
   const [melding, setMelding] = useState<string | null>(null);
 
-  const headers = { "Content-Type": "application/json", ...authHeaders("dev-piet", "Piet Platformbeheerder") };
+  const headers = { "Content-Type": "application/json", ...authHeaders() };
 
   const laden = useCallback(() => {
     fetch(`${API_PUBLIEK}/organisatie`, { headers })

@@ -100,7 +100,7 @@ export default function UploadPagina() {
     if (projectParam && organisaties.length > 0 && !gekozen) window.location.replace("/");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectParam, organisaties]);
-  const headers = { "Content-Type": "application/json", ...authHeaders("dev-anna", "Anna Uploader") };
+  const headers = { "Content-Type": "application/json", ...authHeaders() };
 
   async function indienen(mediaId: string, toestemming: "ja" | "nee" | null) {
     const metadata: Record<string, string> = {};

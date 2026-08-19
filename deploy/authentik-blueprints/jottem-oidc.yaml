@@ -1,6 +1,6 @@
 # Declaratieve Authentik-configuratie voor Jottem (toegepast door de authentik-worker).
 # Maakt de OAuth2/OIDC-provider (public client + PKCE) en de applicatie "jottem" aan;
-# issuer wordt daarmee https://auth.dev.iotm.nl/application/o/jottem/.
+# issuer wordt daarmee https://auth.<BASISDOMEIN>/application/o/jottem/.
 version: 1
 metadata:
   name: jottem-oidc
@@ -26,7 +26,7 @@ entries:
       sub_mode: hashed_user_id
       redirect_uris:
         - matching_mode: strict
-          url: https://dev.iotm.nl/auth/callback
+          url: !Format ["https://%s/auth/callback", !Env [BASISDOMEIN, dev.iotm.nl]]
       property_mappings:
         - !Find [authentik_providers_oauth2.scopemapping, [managed, "goauthentik.io/providers/oauth2/scope-openid"]]
         - !Find [authentik_providers_oauth2.scopemapping, [managed, "goauthentik.io/providers/oauth2/scope-email"]]
@@ -40,5 +40,5 @@ entries:
       name: Jottem
       provider: !Find [authentik_providers_oauth2.oauth2provider, [name, jottem-web]]
       # ?sso=1 laat de frontend automatisch de OIDC-flow starten (sessie bestaat al)
-      meta_launch_url: https://dev.iotm.nl/?sso=1
+      meta_launch_url: !Format ["https://%s/?sso=1", !Env [BASISDOMEIN, dev.iotm.nl]]
       policy_engine_mode: any

@@ -13,8 +13,8 @@ entries:
     state: present
     attrs:
       branding_title: Jottem
-      branding_logo: https://dev.iotm.nl/logo/jottem-woordmerk.svg
-      branding_favicon: https://dev.iotm.nl/favicon.ico
+      branding_logo: !Format ["https://%s/logo/jottem-woordmerk.svg", !Env [BASISDOMEIN, dev.iotm.nl]]
+      branding_favicon: !Format ["https://%s/favicon.ico", !Env [BASISDOMEIN, dev.iotm.nl]]
       attributes:
         settings:
           locale: nl
@@ -23,79 +23,88 @@ entries:
       # de @font-face werkt op documentniveau, de shadow-DOM-componenten erven de familie.
       # Defensief: alleen kleuren, fonts en randen; geen layout-ingrepen, zodat een
       # Authentik-upgrade hooguit stilletjes terugvalt op de standaardstijl.
-      branding_custom_css: |
-        @font-face {
-          font-family: 'Albert Sans'; font-style: normal; font-weight: 400;
-          font-display: swap;
-          src: url('https://dev.iotm.nl/fonts/albert-sans-v4-latin-regular.woff2') format('woff2');
-        }
-        @font-face {
-          font-family: 'Albert Sans'; font-style: normal; font-weight: 500;
-          font-display: swap;
-          src: url('https://dev.iotm.nl/fonts/albert-sans-v4-latin-500.woff2') format('woff2');
-        }
-        @font-face {
-          font-family: 'Albert Sans'; font-style: normal; font-weight: 600;
-          font-display: swap;
-          src: url('https://dev.iotm.nl/fonts/albert-sans-v4-latin-600.woff2') format('woff2');
-        }
-        @font-face {
-          font-family: 'Fraunces'; font-style: normal; font-weight: 600;
-          font-display: swap;
-          src: url('https://dev.iotm.nl/fonts/fraunces-v38-latin-600.woff2') format('woff2');
-        }
-        @font-face {
-          font-family: 'Fraunces'; font-style: normal; font-weight: 700;
-          font-display: swap;
-          src: url('https://dev.iotm.nl/fonts/fraunces-v38-latin-700.woff2') format('woff2');
-        }
-        :root {
-          --jottem-oranje: #d85a30;
-          --jottem-oranje-donker: #c04e28;
-          --jottem-roest: #a2401f;
-          --jottem-papier: #faf6f1;
-          --jottem-karton: #e8d9c4;
-          --jottem-inkt: #1f1e1c;
-          accent-color: #a2401f;
-          /* PatternFly-brede tokens: fonts, focus- en linkkleuren */
-          --pf-global--FontFamily--sans-serif: 'Albert Sans', Arial, sans-serif;
-          --pf-global--FontFamily--heading--sans-serif: 'Fraunces', Georgia, serif;
-          --pf-global--primary-color--100: var(--jottem-oranje);
-          --pf-global--primary-color--200: var(--jottem-oranje-donker);
-          --pf-global--active-color--100: var(--jottem-oranje);
-          --pf-global--link--Color: var(--jottem-roest);
-          --pf-global--link--Color--hover: var(--jottem-oranje-donker);
-          /* link-knoppen (o.a. social login) lezen hun kleur uit deze component-var */
-          --pf-c-button--m-link--Color: var(--jottem-roest);
-          --pf-c-button--m-link--hover--Color: var(--jottem-oranje-donker);
-        }
-        body, .pf-c-form, .pf-c-form-control, .pf-c-button, input, button, select, textarea {
-          font-family: 'Albert Sans', Arial, sans-serif;
-        }
-        .pf-c-title, .pf-c-login__main-header h1, .pf-c-content h1, .pf-c-content h2 {
-          font-family: 'Fraunces', Georgia, serif;
-        }
-        .pf-c-button.pf-m-primary { background-color: var(--jottem-oranje); }
-        .pf-c-button.pf-m-primary:hover,
-        .pf-c-button.pf-m-primary:focus { background-color: var(--jottem-oranje-donker); }
-        .pf-c-button.pf-m-secondary {
-          color: var(--jottem-roest);
-          border: 1px solid var(--jottem-roest);
-        }
-        .pf-c-button.pf-m-link { color: var(--jottem-roest); }
-        .pf-c-login__main {
-          border-top: 4px solid var(--jottem-oranje);
-          border-radius: 6px;
-          box-shadow: 0 6px 24px rgba(31, 30, 28, 0.12);
-        }
-        .pf-c-form-control { border-radius: 4px; }
-        a { color: var(--jottem-roest); }
-        .pf-c-page { --pf-c-page--BackgroundColor: var(--jottem-papier); }
-        .pf-c-nav__link.pf-m-current { border-left-color: var(--jottem-oranje); }
-        /* ook pagina's zonder flow-context (geweigerd-scherm, foutpagina, eerste
-           paint van /application/o/authorize/) krijgen de papieren achtergrond
-           i.p.v. de standaard Authentik-foto */
-        :root { --ak-flow-background: url("https://dev.iotm.nl/papier.png") !important; }
+      # de fonts en de achtergrond komen van de webhost; het domein komt uit
+      # BASISDOMEIN, zodat een domeinwissel niet in deze CSS hoeft
+      branding_custom_css: !Format
+        - |
+          @font-face {
+            font-family: 'Albert Sans'; font-style: normal; font-weight: 400;
+            font-display: swap;
+            src: url('https://%s/fonts/albert-sans-v4-latin-regular.woff2') format('woff2');
+          }
+          @font-face {
+            font-family: 'Albert Sans'; font-style: normal; font-weight: 500;
+            font-display: swap;
+            src: url('https://%s/fonts/albert-sans-v4-latin-500.woff2') format('woff2');
+          }
+          @font-face {
+            font-family: 'Albert Sans'; font-style: normal; font-weight: 600;
+            font-display: swap;
+            src: url('https://%s/fonts/albert-sans-v4-latin-600.woff2') format('woff2');
+          }
+          @font-face {
+            font-family: 'Fraunces'; font-style: normal; font-weight: 600;
+            font-display: swap;
+            src: url('https://%s/fonts/fraunces-v38-latin-600.woff2') format('woff2');
+          }
+          @font-face {
+            font-family: 'Fraunces'; font-style: normal; font-weight: 700;
+            font-display: swap;
+            src: url('https://%s/fonts/fraunces-v38-latin-700.woff2') format('woff2');
+          }
+          :root {
+            --jottem-oranje: #d85a30;
+            --jottem-oranje-donker: #c04e28;
+            --jottem-roest: #a2401f;
+            --jottem-papier: #faf6f1;
+            --jottem-karton: #e8d9c4;
+            --jottem-inkt: #1f1e1c;
+            accent-color: #a2401f;
+            /* PatternFly-brede tokens: fonts, focus- en linkkleuren */
+            --pf-global--FontFamily--sans-serif: 'Albert Sans', Arial, sans-serif;
+            --pf-global--FontFamily--heading--sans-serif: 'Fraunces', Georgia, serif;
+            --pf-global--primary-color--100: var(--jottem-oranje);
+            --pf-global--primary-color--200: var(--jottem-oranje-donker);
+            --pf-global--active-color--100: var(--jottem-oranje);
+            --pf-global--link--Color: var(--jottem-roest);
+            --pf-global--link--Color--hover: var(--jottem-oranje-donker);
+            /* link-knoppen (o.a. social login) lezen hun kleur uit deze component-var */
+            --pf-c-button--m-link--Color: var(--jottem-roest);
+            --pf-c-button--m-link--hover--Color: var(--jottem-oranje-donker);
+          }
+          body, .pf-c-form, .pf-c-form-control, .pf-c-button, input, button, select, textarea {
+            font-family: 'Albert Sans', Arial, sans-serif;
+          }
+          .pf-c-title, .pf-c-login__main-header h1, .pf-c-content h1, .pf-c-content h2 {
+            font-family: 'Fraunces', Georgia, serif;
+          }
+          .pf-c-button.pf-m-primary { background-color: var(--jottem-oranje); }
+          .pf-c-button.pf-m-primary:hover,
+          .pf-c-button.pf-m-primary:focus { background-color: var(--jottem-oranje-donker); }
+          .pf-c-button.pf-m-secondary {
+            color: var(--jottem-roest);
+            border: 1px solid var(--jottem-roest);
+          }
+          .pf-c-button.pf-m-link { color: var(--jottem-roest); }
+          .pf-c-login__main {
+            border-top: 4px solid var(--jottem-oranje);
+            border-radius: 6px;
+            box-shadow: 0 6px 24px rgba(31, 30, 28, 0.12);
+          }
+          .pf-c-form-control { border-radius: 4px; }
+          a { color: var(--jottem-roest); }
+          .pf-c-page { --pf-c-page--BackgroundColor: var(--jottem-papier); }
+          .pf-c-nav__link.pf-m-current { border-left-color: var(--jottem-oranje); }
+          /* ook pagina's zonder flow-context (geweigerd-scherm, foutpagina, eerste
+             paint van /application/o/authorize/) krijgen de papieren achtergrond
+             i.p.v. de standaard Authentik-foto */
+          :root { --ak-flow-background: url("https://%s/papier.png") !important; }
+        - !Env [BASISDOMEIN, dev.iotm.nl]
+        - !Env [BASISDOMEIN, dev.iotm.nl]
+        - !Env [BASISDOMEIN, dev.iotm.nl]
+        - !Env [BASISDOMEIN, dev.iotm.nl]
+        - !Env [BASISDOMEIN, dev.iotm.nl]
+        - !Env [BASISDOMEIN, dev.iotm.nl]
 
   # Nederlandse titel + papieren achtergrond op de bestaande loginflow
   - model: authentik_flows.flow
@@ -104,7 +113,7 @@ entries:
     state: present
     attrs:
       title: "Welkom bij Jottem"
-      background: https://dev.iotm.nl/papier.png
+      background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]
 
   # papieren achtergrond op alle overige flows die in de gebruikersreis voorbij kunnen
   # komen (consent, social-login-terugkeer, uitloggen, wachtwoord, instellingen), zodat
@@ -112,43 +121,43 @@ entries:
   - model: authentik_flows.flow
     identifiers: {slug: default-provider-authorization-implicit-consent}
     state: present
-    attrs: {background: https://dev.iotm.nl/papier.png}
+    attrs: {background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]}
   - model: authentik_flows.flow
     identifiers: {slug: default-provider-authorization-explicit-consent}
     state: present
-    attrs: {background: https://dev.iotm.nl/papier.png}
+    attrs: {background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]}
   - model: authentik_flows.flow
     identifiers: {slug: default-source-authentication}
     state: present
-    attrs: {background: https://dev.iotm.nl/papier.png}
+    attrs: {background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]}
   - model: authentik_flows.flow
     identifiers: {slug: default-source-enrollment}
     state: present
-    attrs: {background: https://dev.iotm.nl/papier.png}
+    attrs: {background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]}
   - model: authentik_flows.flow
     identifiers: {slug: default-source-pre-authentication}
     state: present
-    attrs: {background: https://dev.iotm.nl/papier.png}
+    attrs: {background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]}
   - model: authentik_flows.flow
     identifiers: {slug: default-invalidation-flow}
     state: present
-    attrs: {background: https://dev.iotm.nl/papier.png}
+    attrs: {background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]}
   - model: authentik_flows.flow
     identifiers: {slug: default-provider-invalidation-flow}
     state: present
-    attrs: {background: https://dev.iotm.nl/papier.png}
+    attrs: {background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]}
   - model: authentik_flows.flow
     identifiers: {slug: default-password-change}
     state: present
-    attrs: {background: https://dev.iotm.nl/papier.png}
+    attrs: {background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]}
   - model: authentik_flows.flow
     identifiers: {slug: default-user-settings-flow}
     state: present
-    attrs: {background: https://dev.iotm.nl/papier.png}
+    attrs: {background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]}
   - model: authentik_flows.flow
     identifiers: {slug: default-authenticator-static-setup}
     state: present
-    attrs: {background: https://dev.iotm.nl/papier.png}
+    attrs: {background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]}
 
 # Nederlandse titels + papieren achtergrond op de MFA-setup-flows (TOTP en passkey);
   # de flows en stages zelf zijn Authentik-standaard en al gekoppeld (configure_flow)
@@ -158,14 +167,14 @@ entries:
     state: present
     attrs:
       title: "Stel tweestapsverificatie in (authenticator-app)"
-      background: https://dev.iotm.nl/papier.png
+      background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]
   - model: authentik_flows.flow
     identifiers:
       slug: default-authenticator-webauthn-setup
     state: present
     attrs:
       title: "Stel je passkey in"
-      background: https://dev.iotm.nl/papier.png
+      background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]
 
   # ---------- prompts voor de registratie ----------
   - model: authentik_stages_prompt.prompt
@@ -278,7 +287,7 @@ entries:
       title: "Maak je Jottem-account"
       designation: enrollment
       authentication: require_unauthenticated
-      background: https://dev.iotm.nl/papier.png
+      background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]
 
   - model: authentik_flows.flowstagebinding
     identifiers:

@@ -52,7 +52,7 @@ entries:
       title: "Stel een nieuw wachtwoord in"
       designation: recovery
       authentication: require_unauthenticated
-      background: https://dev.iotm.nl/papier.png
+      background: !Format ["https://%s/papier.png", !Env [BASISDOMEIN, dev.iotm.nl]]
 
   - model: authentik_flows.flowstagebinding
     identifiers:

@@ -15,7 +15,7 @@ export default function OrganisatieVerwijderPagina() {
   const [melding, setMelding] = useState<string | null>(null);
   const [bezig, setBezig] = useState(false);
 
-  const headers = { "Content-Type": "application/json", ...authHeaders("dev-piet", "Piet Platformbeheerder") };
+  const headers = { "Content-Type": "application/json", ...authHeaders() };
 
   useEffect(() => setIngelogd(isIngelogd()), []);
 

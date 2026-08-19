@@ -12,7 +12,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .. import geo, s3
-from ..auth import Principal, eis_rol, invalideer_rollen_cache, principal
+from ..auth import (
+    Principal, eis_rol, eis_sterke_factor, invalideer_rollen_cache, principal,
+)
 from ..config import settings
 from ..db import get_db
 from ..models import Gebruiker, GebruikerRol, Organisatie, Project, Rol
@@ -65,7 +67,7 @@ def _organisatie(db: Session, slug: str) -> Organisatie:
 
 
 @router.get("/organisatie", response_model=list[OrganisatieUit])
-async def organisaties_beheer(
+def organisaties_beheer(
     p: Principal = Depends(eis_rol(Rol.platformbeheerder)),
     db: Session = Depends(get_db),
 ):
@@ -73,7 +75,7 @@ async def organisaties_beheer(
 
 
 @router.post("/organisatie", response_model=OrganisatieUit, status_code=201)
-async def organisatie_aanmaken(
+def organisatie_aanmaken(
     vraag: OrganisatieIn,
     p: Principal = Depends(eis_rol(Rol.platformbeheerder)),
     db: Session = Depends(get_db),
@@ -100,7 +102,7 @@ async def organisatie_aanmaken(
 
 
 @router.put("/organisatie/{slug}", response_model=OrganisatieUit)
-async def organisatie_bewerken(
+def organisatie_bewerken(
     slug: str,
     vraag: OrganisatieIn,
     p: Principal = Depends(eis_rol(Rol.platformbeheerder)),
@@ -124,7 +126,7 @@ async def organisatie_bewerken(
 
 
 @router.delete("/organisatie/{slug}")
-async def organisatie_verwijderen(
+def organisatie_verwijderen(
     slug: str,
     p: Principal = Depends(eis_rol(Rol.platformbeheerder)),
     db: Session = Depends(get_db),
@@ -169,14 +171,14 @@ async def organisatie_verwijderen(
 
 
 @router.post("/organisatie/{slug}/huisstijl-upload")
-async def huisstijl_upload(
+def huisstijl_upload(
     slug: str,
     vraag: HuisstijlUploadVraag,
     p: Principal = Depends(eis_rol(Rol.platformbeheerder)),
     db: Session = Depends(get_db),
 ):
     _organisatie(db, slug)
-    extensie = vraag.bestandsnaam.rsplit(".", 1)[-1].lower() if "." in vraag.bestandsnaam else "png"
+    extensie = s3.extensie_voor(vraag.contentType, "png")
     object_key = f"huisstijl/{slug}/{vraag.soort}.{extensie}"
     return {
         "objectKey": object_key,
@@ -185,20 +187,21 @@ async def huisstijl_upload(
 
 
 @router.get("/organisatie/{slug}/gebruikers", response_model=list[GebruikerRolUit])
-async def gebruikers(
+def gebruikers(
     slug: str,
-    rol: str | None = None,
+    rol: Rol | None = None,
     p: Principal = Depends(principal),
     db: Session = Depends(get_db),
 ):
     organisatie = _organisatie(db, slug)
+    eis_sterke_factor(p)
     if not (p.heeft_rol(Rol.platformbeheerder) or p.heeft_rol(Rol.organisatiebeheerder, organisatie.organisatieId)):
         raise HTTPException(403, "Alleen voor beheerders")
     vraag = select(GebruikerRol, Gebruiker).join(Gebruiker).where(
         GebruikerRol.organisatieId == organisatie.organisatieId
     )
     if rol:
-        vraag = vraag.where(GebruikerRol.rol == Rol(rol))
+        vraag = vraag.where(GebruikerRol.rol == rol)
     return [
         GebruikerRolUit(
             gebruikersId=gebruiker.gebruikersId, naam=gebruiker.naam, email=gebruiker.email,
@@ -209,7 +212,7 @@ async def gebruikers(
 
 
 @router.post("/organisatie/{slug}/gebruikers", status_code=201)
-async def uitnodigen(
+def uitnodigen(
     slug: str,
     vraag: UitnodigingIn,
     p: Principal = Depends(principal),
@@ -218,6 +221,7 @@ async def uitnodigen(
     organisatie = _organisatie(db, slug)
     doel_rol = Rol(vraag.rol)
     # platformbeheerders nodigen organisatiebeheerders uit; organisatiebeheerders moderatoren
+    eis_sterke_factor(p)
     if doel_rol == Rol.organisatiebeheerder and not p.heeft_rol(Rol.platformbeheerder):
         raise HTTPException(403, "Alleen de platformbeheerder nodigt organisatiebeheerders uit")
     if doel_rol == Rol.moderator and not (
@@ -263,15 +267,16 @@ async def uitnodigen(
 
 
 @router.delete("/organisatie/{slug}/gebruiker/{gebruikers_id}")
-async def rol_intrekken(
+def rol_intrekken(
     slug: str,
     gebruikers_id: int,
-    rol: str,
+    rol: Rol,
     p: Principal = Depends(principal),
     db: Session = Depends(get_db),
 ):
     organisatie = _organisatie(db, slug)
-    doel_rol = Rol(rol)
+    doel_rol = rol
+    eis_sterke_factor(p)
     if doel_rol == Rol.organisatiebeheerder and not p.heeft_rol(Rol.platformbeheerder):
         raise HTTPException(403, "Alleen de platformbeheerder beheert organisatiebeheerders")
     if doel_rol == Rol.moderator and not (

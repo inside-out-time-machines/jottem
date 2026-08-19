@@ -9,7 +9,7 @@ import gzip
 import math
 import uuid
 from email.utils import format_datetime
-from xml.sax.saxutils import escape
+from xml.sax.saxutils import escape, quoteattr
 
 import redis
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -87,7 +87,7 @@ def _collection(collectie_id: str, label: str, beschrijving: str | None,
 
 
 @router.get("/organisatie/{slug}/jottems/iiif/collection")
-async def organisatie_collection(slug: str, db: Session = Depends(get_db)):
+def organisatie_collection(slug: str, db: Session = Depends(get_db)):
     organisatie = _organisatie(db, slug)
     return _collection(
         f"{settings().api_basis_url}/organisatie/{slug}/jottems/iiif/collection",
@@ -97,7 +97,7 @@ async def organisatie_collection(slug: str, db: Session = Depends(get_db)):
 
 
 @router.get("/project/{project_id}/iiif/collection")
-async def project_collection(project_id: uuid.UUID, db: Session = Depends(get_db)):
+def project_collection(project_id: uuid.UUID, db: Session = Depends(get_db)):
     project = db.get(Project, project_id)
     if not project:
         raise HTTPException(404, "Project onbekend")
@@ -171,7 +171,7 @@ def _activity_stream(activiteiten: list[dict], basis: str, pagina: int | None) -
 
 
 @router.get("/organisatie/{slug}/activity-stream")
-async def activity_stream(slug: str, pagina: int | None = Query(default=None, alias="page", ge=0),
+def activity_stream(slug: str, pagina: int | None = Query(default=None, alias="page", ge=0),
                           db: Session = Depends(get_db)):
     """Activity-stream van alle jottems van een organisatie (Change Discovery)."""
     organisatie = _organisatie(db, slug)
@@ -181,7 +181,7 @@ async def activity_stream(slug: str, pagina: int | None = Query(default=None, al
 
 
 @router.get("/project/{project_id}/activity-stream")
-async def project_activity_stream(project_id: uuid.UUID,
+def project_activity_stream(project_id: uuid.UUID,
                                   pagina: int | None = Query(default=None, alias="page", ge=0),
                                   db: Session = Depends(get_db)):
     """Activity-stream van één project (Change Discovery); ook de distributie waarnaar
@@ -216,7 +216,7 @@ def _rss_jottem_item(m: Media) -> str:
     thumb = thumbnail_url(m)
     beschrijving = escape(m.beschrijving or m.titel)
     if thumb:
-        beschrijving = f'&lt;img src="{escape(thumb)}"/&gt; {beschrijving}'
+        beschrijving = f"&lt;img src={escape(quoteattr(thumb))}/&gt; {beschrijving}"
     item = (
         "<item>\n"
         f"<title>{escape(m.titel)}</title>\n"
@@ -229,12 +229,12 @@ def _rss_jottem_item(m: Media) -> str:
     if thumb:
         # bij een foto-URL-bron is de thumb de foto zelf, dus het eigen mimetype
         soort = m.mimeType if m.bron == "url" and m.mimeType else "image/jpeg"
-        item += f'<enclosure url="{escape(thumb)}" type="{soort}" length="0"/>\n'
+        item += f"<enclosure url={quoteattr(thumb)} type={quoteattr(soort)} length=\"0\"/>\n"
     return item + "</item>\n"
 
 
 @router.get("/rss")
-async def platform_rss(db: Session = Depends(get_db)):
+def platform_rss(db: Session = Depends(get_db)):
     """Platformbrede feed: de aangesloten organisaties (data-architectuur, sectie RSS)."""
     cfg = settings()
     items = "".join(
@@ -251,7 +251,7 @@ async def platform_rss(db: Session = Depends(get_db)):
 
 
 @router.get("/organisatie/{slug}/rss")
-async def organisatie_rss(slug: str, db: Session = Depends(get_db)):
+def organisatie_rss(slug: str, db: Session = Depends(get_db)):
     organisatie = _organisatie(db, slug)
     media = _gepubliceerd(db, organisatie_id=organisatie.organisatieId)[:50]
     return _rss(
@@ -263,7 +263,7 @@ async def organisatie_rss(slug: str, db: Session = Depends(get_db)):
 
 
 @router.get("/project/{project_id}/rss")
-async def project_rss(project_id: uuid.UUID, db: Session = Depends(get_db)):
+def project_rss(project_id: uuid.UUID, db: Session = Depends(get_db)):
     project = db.get(Project, project_id)
     if not project:
         raise HTTPException(404, "Project onbekend")
@@ -280,7 +280,7 @@ async def project_rss(project_id: uuid.UUID, db: Session = Depends(get_db)):
 # ---------- Datadump en datacatalogus ----------
 
 @router.get("/project/{project_id}/dump-{slug}.nt.gz")
-async def project_dump(project_id: uuid.UUID, slug: str, db: Session = Depends(get_db)):
+def project_dump(project_id: uuid.UUID, slug: str, db: Session = Depends(get_db)):
     """N-Triples-dump van alle gepubliceerde jottems van een project (gecomprimeerd);
     de kern-distributie van de projectdataset en onderdeel van de exitstrategie."""
     project = db.get(Project, project_id)
@@ -301,7 +301,7 @@ async def project_dump(project_id: uuid.UUID, slug: str, db: Session = Depends(g
 
 
 @router.get("/project/{project_id}/dump.nt.gz")
-async def project_dump_oud(project_id: uuid.UUID, db: Session = Depends(get_db)):
+def project_dump_oud(project_id: uuid.UUID, db: Session = Depends(get_db)):
     """De oude dump-URL zonder slug staat in eerder gepubliceerde datasetbeschrijvingen:
     permanent doorverwijzen naar de naam met projectslug."""
     project = db.get(Project, project_id)
@@ -314,7 +314,7 @@ async def project_dump_oud(project_id: uuid.UUID, db: Session = Depends(get_db))
 
 
 @router.get("/datacatalog")
-async def datacatalogus(db: Session = Depends(get_db)):
+def datacatalogus(db: Session = Depends(get_db)):
     """Platformbrede datacatalogus (schema:DataCatalog): alle projectdatasets met
     openbare data; samen dekken die alle gepubliceerde jottems."""
     cfg = settings()

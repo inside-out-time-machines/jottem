@@ -5,6 +5,7 @@ Draaien met: python -m app.seed
 from sqlalchemy import select
 
 from .db import SessionLocal
+from .config import settings
 from .models import Gebruiker, GebruikerRol, Organisatie, Project, Rol
 
 
@@ -33,14 +34,18 @@ def zet_beheerder_klaar(db, organisatie_id: int, email: str) -> None:
 
 
 def seed() -> None:
+    cfg = settings()
+    # de dev-testaccounts (sub = dev-<naam>) horen alleen in een dev-omgeving thuis:
+    # samen met de X-Dev-Sub-bypass zijn ze een volledige inlogomweg
+    dev = cfg.omgeving == "dev"
     db = SessionLocal()
     try:
         bestaande = db.scalar(select(Organisatie).where(Organisatie.slug == "samh"))
         if bestaande:
-            zet_beheerder_klaar(db, bestaande.organisatieId, "bob.coret@gmail.com")
-            # testaccount platformbeheerder (dev-bypass) ook op bestaande omgevingen
+            # bewust géén rollen meer terugzetten: een via het beheer ingetrokken rol
+            # kwam bij elke herstart vanzelf terug
             piet = db.scalar(select(Gebruiker).where(Gebruiker.sub == "dev-piet"))
-            if not piet:
+            if dev and not piet:
                 piet = Gebruiker(sub="dev-piet", naam="Piet Platformbeheerder", email="piet@dev.local")
                 db.add(piet)
                 db.flush()
@@ -69,6 +74,14 @@ def seed() -> None:
         )
         db.add(project)
 
+        if not dev:
+            db.commit()
+            print(f"seed: organisatie '{samh.naam}' + project '{project.naam}' "
+                  "(geen testaccounts buiten dev)")
+            if cfg.bootstrap_beheerder:
+                zet_beheerder_klaar(db, samh.organisatieId, cfg.bootstrap_beheerder)
+            return
+
         # testaccounts voor de dev-bypass (JOTTEM_DEV_AUTH=1): sub = dev-<naam>
         moderator = Gebruiker(sub="dev-mona", naam="Mona Moderator", email="mona@dev.local")
         beheerder = Gebruiker(sub="dev-otto", naam="Otto Organisatiebeheerder", email="otto@dev.local")
@@ -83,7 +96,8 @@ def seed() -> None:
         ])
         db.commit()
         print(f"seed: organisatie '{samh.naam}' + project '{project.naam}' + 3 testaccounts")
-        zet_beheerder_klaar(db, samh.organisatieId, "bob.coret@gmail.com")
+        if cfg.bootstrap_beheerder:
+            zet_beheerder_klaar(db, samh.organisatieId, cfg.bootstrap_beheerder)
     finally:
         db.close()
 

@@ -33,7 +33,3 @@ def sync_project_graaf(db: Session, project: Project) -> int:
         antwoord.raise_for_status()
     return len(documenten)
 
-
-def verwijder_project_graaf(project_id) -> None:
-    with httpx.Client(timeout=30) as client:
-        client.delete(_graph_url(rdf.dataset_uri(project_id)))

@@ -26,5 +26,9 @@ COPY alembic/ alembic/
 COPY templates/ templates/
 COPY --from=mail /bouw/templates/mail/dist/ templates/mail/dist/
 
+# niet als root draaien: een fout in de applicatie mag geen rootrechten in de container geven
+RUN useradd --create-home --uid 10001 jottem && chown -R jottem:jottem /srv/api
+USER jottem
+
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

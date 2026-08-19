@@ -2,8 +2,8 @@
 
 MVP-scope conform requirements: JPG/PNG/TIFF tot 50 MB, projectkeuze verplicht,
 licentiebevestiging (projectlicentie wordt op de jottem vastgelegd), locatie als
-speld (lat/lon in metadata). De Herkenbaar-check wordt in een volgende iteratie
-aangesloten; het datamodel (herkenbaar/toestemming) staat er al voor klaar.
+speld (lat/lon in metadata). De Herkenbaar-check draait synchroon bij het indienen en
+legt het signaal plus de toestemmingsverklaring vast op de jottem.
 """
 import uuid
 
@@ -16,8 +16,8 @@ from ..db import get_db
 from ..models import Media, MediaMetadata, MediaStatus, Project, Toestemming, actieve_upload_wijzen
 from ..outbox import log
 from ..schemas import (
-    TOEGESTANE_TYPES, ExterneBronVraag, HerkenbaarCheckAntwoord, HerkenbaarCheckVraag,
-    JottemIndienen, UploadUrlAntwoord, UploadUrlVraag,
+    MAX_BESTAND_MB, TOEGESTANE_TYPES, ExterneBronVraag, HerkenbaarCheckAntwoord,
+    HerkenbaarCheckVraag, JottemIndienen, UploadUrlAntwoord, UploadUrlVraag,
 )
 
 router = APIRouter(tags=["Uploaden"])
@@ -31,11 +31,11 @@ def _object_key_voor(media_id: uuid.UUID) -> str | None:
 
 
 @router.post("/upload-url", response_model=UploadUrlAntwoord)
-async def upload_url(vraag: UploadUrlVraag, p: Principal = Depends(principal)):
+def upload_url(vraag: UploadUrlVraag, p: Principal = Depends(principal)):
     if vraag.contentType not in TOEGESTANE_TYPES:
         raise HTTPException(415, "Alleen JPG, PNG of TIFF (PDF en audio volgen in fase 2)")
     media_id = uuid.uuid4()
-    extensie = vraag.bestandsnaam.rsplit(".", 1)[-1].lower() if "." in vraag.bestandsnaam else "bin"
+    extensie = s3.extensie_voor(vraag.contentType)
     object_key = f"{media_id}/origineel.{extensie}"
     return UploadUrlAntwoord(
         mediaId=media_id,
@@ -45,7 +45,7 @@ async def upload_url(vraag: UploadUrlVraag, p: Principal = Depends(principal)):
 
 
 @router.post("/upload/externe-bron")
-async def externe_bron(vraag: ExterneBronVraag, p: Principal = Depends(principal)):
+def externe_bron(vraag: ExterneBronVraag, p: Principal = Depends(principal)):
     """Valideer een beeldbank-permalink (IIIF) of foto-URL en geef terug wat er
     opgeslagen en getoond gaat worden (voor de popup in het uploadformulier)."""
     resultaat = bronnen.resolve(vraag.soort, vraag.url)
@@ -60,7 +60,7 @@ async def externe_bron(vraag: ExterneBronVraag, p: Principal = Depends(principal
 
 
 @router.post("/herkenbaar-check", response_model=HerkenbaarCheckAntwoord)
-async def herkenbaar_check(vraag: HerkenbaarCheckVraag, p: Principal = Depends(principal)):
+def herkenbaar_check(vraag: HerkenbaarCheckVraag, p: Principal = Depends(principal)):
     """Directe controle op herkenbare personen, na de upload en vóór het indienen
     (Herkenbaar API); bij "ja" vraagt de frontend om de toestemmingsverklaring."""
     object_key = _object_key_voor(vraag.mediaId)
@@ -70,8 +70,32 @@ async def herkenbaar_check(vraag: HerkenbaarCheckVraag, p: Principal = Depends(p
     return HerkenbaarCheckAntwoord(herkenbaar=gevonden, betrouwbaarheid=score)
 
 
+# De presigned PUT legt alleen bucket, sleutel en content-type vast: hoeveel bytes er komen
+# en wat erin zit, bepaalt de client. Daarom hier de controle achteraf, vóórdat de jottem
+# bestaat en vóórdat pyvips de bytes parseert.
+MAGISCHE_BYTES = (
+    (b"\xff\xd8\xff", "image/jpeg"),
+    (b"\x89PNG\r\n\x1a\n", "image/png"),
+    (b"II*\x00", "image/tiff"),
+    (b"MM\x00*", "image/tiff"),
+)
+
+
+def _controleer_geupload_bestand(object_key: str) -> None:
+    client = s3.intern()
+    bucket = s3.settings().s3_bucket_originals
+    kop = client.head_object(Bucket=bucket, Key=object_key)
+    if kop["ContentLength"] > MAX_BESTAND_MB * 1024 * 1024:
+        client.delete_object(Bucket=bucket, Key=object_key)
+        raise HTTPException(413, f"Het bestand is groter dan {MAX_BESTAND_MB} MB")
+    begin = client.get_object(Bucket=bucket, Key=object_key, Range="bytes=0-15")["Body"].read()
+    if not any(begin.startswith(handtekening) for handtekening, _ in MAGISCHE_BYTES):
+        client.delete_object(Bucket=bucket, Key=object_key)
+        raise HTTPException(415, "Het bestand is geen JPG, PNG of TIFF")
+
+
 @router.post("/jottem", status_code=201)
-async def jottem_indienen(
+def jottem_indienen(
     vraag: JottemIndienen,
     p: Principal = Depends(principal),
     db: Session = Depends(get_db),
@@ -104,6 +128,7 @@ async def jottem_indienen(
         object_key = _object_key_voor(vraag.mediaId)
         if not object_key:
             raise HTTPException(409, "Bestand niet gevonden; upload eerst via de upload-URL")
+        _controleer_geupload_bestand(object_key)
 
     # gezaghebbende Herkenbaar-check op de server (de frontend-check is alleen UX):
     # bij herkenbare personen is een expliciete keuze van de uploader verplicht

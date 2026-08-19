@@ -17,7 +17,7 @@ export default function ProjectVerwijderPagina() {
   const [melding, setMelding] = useState<string | null>(null);
   const [bezig, setBezig] = useState(false);
 
-  const headers = { "Content-Type": "application/json", ...authHeaders("dev-otto", "Otto Organisatiebeheerder") };
+  const headers = { "Content-Type": "application/json", ...authHeaders() };
 
   const laden = useCallback(async () => {
     const r = await fetch(`${API_PUBLIEK}/organisatie/${org}/projecten`, { headers });
