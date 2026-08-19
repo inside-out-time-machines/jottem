@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 import redis
 from celery import Celery
 from celery.schedules import crontab
+from celery.signals import worker_ready
 from sqlalchemy import select, update
 
 from . import fuseki
@@ -70,6 +71,13 @@ def _verwerk_regel(db, regel: Gebeurtenislog) -> None:
     # 3. naamsync: creator.name bijwerken in de annotatieserver (GE-2)
     if regel.type == "gebruiker-naam-gewijzigd" and regel.gebruikersId:
         sync_creator_naam(db, regel.gebruikersId)
+
+
+@worker_ready.connect
+def _bij_start(**_):
+    """Direct na het starten de tellers vullen: anders toont de startpagina tot de
+    eerste geplande ronde 0 annotaties."""
+    ververs_annotatietellingen.delay()
 
 
 @celery.task(name="app.worker.ververs_annotatietellingen")
