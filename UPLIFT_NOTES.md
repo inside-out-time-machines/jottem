@@ -84,11 +84,27 @@ draaiende omgeving: 10 Open Graph-tags en 0 twitter-tags in de head, canonical a
 header in de organisatiekleur, beide deelknoppen present met een nagebootste Share API, en
 de annotatiepopup opent met de juiste inhoud.
 
+## Fase 4 - Security hoog
+
+| ID | Bevinding | Fix | Bewijs |
+|---|---|---|---|
+| SEC-001 | Mailpit valt open zonder `MAILPIT_UI_AUTH` | `${MAILPIT_UI_AUTH:?...}`: compose weigert te starten zonder waarde; `.env.example` heeft nu een placeholder | `mail.dev.iotm.nl` geeft 401 zonder auth |
+| SEC-003 | `GET /jottem/{id}/detail` gaf zonder token presigned originelen van ongemodereerd en gedepubliceerd materiaal | gepubliceerd blijft publiek (de publiekspagina rendert ermee), al het andere eist een token plus autorisatie (inzender, moderator of beheerder van de organisatie, platformbeheerder); gedepubliceerd geeft 410 zonder inhoud | met de hand getoetst door een jottem tijdelijk op `nieuw` te zetten: **401**, geen `X-Amz-Signature` in het antwoord, en met een verzonnen `X-Dev-Sub` óók 401; status daarna teruggezet |
+| SEC-002 | SSRF: de IP-controle werd door redirects omzeild, en de service-URL uit een extern manifest werd niet gecontroleerd | handmatige redirectlus (`veilig_ophalen`) die elke hop opnieuw valideert, plus controle op CGNAT, metadata-IP en IPv4-mapped IPv6; manifest-URL's gaan door dezelfde controle; één generieke foutmelding zodat de resolver geen poortscanner is | met een nagebootste transportlaag: redirect naar `169.254.169.254`, `minio:9000` en `127.0.0.1:9090` **geblokkeerd**, redirect naar een publieke URL gevolgd; validator weigert localhost, 10/8, 100.64/10, `::ffff:127.0.0.1`, `minio:9000` en niet-http(s) |
+| SEC-004 | `X-Dev-Sub` gaf platformbeheerder inclusief een verzonnen `amr=["totp"]`, en de seed zette dev-accounts overal terug | de API weigert te starten als `dev_auth` aanstaat buiten een dev-omgeving; de bypass levert `amr=["dev-bypass"]` dat de sterke-factor-poort alleen in dev passeert; dev-testaccounts worden buiten dev niet meer aangemaakt | contracttests: elke beheerroute 401, ook met `X-Dev-Sub` |
+| SEC-005 | Rolkoppeling op e-mailadres zonder controle op `email_verified` | koppelen aan een klaargezette rij gebeurt alleen als de identiteitsprovider het adres heeft geverifieerd; anders ontstaat een gewoon nieuw account zonder rollen | codepad; Authentik levert `email_verified` via de standaard e-mail-scope |
+
+**Nulmeting na deze fase:** 33/33 contract (twee tests erbij voor het detail-endpoint),
+27/27 rooktest.
+
+**Niet meegenomen, hoort bij een latere fase:** het bootstrap-beheerderadres staat nog
+hardgecodeerd in `seed.py` en wordt bij elke start opnieuw gezet (schuld 5, fase 6), en
+uitnodigingen lopen nog op e-mailadres in plaats van op een eenmalig token (fase 5).
+
 ## Nog te doen in dit traject
 
 | Fase | Inhoud |
 |---|---|
-| 4 | Security hoog: Mailpit-default, `/jottem/{id}/detail`, SSRF-resolver, DEV_AUTH, `email_verified` |
 | 5 | Security midden en laag: 17 bevindingen, gegroepeerd naar plek |
 | 6 | Schuld 2-5: outbox-dead-letter, N+1, indexen en paginering, seed |
 | 7 | Schuld 6-10: sterke factor, blokkerende I/O, omgevingsvariabelen, CI, god-component |
