@@ -44,6 +44,26 @@ def test_schrijfacties_zonder_token(api: httpx.Client, jottem_id: str):
                     json={"verrijking": "herinnering", "tekst": "test"}).status_code == 401
 
 
+def test_detail_van_gepubliceerde_jottem_is_publiek(api: httpx.Client, jottem_id: str):
+    """De publiekspagina rendert hiermee zonder login; dat moet zo blijven."""
+    antwoord = api.get(f"/jottem/{jottem_id}/detail")
+    assert antwoord.status_code == 200
+    assert antwoord.json()["status"] == "goedgekeurd"
+
+
+def test_detail_geeft_geen_rechten_via_de_dev_header(api: httpx.Client, jottem_id: str):
+    """Een verzonnen X-Dev-Sub mag geen extra toegang geven.
+
+    Zwart-doos kan deze suite geen niet-gepubliceerde jottem vinden: die zijn per
+    definitie niet zichtbaar. Dat pad (401 zonder token, geen presigned origineel in het
+    antwoord) is met de hand geverifieerd door tijdelijk een status om te zetten; zie
+    UPLIFT_NOTES.md, fase 4. Wat hier wél te toetsen is: de dev-bypass staat uit.
+    """
+    met_header = api.get(f"/jottem/{jottem_id}/detail", headers={"X-Dev-Sub": "dev-piet"})
+    assert met_header.status_code == 200        # gepubliceerd blijft publiek
+    assert api.get("/mijn/jottems", headers={"X-Dev-Sub": "dev-piet"}).status_code == 401
+
+
 def test_onbekende_jottem(api: httpx.Client):
     onbekend = uuid.uuid4()
     assert api.get(f"/jottem/{onbekend}/detail").status_code == 404
