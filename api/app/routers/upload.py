@@ -16,8 +16,8 @@ from ..db import get_db
 from ..models import Media, MediaMetadata, MediaStatus, Project, Toestemming, actieve_upload_wijzen
 from ..outbox import log
 from ..schemas import (
-    TOEGESTANE_TYPES, ExterneBronVraag, HerkenbaarCheckAntwoord, HerkenbaarCheckVraag,
-    JottemIndienen, UploadUrlAntwoord, UploadUrlVraag,
+    MAX_BESTAND_MB, TOEGESTANE_TYPES, ExterneBronVraag, HerkenbaarCheckAntwoord,
+    HerkenbaarCheckVraag, JottemIndienen, UploadUrlAntwoord, UploadUrlVraag,
 )
 
 router = APIRouter(tags=["Uploaden"])
@@ -70,6 +70,30 @@ async def herkenbaar_check(vraag: HerkenbaarCheckVraag, p: Principal = Depends(p
     return HerkenbaarCheckAntwoord(herkenbaar=gevonden, betrouwbaarheid=score)
 
 
+# De presigned PUT legt alleen bucket, sleutel en content-type vast: hoeveel bytes er komen
+# en wat erin zit, bepaalt de client. Daarom hier de controle achteraf, vóórdat de jottem
+# bestaat en vóórdat pyvips de bytes parseert.
+MAGISCHE_BYTES = (
+    (b"\xff\xd8\xff", "image/jpeg"),
+    (b"\x89PNG\r\n\x1a\n", "image/png"),
+    (b"II*\x00", "image/tiff"),
+    (b"MM\x00*", "image/tiff"),
+)
+
+
+def _controleer_geupload_bestand(object_key: str) -> None:
+    client = s3.intern()
+    bucket = s3.settings().s3_bucket_originals
+    kop = client.head_object(Bucket=bucket, Key=object_key)
+    if kop["ContentLength"] > MAX_BESTAND_MB * 1024 * 1024:
+        client.delete_object(Bucket=bucket, Key=object_key)
+        raise HTTPException(413, f"Het bestand is groter dan {MAX_BESTAND_MB} MB")
+    begin = client.get_object(Bucket=bucket, Key=object_key, Range="bytes=0-15")["Body"].read()
+    if not any(begin.startswith(handtekening) for handtekening, _ in MAGISCHE_BYTES):
+        client.delete_object(Bucket=bucket, Key=object_key)
+        raise HTTPException(415, "Het bestand is geen JPG, PNG of TIFF")
+
+
 @router.post("/jottem", status_code=201)
 async def jottem_indienen(
     vraag: JottemIndienen,
@@ -104,6 +128,7 @@ async def jottem_indienen(
         object_key = _object_key_voor(vraag.mediaId)
         if not object_key:
             raise HTTPException(409, "Bestand niet gevonden; upload eerst via de upload-URL")
+        _controleer_geupload_bestand(object_key)
 
     # gezaghebbende Herkenbaar-check op de server (de frontend-check is alleen UX):
     # bij herkenbare personen is een expliciete keuze van de uploader verplicht
