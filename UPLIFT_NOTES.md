@@ -101,11 +101,67 @@ de annotatiepopup opent met de juiste inhoud.
 hardgecodeerd in `seed.py` en wordt bij elke start opnieuw gezet (schuld 5, fase 6), en
 uitnodigingen lopen nog op e-mailadres in plaats van op een eenmalig token (fase 5).
 
+## Fase 5 - Security midden en laag
+
+**Invoervalidatie aan de rand**
+
+| ID | Fix |
+|---|---|
+| SEC-006 | De presigned PUT legt alleen bucket, sleutel en content-type vast, dus controleert `POST /jottem` nu achteraf: grootte tegen de 50 MB-grens en de magische bytes tegen JPG/PNG/TIFF. Faalt dat, dan wordt het object verwijderd en volgt 413 of 415 |
+| SEC-007 | De objectsleutel komt niet meer uit de bestandsnaam van de client maar uit het gecontroleerde content-type (`s3.extensie_voor`), in alle vier de routers |
+| SEC-008 | Vrije metadata heeft grenzen (40 velden, sleutel 60, waarde 2000 tekens), `lat`/`lon` moeten getallen binnen bereik zijn en `*Uri`-velden echte http(s)-URL's; daarmee kan één ongeldige waarde de RDF-pijplijn niet meer breken |
+| SEC-010 | Schema-allowlist (`^https?://`) op `termUri`, `bronUrl`, `website`, `spatialUri`, `datasetLicentie` en de externe-bron-URL |
+| SEC-019 | `PUT /mijn/profiel` accepteert alleen sleutels onder `profielen/`, dus geen presigned GET meer op willekeurige objecten in de gedeelde bucket |
+
+**Uitvoer en koppelvlakken**
+
+| ID | Fix |
+|---|---|
+| SEC-009 | `quoteattr()` voor attribuutwaarden in de RSS-feed; `escape()` laat aanhalingstekens staan en die braken het `enclosure`-attribuut open |
+| SEC-016 | `/healthz` geeft per component alleen `ok` of `fout`; de uitzonderingstekst met interne hostnamen gaat naar het log |
+| SEC-017 | Querywaarden worden als enum getypeerd (`MediaStatus`, `Rol`), dus 422 in plaats van een 500 met stacktrace |
+
+**Toegang en misbruik**
+
+| ID | Fix |
+|---|---|
+| SEC-011 | De rate limit sleutelt op het verbindings-IP (Traefik is de enige proxy ervoor) in plaats van op de door de client meegestuurde `X-Forwarded-For` |
+| SEC-021 | `eis_rol` leest de organisatie niet meer uit de querystring; de scope komt uit het pad en wordt door de route zelf gecontroleerd |
+| SEC-014 (deel) | Uitschrijven voor attenderingen gebeurt niet meer met een GET: de link toont een bevestigingspagina en de wijziging loopt via POST, zodat een mailscanner niemand meer ongemerkt uitschrijft |
+
+**Platform**
+
+| ID | Fix | Bewijs |
+|---|---|---|
+| SEC-015 | Volledige securityheaders (CSP, HSTS, `X-Frame-Options`, `Referrer-Policy`, `X-Content-Type-Options`, `Permissions-Policy`) | live gemeten op alle publiekspagina's |
+| SEC-013 | Fuseki staat op een eigen netwerk (`rdf`) met alleen api, worker en de datapagina erbij, zodat een SPARQL-query met `SERVICE <...>` geen interne dienst meer bereikt | vóór: `SERVICE <http://minio:9000/>` gaf MinIO's eigen 403 terug (verbinding gelukt); ná: 502, verbinding mislukt. `/sparql` leest gewoon door |
+| SEC-018 | Geen werkende credential-defaults meer in `config.py`; ontbrekende variabelen breken de start | |
+| SEC-020 | Containers draaien als `jottem` respectievelijk `node` in plaats van root, `.dockerignore` voor api en web, en `/minio/`-paden (metrics en beheer-API) zijn aan de rand afgesloten | `s3.dev.iotm.nl/minio/v2/metrics/cluster` gaf 200, geeft nu 403; `docker compose exec api id -un` → `jottem` |
+| SEC-022 | Docstrings die garanties claimden die de code niet waarmaakte (Herkenbaar-check "in een volgende iteratie", sterke factor bij de dev-bypass) zijn bijgewerkt | |
+
+**Eén ding ging onderweg mis en is meteen hersteld:** de CSP brak de annotatielaag, omdat
+Annotorious met PIXI tekent en dat `unsafe-eval` nodig heeft. De strenge CSP geldt nu
+overal, met één gemotiveerde uitzondering voor `/jottem/*`. En de netwerkisolatie van
+Fuseki gaf eerst 504's: Traefik weet bij twee netwerken niet welke hij moet gebruiken,
+dus dat staat nu expliciet in een label.
+
+**Nulmeting na deze fase:** 33/33 contract, 27/27 rooktest.
+
+**Doorgeschoven naar fase 7, met reden:**
+- SEC-014 (rest): persoonsgegevens in `Gebeurtenislog` vragen om een bewaartermijn en om
+  alleen identifiers in de payload; dat is een gegevensmigratie plus een opruimtaak, geen
+  patch.
+- SEC-020 (rest): de API tekent nog met de MinIO-rootsleutel; een service-account met een
+  policy op drie buckets vraagt om nieuwe credentials in `.env` en een rotatiemoment.
+- SEC-005 (rest): uitnodigingen lopen nog op e-mailadres; een eenmalig token raakt de
+  uitnodigingsmail en de eerste-login-flow.
+- De CSP heeft nog `unsafe-inline` voor scripts; een nonce vraagt aanpassing van de
+  Next-configuratie.
+
 ## Nog te doen in dit traject
 
 | Fase | Inhoud |
 |---|---|
-| 5 | Security midden en laag: 17 bevindingen, gegroepeerd naar plek |
 | 6 | Schuld 2-5: outbox-dead-letter, N+1, indexen en paginering, seed |
 | 7 | Schuld 6-10: sterke factor, blokkerende I/O, omgevingsvariabelen, CI, god-component |
 
