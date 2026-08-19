@@ -1,0 +1,7 @@
+# de build kopieert de hele map: node_modules en caches horen daar niet bij,
+# en een lokale .env al helemaal niet
+.env
+.env.*
+node_modules/
+.next/
+tsconfig.tsbuildinfo

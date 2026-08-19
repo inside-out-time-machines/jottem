@@ -19,5 +19,7 @@ ENV NODE_ENV=production HOSTNAME=0.0.0.0 PORT=3000
 COPY --from=bouw /bouw/.next/standalone ./
 COPY --from=bouw /bouw/.next/static ./.next/static
 COPY --from=bouw /bouw/public ./public
+# het node-image levert de gebruiker `node` (uid 1000); draaien als root is nergens voor nodig
+USER node
 EXPOSE 3000
 CMD ["node", "server.js"]

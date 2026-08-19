@@ -7,7 +7,9 @@ invalidatie bij rolwijziging). Voor beheer-/moderatie-endpoints wordt via `amr` 
 factor (TOTP of passkey) geëist. Zie de systeemarchitectuur.
 
 Dev-bypass: alleen met JOTTEM_DEV_AUTH=1 accepteert de API de headers X-Dev-Sub,
-X-Dev-Naam en X-Dev-Email (voor smoke-tests zonder browserflow). Nooit in productie.
+X-Dev-Naam en X-Dev-Email (voor smoke-tests zonder browserflow). De bypass levert géén
+sterke factor: hij passeert de amr-poort alleen zolang dev_auth aanstaat, en de API
+weigert te starten als dat buiten een dev-omgeving gebeurt (zie main.py).
 """
 import json
 from dataclasses import dataclass, field
@@ -144,9 +146,15 @@ async def principal(
 
 
 def eis_rol(rol: Rol):
-    """Dependency-factory: eist de rol én (conform design) een sterke factor via amr."""
-    async def controle(p: Principal = Depends(principal), organisatieId: int | None = None) -> Principal:
-        if not p.heeft_rol(rol, organisatieId):
+    """Dependency-factory: eist de rol én (conform design) een sterke factor via amr.
+
+    Bewust organisatie-onafhankelijk: de organisatie hoort bij de resource uit het pad en
+    wordt door de route zelf gecontroleerd (`p.heeft_rol(rol, organisatie.organisatieId)`).
+    Eerder kwam die uit de querystring, wat een aanroeper de indruk gaf dat de scope al
+    was afgedwongen terwijl de client hem zelf koos.
+    """
+    async def controle(p: Principal = Depends(principal)) -> Principal:
+        if not p.heeft_rol(rol):
             raise HTTPException(403, f"Rol '{rol.value}' vereist")
         cfg = settings()
         sterk = bool(set(a.lower() for a in p.amr) & STERKE_FACTOREN)

@@ -2,8 +2,8 @@
 
 MVP-scope conform requirements: JPG/PNG/TIFF tot 50 MB, projectkeuze verplicht,
 licentiebevestiging (projectlicentie wordt op de jottem vastgelegd), locatie als
-speld (lat/lon in metadata). De Herkenbaar-check wordt in een volgende iteratie
-aangesloten; het datamodel (herkenbaar/toestemming) staat er al voor klaar.
+speld (lat/lon in metadata). De Herkenbaar-check draait synchroon bij het indienen en
+legt het signaal plus de toestemmingsverklaring vast op de jottem.
 """
 import uuid
 

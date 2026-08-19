@@ -310,9 +310,13 @@ async def verwijder_annotatie(
 # ---------- melden (BE-7: ook zonder account) en moderatie (MO-6) ----------
 
 def _rate_limit(request: Request) -> None:
-    """Meldingen: 2 req/s met burst 5 (systeemarchitectuur), per IP via Valkey."""
-    ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "?")
-    ip = ip.split(",")[0].strip()
+    """Meldingen: 2 req/s met burst 5 (systeemarchitectuur), per IP via Valkey.
+
+    Het adres komt van de verbinding zelf (Traefik als enige proxy ervoor), niet uit
+    X-Forwarded-For: die header stuurt de client mee en met een willekeurige waarde per
+    verzoek was de limiet in één regel te omzeilen.
+    """
+    ip = request.client.host if request.client else "?"
     sleutel = f"melding-rate:{ip}"
     teller = _valkey.incr(sleutel)
     if teller == 1:

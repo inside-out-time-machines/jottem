@@ -2,6 +2,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -34,16 +35,41 @@ async def profiel(p: Principal = Depends(principal)):
     return _profiel(p)
 
 
-@router.get("/attenderingen/uit")
-async def attenderingen_uit(token: uuid.UUID, db: Session = Depends(get_db)):
-    """Uitschakellink uit de attenderingsmails: werkt zonder inloggen, via het geheime
-    mailToken (notificaties 10/11; zie ook de afleverbaarheidseisen in het design)."""
+@router.get("/attenderingen/uit", response_class=HTMLResponse)
+async def attenderingen_uit_bevestigen(token: uuid.UUID, db: Session = Depends(get_db)):
+    """Bevestigingspagina bij de uitschakellink uit de attenderingsmails.
+
+    Een GET mag niets wijzigen: mailgateways en scanners halen links in een mail
+    routineus op, en dan zou iemand ongemerkt uitgeschreven worden. De knop hieronder
+    doet een POST; het geheime mailToken uit de link blijft de sleutel (werkt zonder
+    inloggen, notificaties 10/11).
+    """
     gebruiker = db.scalar(select(Gebruiker).where(Gebruiker.mailToken == token))
     if not gebruiker:
-        return {"melding": "Deze uitschakellink is niet (meer) geldig"}
+        return HTMLResponse(
+            "<!doctype html><meta charset='utf-8'><title>Jottem</title>"
+            "<p>Deze uitschakellink is niet (meer) geldig.</p>", status_code=404)
+    return HTMLResponse(
+        "<!doctype html><meta charset='utf-8'><title>Attenderingen uitzetten</title>"
+        "<h1>Attenderingen uitzetten</h1>"
+        "<p>Wil je geen berichten meer ontvangen over reacties op jouw bijdragen?</p>"
+        f"<form method='post' action='/attenderingen/uit?token={token}'>"
+        "<button type='submit'>Ja, zet attenderingen uit</button></form>"
+        "<p>Je kunt ze later in je profiel weer aanzetten.</p>")
+
+
+@router.post("/attenderingen/uit", response_class=HTMLResponse)
+async def attenderingen_uit(token: uuid.UUID, db: Session = Depends(get_db)):
+    gebruiker = db.scalar(select(Gebruiker).where(Gebruiker.mailToken == token))
+    if not gebruiker:
+        return HTMLResponse(
+            "<!doctype html><meta charset='utf-8'><title>Jottem</title>"
+            "<p>Deze uitschakellink is niet (meer) geldig.</p>", status_code=404)
     gebruiker.attenderingen = False
     db.commit()
-    return {"melding": "Je ontvangt geen attenderingen meer; je kunt ze in je profiel weer aanzetten"}
+    return HTMLResponse(
+        "<!doctype html><meta charset='utf-8'><title>Jottem</title>"
+        "<p>Je ontvangt geen attenderingen meer. In je profiel kun je ze weer aanzetten.</p>")
 
 
 class ProfielIn(BaseModel):
