@@ -220,6 +220,9 @@ services:
     command: server
     environment: &authentik-env
       AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
+      # de blueprints bouwen hun URL's hiermee op (!Env + !Format), zodat een
+      # domeinwissel niet in vier yaml-bestanden hoeft
+      BASISDOMEIN: ${BASISDOMEIN}
       AUTHENTIK_POSTGRESQL__HOST: postgres
       AUTHENTIK_POSTGRESQL__USER: authentik
       AUTHENTIK_POSTGRESQL__NAME: authentik
