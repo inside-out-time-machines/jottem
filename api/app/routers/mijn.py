@@ -1,6 +1,7 @@
 """Ingelogde-gebruiker-endpoints en publieke hulplijsten voor de frontend."""
 import uuid
 
+import redis
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
@@ -15,6 +16,12 @@ from ..models import Gebruiker, Media, MediaStatus, Organisatie, Project, actiev
 from ..schemas import AfbeeldingUploadVraag, JottemKort
 
 router = APIRouter(tags=["Mijn"])
+
+# één client voor het hele proces; eerder werd er per project een nieuwe verbinding opgezet
+_valkey = redis.Redis.from_url(settings().valkey_url, decode_responses=True)
+
+# ook "mijn jottems" laadde alles; een actieve uploader komt daar makkelijk overheen
+PAGINA_GROOTTE = 50
 
 
 def _profiel(p: Principal) -> dict:
@@ -125,7 +132,11 @@ async def profiel_afbeelding_upload(
 
 
 @router.get("/mijn/jottems", response_model=list[JottemKort])
-async def mijn_jottems(p: Principal = Depends(principal), db: Session = Depends(get_db)):
+async def mijn_jottems(
+    p: Principal = Depends(principal),
+    pagina: int = Query(default=1, ge=1),
+    db: Session = Depends(get_db),
+):
     basis = settings().publieke_basis_url
     return [
         JottemKort(
@@ -136,27 +147,38 @@ async def mijn_jottems(p: Principal = Depends(principal), db: Session = Depends(
         for m in db.scalars(
             select(Media).where(Media.uploaderId == p.gebruiker.gebruikersId)
             .order_by(Media.creatieDatum.desc())
+            .offset((pagina - 1) * PAGINA_GROOTTE).limit(PAGINA_GROOTTE)
         )
     ]
 
 
-def _aantal_annotaties(db: Session, project_id) -> int:
-    """Totaal aantal annotaties van een project (som van de AnnoRepo-containers),
-    met korte Valkey-cache zodat de open-data-pagina de annotatieserver niet belast."""
-    import redis
+def _aantal_annotaties(db: Session, project_id, verversen: bool = True) -> int:
+    """Totaal aantal annotaties van een project (som van de AnnoRepo-containers).
 
+    Dit kost één HTTP-aanroep per gepubliceerde jottem, dus het antwoord komt uit de
+    Valkey-cache. Met `verversen=False` geeft een misser 0 in plaats van de hele
+    fan-out: dat is wat de startpagina doet, zodat één bezoeker met een koude cache niet
+    honderden aanroepen naar de annotatieserver ontketent. De worker vult de cache.
+    """
     from .. import anno
-    valkey = redis.Redis.from_url(settings().valkey_url, decode_responses=True)
     sleutel = f"annotaties:aantal:{project_id}"
-    gecached = valkey.get(sleutel)
+    try:
+        gecached = _valkey.get(sleutel)
+    except redis.RedisError:
+        gecached = None
     if gecached is not None:
         return int(gecached)
+    if not verversen:
+        return 0
     media_ids = db.scalars(
         select(Media.mediaId).where(Media.projectId == project_id,
                                     Media.status == MediaStatus.goedgekeurd)
     ).all()
     totaal = sum(len(anno.alle_annotaties(str(m))) for m in media_ids)
-    valkey.setex(sleutel, 300, totaal)
+    try:
+        _valkey.setex(sleutel, 900, totaal)
+    except redis.RedisError:
+        pass
     return totaal
 
 
@@ -200,12 +222,21 @@ async def organisaties(db: Session = Depends(get_db)):
 
     from .. import s3
 
+    # drie queries in totaal, ongeacht het aantal organisaties of projecten: eerder was
+    # het één query per organisatie plus één telling per project
+    organisaties_rijen = db.scalars(select(Organisatie).order_by(Organisatie.naam)).all()
+    projecten_rijen = db.scalars(
+        select(Project).where(Project.status == "actief").order_by(Project.naam)).all()
+    aantallen = dict(db.execute(
+        select(Media.projectId, func.count())
+        .where(Media.status == MediaStatus.goedgekeurd)
+        .group_by(Media.projectId)
+    ).all())
+
     resultaat = []
-    for organisatie in db.scalars(select(Organisatie).order_by(Organisatie.naam)):
-        projecten = db.scalars(
-            select(Project).where(Project.organisatieId == organisatie.organisatieId,
-                                  Project.status == "actief")
-        ).all()
+    for organisatie in organisaties_rijen:
+        projecten = [pr for pr in projecten_rijen
+                     if pr.organisatieId == organisatie.organisatieId]
         resultaat.append({
             "slug": organisatie.slug,
             "naam": organisatie.naam,
@@ -224,11 +255,8 @@ async def organisaties(db: Session = Depends(get_db)):
                 {"projectId": str(pr.projectId), "naam": pr.naam, "slug": pr.slug,
                  "oproep": pr.oproep, "datasetLicentie": pr.datasetLicentie,
                  "uploadWijzen": actieve_upload_wijzen(pr),
-                 "aantalJottems": db.scalar(
-                     select(func.count()).select_from(Media).where(
-                         Media.projectId == pr.projectId,
-                         Media.status == MediaStatus.goedgekeurd)) or 0,
-                 "aantalAnnotaties": _aantal_annotaties(db, pr.projectId)}
+                 "aantalJottems": aantallen.get(pr.projectId, 0),
+                 "aantalAnnotaties": _aantal_annotaties(db, pr.projectId, verversen=False)}
                 for pr in projecten
             ],
         })

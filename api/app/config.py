@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     # authenticatie (Authentik OIDC)
     oidc_issuer: str = "https://auth.dev.iotm.nl/application/o/jottem/"
     oidc_client_id: str = "jottem-web"
+    # e-mailadres dat bij een lege database platformbeheerder wordt (uitnodigingspatroon);
+    # leeg = geen bootstrap. Stond eerder hardgecodeerd in seed.py en werd bij elke start
+    # opnieuw gezet, waardoor een ingetrokken rol vanzelf terugkwam.
+    bootstrap_beheerder: str = ""
+
     # dev-bypass: alleen actief als dev_auth=1; NOOIT in productie
     dev_auth: bool = False
     # sterke factor (amr) afdwingen voor beheer-/moderatierollen; alleen in dev tijdelijk

@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 import redis
 from celery import Celery
 from celery.schedules import crontab
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from . import fuseki
 from .config import settings
@@ -28,6 +28,11 @@ celery.conf.beat_schedule = {
         "task": "app.worker.verstuur_attenderingen",
         "schedule": crontab(hour=18, minute=0),
     },
+    # annotatietellers voor de startpagina warm houden (die leest alleen uit de cache)
+    "annotatietellingen": {
+        "task": "app.worker.ververs_annotatietellingen",
+        "schedule": 900.0,
+    },
     # nachtelijke RDF-reconciliatie: alle projectgrafen herbouwen uit PostgreSQL
     # (reproduceerbaarheidsregel uit de data-architectuur)
     "rdf-hersync": {
@@ -40,41 +45,102 @@ celery.conf.timezone = "Europe/Amsterdam"
 _valkey = redis.Redis.from_url(settings().valkey_url, decode_responses=True)
 
 
+# Boven dit aantal pogingen laten we een regel los: hij blijft in het log staan met de
+# laatste fout, zodat hij zichtbaar is in de monitoring, maar hij houdt de rij niet op.
+MAX_POGINGEN = 5
+
+
+def _verwerk_regel(db, regel: Gebeurtenislog) -> None:
+    """De eigenlijke afhandeling van één outbox-regel."""
+    payload = regel.payload or {}
+    # 1. derivaat (idempotent) - vóór de mail, zodat een falende beeldbewerking
+    #    geen dubbele mails veroorzaakt bij een retry
+    if regel.type == "jottem.goedgekeurd" and payload.get("mediaId"):
+        from .derivaten import maak_derivaat
+        maak_derivaat(uuid.UUID(payload["mediaId"]))
+        # de (lege) annotatiecontainer aanmaken: de containerlink wordt bij
+        # publicatie al geadverteerd (detail, IIIF-manifest) en mag geen 404 zijn
+        maak_annotatiecontainer(db, payload["mediaId"])
+    # 2. mail
+    mail = payload.get("mail")
+    if mail:
+        context = basis_context(db, regel.organisatieId, regel.projectId)
+        context.update(mail.get("context", {}))
+        verstuur(mail["template"], mail["aan"], context)
+    # 3. naamsync: creator.name bijwerken in de annotatieserver (GE-2)
+    if regel.type == "gebruiker-naam-gewijzigd" and regel.gebruikersId:
+        sync_creator_naam(db, regel.gebruikersId)
+
+
+@celery.task(name="app.worker.ververs_annotatietellingen")
+def ververs_annotatietellingen() -> int:
+    """Vul de Valkey-cache met het aantal annotaties per actief project.
+
+    De publieke startpagina leest alleen uit die cache: één bezoeker met een koude cache
+    zou anders een HTTP-aanroep per gepubliceerde jottem naar de annotatieserver
+    ontketenen. Hier gebeurt dat gecontroleerd, één keer per kwartier.
+    """
+    from . import anno
+    from .models import Media, MediaStatus
+
+    db = SessionLocal()
+    bijgewerkt = 0
+    try:
+        for project in db.scalars(select(Project).where(Project.status == "actief")):
+            media_ids = db.scalars(
+                select(Media.mediaId).where(Media.projectId == project.projectId,
+                                            Media.status == MediaStatus.goedgekeurd)
+            ).all()
+            try:
+                totaal = sum(len(anno.alle_annotaties(str(m))) for m in media_ids)
+                _valkey.setex(f"annotaties:aantal:{project.projectId}", 1800, totaal)
+                bijgewerkt += 1
+            except Exception as fout:  # noqa: BLE001 - een teller is geen kritiek pad
+                print(f"annotatietelling mislukt voor {project.projectId}: {fout}")
+    finally:
+        db.close()
+    return bijgewerkt
+
+
 @celery.task(name="app.worker.verwerk_outbox")
 def verwerk_outbox() -> int:
-    """Verwerk onverwerkte outbox-regels; retourneert het aantal verwerkte regels."""
+    """Verwerk onverwerkte outbox-regels; retourneert het aantal verwerkte regels.
+
+    Per regel afhandelen en committen. Eerder ging de hele batch in één transactie: één
+    onverwerkbare regel (verwijderde media, tijdelijk onbereikbare SMTP) brak de lus vóór
+    `verwerktOp` was gezet, waarna dezelfde regels elke tien seconden opnieuw kwamen en
+    er nooit meer mail uitging.
+    """
     db = SessionLocal()
     verwerkt = 0
     try:
         regels = db.scalars(
             select(Gebeurtenislog)
-            .where(Gebeurtenislog.verwerktOp.is_(None))
+            .where(Gebeurtenislog.verwerktOp.is_(None),
+                   Gebeurtenislog.pogingen < MAX_POGINGEN)
             .order_by(Gebeurtenislog.logId)
             .limit(50)
             .with_for_update(skip_locked=True)
         ).all()
         for regel in regels:
-            payload = regel.payload or {}
-            # 1. derivaat (idempotent) - vóór de mail, zodat een falende beeldbewerking
-            #    geen dubbele mails veroorzaakt bij een retry
-            if regel.type == "jottem.goedgekeurd" and payload.get("mediaId"):
-                from .derivaten import maak_derivaat
-                maak_derivaat(uuid.UUID(payload["mediaId"]))
-                # de (lege) annotatiecontainer aanmaken: de containerlink wordt bij
-                # publicatie al geadverteerd (detail, IIIF-manifest) en mag geen 404 zijn
-                maak_annotatiecontainer(db, payload["mediaId"])
-            # 2. mail
-            mail = payload.get("mail")
-            if mail:
-                context = basis_context(db, regel.organisatieId, regel.projectId)
-                context.update(mail.get("context", {}))
-                verstuur(mail["template"], mail["aan"], context)
-            # 3. naamsync: creator.name bijwerken in de annotatieserver (GE-2)
-            if regel.type == "gebruiker-naam-gewijzigd" and regel.gebruikersId:
-                sync_creator_naam(db, regel.gebruikersId)
-            regel.verwerktOp = nu()
-            verwerkt += 1
-        db.commit()
+            regel.pogingen = (regel.pogingen or 0) + 1
+            try:
+                _verwerk_regel(db, regel)
+                regel.verwerktOp = nu()
+                regel.laatsteFout = None
+                verwerkt += 1
+                db.commit()
+            except Exception as fout:  # noqa: BLE001 - één regel mag de rij niet ophouden
+                db.rollback()
+                # de pogingenteller moet wél blijven staan, anders blijft hij eeuwig retryen
+                db.execute(
+                    update(Gebeurtenislog)
+                    .where(Gebeurtenislog.logId == regel.logId)
+                    .values(pogingen=(regel.pogingen or 1), laatsteFout=str(fout)[:2000])
+                )
+                db.commit()
+                print(f"outbox: regel {regel.logId} ({regel.type}) mislukt "
+                      f"(poging {regel.pogingen}/{MAX_POGINGEN}): {fout}")
 
         # 4. RDF-sync: geraakte projectgrafen herbouwen (outbox-regel uit de
         #    data-architectuur; ook annotatiemutaties raken dateModified)

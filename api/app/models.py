@@ -236,3 +236,8 @@ class Gebeurtenislog(Base):
     gebruikersId: Mapped[int | None] = mapped_column(ForeignKey("gebruiker.gebruikersId"))
     payload: Mapped[dict | None] = mapped_column(JSON)
     verwerktOp: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    # per regel bijgehouden, zodat één onverwerkbare regel de rest niet blokkeert;
+    # boven MAX_POGINGEN gaat de regel naar de dood-brievenbus (verwerktOp gezet,
+    # laatsteFout bewaard) en verschijnt hij in de monitoring
+    pogingen: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    laatsteFout: Mapped[str | None] = mapped_column(Text)

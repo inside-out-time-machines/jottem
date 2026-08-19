@@ -42,7 +42,8 @@ def seed() -> None:
     try:
         bestaande = db.scalar(select(Organisatie).where(Organisatie.slug == "samh"))
         if bestaande:
-            zet_beheerder_klaar(db, bestaande.organisatieId, "bob.coret@gmail.com")
+            # bewust géén rollen meer terugzetten: een via het beheer ingetrokken rol
+            # kwam bij elke herstart vanzelf terug
             piet = db.scalar(select(Gebruiker).where(Gebruiker.sub == "dev-piet"))
             if dev and not piet:
                 piet = Gebruiker(sub="dev-piet", naam="Piet Platformbeheerder", email="piet@dev.local")
@@ -77,7 +78,8 @@ def seed() -> None:
             db.commit()
             print(f"seed: organisatie '{samh.naam}' + project '{project.naam}' "
                   "(geen testaccounts buiten dev)")
-            zet_beheerder_klaar(db, samh.organisatieId, "bob.coret@gmail.com")
+            if cfg.bootstrap_beheerder:
+                zet_beheerder_klaar(db, samh.organisatieId, cfg.bootstrap_beheerder)
             return
 
         # testaccounts voor de dev-bypass (JOTTEM_DEV_AUTH=1): sub = dev-<naam>
@@ -94,7 +96,8 @@ def seed() -> None:
         ])
         db.commit()
         print(f"seed: organisatie '{samh.naam}' + project '{project.naam}' + 3 testaccounts")
-        zet_beheerder_klaar(db, samh.organisatieId, "bob.coret@gmail.com")
+        if cfg.bootstrap_beheerder:
+            zet_beheerder_klaar(db, samh.organisatieId, cfg.bootstrap_beheerder)
     finally:
         db.close()
 

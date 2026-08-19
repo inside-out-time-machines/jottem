@@ -5,7 +5,7 @@ outbox; bij afkeuring de afgekeurd-mail met reden en herindien-link (notificatie
 """
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -18,6 +18,9 @@ from ..schemas import JottemKort, ModeratieBesluit
 
 router = APIRouter(tags=["Moderatie"])
 
+# de wachtrij laadde alles; bij een actief project loopt dat op tot duizenden rijen
+PAGINA_GROOTTE = 50
+
 
 def duurzame_url(media_id: uuid.UUID) -> str:
     return f"{settings().publieke_basis_url}/jottem/{media_id}"
@@ -27,6 +30,7 @@ def duurzame_url(media_id: uuid.UUID) -> str:
 async def wachtrij(
     slug: str,
     status: MediaStatus | None = None,
+    pagina: int = Query(default=1, ge=1),
     p: Principal = Depends(eis_rol(Rol.moderator)),
     db: Session = Depends(get_db),
 ):
@@ -45,7 +49,8 @@ async def wachtrij(
             duurzameUrl=duurzame_url(m.mediaId) if m.status == MediaStatus.goedgekeurd else None,
             herkenbaar=m.herkenbaar, toestemming=m.toestemming.value,
         )
-        for m in db.scalars(vraag.order_by(Media.creatieDatum))
+        for m in db.scalars(vraag.order_by(Media.creatieDatum)
+                            .offset((pagina - 1) * PAGINA_GROOTTE).limit(PAGINA_GROOTTE))
     ]
 
 

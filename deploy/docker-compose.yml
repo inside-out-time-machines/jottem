@@ -285,6 +285,8 @@ services:
       JOTTEM_API_BASIS_URL: ${API_PUBLIEK:-https://api.dev.iotm.nl}
       JOTTEM_OIDC_ISSUER: https://auth.dev.iotm.nl/application/o/jottem/
       JOTTEM_DEV_AUTH: ${DEV_AUTH:-0}
+      # bij een lege database wordt dit adres platformbeheerder (uitnodigingspatroon)
+      JOTTEM_BOOTSTRAP_BEHEERDER: ${BOOTSTRAP_BEHEERDER:-}
       JOTTEM_AMR_VERPLICHT: ${AMR_VERPLICHT:-1}
       JOTTEM_IIIF_BASIS_URL: ${IIIF_PUBLIEK:-https://iiif.dev.iotm.nl}
       JOTTEM_HERKENBAAR_URL: http://herkenbaar:4050
