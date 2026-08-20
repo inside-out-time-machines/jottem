@@ -160,9 +160,13 @@ def naar_graaf(documenten: list[dict] | dict) -> Graph:
     graaf = Graph()
     lijst = documenten if isinstance(documenten, list) else [documenten]
     for doc in lijst:
-        # @vocab in plaats van de externe schema.org-context: rdflib hoeft dan niets
-        # op te halen en alle kale termen resolven naar schema.org
-        lokaal = {**doc, "@context": {"@vocab": "https://schema.org/"}}
+        # de documenten dragen zelf een lokale context (@vocab plus de prefixen), dus
+        # rdflib hoeft niets op te halen. Die context niet overschrijven: dan zou een
+        # prefix als dcterms verdwijnen en werd dcterms:relation een IRI met schema
+        # "dcterms" in plaats van een Dublin Core-predicaat.
+        lokaal = doc
+        if isinstance(doc.get("@context"), str):
+            lokaal = {**doc, "@context": {"@vocab": "https://schema.org/"}}
         graaf.parse(data=json.dumps(lokaal), format="json-ld")
     graaf.bind("schema", "https://schema.org/")
     graaf.bind("dcterms", "http://purl.org/dc/terms/")
