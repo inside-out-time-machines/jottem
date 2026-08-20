@@ -10,10 +10,11 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from .. import bronnen, herkenbaar, s3
+from .. import bronnen, herkenbaar, relaties, s3
 from ..auth import Principal, principal
 from ..db import get_db
-from ..models import Media, MediaMetadata, MediaStatus, Project, Toestemming, actieve_upload_wijzen
+from ..models import (Media, MediaMetadata, MediaRelatie, MediaStatus, Project,
+                      Toestemming, actieve_upload_wijzen)
 from ..outbox import log
 from ..schemas import (
     MAX_BESTAND_MB, TOEGESTANE_TYPES, ExterneBronVraag, HerkenbaarCheckAntwoord,
@@ -171,12 +172,27 @@ def jottem_indienen(
         toestemming=toestemming,
     )
     db.add(media)
+
+    # koppeling aan een bestaande jottem die hetzelfde object toont (V-9). Alleen binnen
+    # hetzelfde project: dan blijft het bij één projectgraaf en één dumpcache, en kan
+    # niemand via deze route naar het materiaal van een andere organisatie wijzen.
+    if vraag.gerelateerdAan:
+        doel = db.get(Media, vraag.gerelateerdAan)
+        if not doel or doel.status != MediaStatus.goedgekeurd:
+            raise HTTPException(422, "De jottem waaraan je koppelt bestaat niet of is niet openbaar")
+        if doel.projectId != project.projectId:
+            raise HTTPException(422, "Koppelen kan alleen binnen hetzelfde project")
+        db.add(MediaRelatie(bronMediaId=media.mediaId, doelMediaId=doel.mediaId,
+                            aard=relaties.AARD, gebruikersId=p.gebruiker.gebruikersId))
+
     for veld, waarde in vraag.metadata.items():
         db.add(MediaMetadata(mediaId=media.mediaId, veld=veld, waarde=waarde))
     for woord in vraag.steekwoorden:
         db.add(MediaMetadata(mediaId=media.mediaId, veld="steekwoord", waarde=woord))
     log(db, "jottem.ingediend",
         organisatie_id=project.organisatieId, project_id=project.projectId,
-        gebruikers_id=p.gebruiker.gebruikersId, payload={"mediaId": str(media.mediaId)})
+        gebruikers_id=p.gebruiker.gebruikersId,
+        payload={"mediaId": str(media.mediaId),
+                 "gerelateerdAan": str(vraag.gerelateerdAan) if vraag.gerelateerdAan else None})
     db.commit()
     return {"mediaId": str(media.mediaId), "status": media.status.value}

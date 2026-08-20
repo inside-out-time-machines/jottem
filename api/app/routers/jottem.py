@@ -10,13 +10,14 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
-from .. import anno, iiif, s3
+from .. import anno, iiif, relaties, s3
 from ..auth import Principal, principal
 from ..config import settings
 from ..db import get_db
 from ..models import Gebruiker, Media, MediaStatus, Organisatie, Project, Rol
-from ..schemas import JottemDetail, VerrijkingUit
+from ..schemas import GerelateerdeJottem, JottemDetail, VerrijkingUit
 from ..verrijkingen import actieve_verrijkingen
+from .publiek import thumbnail_url
 
 router = APIRouter(tags=["Jottems"])
 
@@ -86,6 +87,7 @@ def _detail(db: Session, media: Media) -> JottemDetail:
         projectId=project.projectId,
         metadata={r.veld: r.waarde for r in media.metadataRijen},
         afbeeldingUrl=afbeelding_url(media),
+        thumbnailUrl=thumbnail_url(media),
         breedte=media.breedte,
         hoogte=media.hoogte,
         bron=media.bron,
@@ -104,6 +106,13 @@ def _detail(db: Session, media: Media) -> JottemDetail:
             VerrijkingUit(sleutel=v.sleutel, label=v.label, cta=v.cta,
                           motivation=v.motivation, doel=v.doel)
             for v in actieve_verrijkingen(project)
+        ] if gepubliceerd else [],
+        # jottems die hetzelfde object tonen (V-9); beide richtingen, alleen gepubliceerde
+        gerelateerd=[
+            GerelateerdeJottem(mediaId=p.mediaId, titel=p.titel,
+                               thumbnailUrl=thumbnail_url(p),
+                               url=f"{settings().publieke_basis_url}/jottem/{p.mediaId}")
+            for p in relaties.gepubliceerde_partners(db, media.mediaId)
         ] if gepubliceerd else [],
     )
 

@@ -312,6 +312,18 @@ dialog.dialoog h2 { font-family: var(--kop); font-size: 1.35rem; margin-bottom: 
 }
 .cta-knop:hover, .cta-knop:focus { background: var(--papier); border-left-color: var(--knop-tekst); }
 
+/* gekoppelde jottems: zelfde object, andere foto (V-9) */
+.gerelateerd-lijst { display: flex; flex-wrap: wrap; gap: .8rem; margin-top: 1rem; }
+.gerelateerd {
+  display: flex; align-items: center; gap: .7rem; text-decoration: none; color: inherit;
+  background: var(--wit); border: 1px solid var(--kartonrand);
+  border-left: 4px solid var(--project-primair);
+  border-radius: .45rem; padding: .5rem .8rem .5rem .5rem; max-width: 22rem;
+}
+.gerelateerd:hover, .gerelateerd:focus { background: var(--papier); }
+.gerelateerd-foto { width: 4rem; height: 4rem; object-fit: cover; border-radius: .3rem; flex: none; }
+.gerelateerd-leeg { background: var(--karton); }
+
 .annotatie-lijst { display: flex; flex-direction: column; gap: .9rem; margin-top: 1rem; }
 .annotatie {
     background: var(--wit); border: 4px solid var(--project-primair); border-radius: .45rem;

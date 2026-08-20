@@ -39,6 +39,9 @@ class ExterneBronVraag(BaseModel):
 class JottemIndienen(BaseModel):
     mediaId: uuid.UUID
     projectId: uuid.UUID
+    # koppeling aan een bestaande jottem die hetzelfde object toont (V-9); moet in
+    # hetzelfde project staan en gepubliceerd zijn
+    gerelateerdAan: uuid.UUID | None = None
     titel: str = Field(min_length=1, max_length=300)
     beschrijving: str | None = None
     genre: str | None = None
@@ -83,6 +86,7 @@ class JottemKort(BaseModel):
     duurzameUrl: str | None = None
     herkenbaar: bool | None = None      # Herkenbaar API-signaal (None = niet bepaald)
     toestemming: str | None = None      # nvt | ja | nee
+    gerelateerdAanTitel: str | None = None   # gekoppeld aan een andere jottem (V-9)
 
 
 class ProjectIn(BaseModel):
@@ -206,6 +210,7 @@ class JottemDetail(BaseModel):
     projectId: uuid.UUID
     metadata: dict[str, str]
     afbeeldingUrl: str | None
+    thumbnailUrl: str | None = None      # kleine variant, o.a. voor lijstjes
     breedte: int | None = None          # afmetingen van het bronbeeld (o.a. voor og:image)
     hoogte: int | None = None
     bron: str = "upload"                # upload | iiif | url
@@ -220,6 +225,8 @@ class JottemDetail(BaseModel):
     annotatiesUrl: str | None = None    # publieke AnnoRepo-container (W3C)
     canvas: str | None = None           # canvas-IRI voor vlak-annotaties
     verrijkingen: list["VerrijkingUit"] = []   # ingeschakelde CTA's van het project (V-2)
+    # jottems die hetzelfde object tonen (V-9); alleen gepubliceerde, beide richtingen
+    gerelateerd: list["GerelateerdeJottem"] = []
 
 
 class VerrijkingUit(BaseModel):
@@ -227,7 +234,15 @@ class VerrijkingUit(BaseModel):
     label: str
     cta: str
     motivation: str
-    doel: str                            # heel | vlak
+    doel: str                            # heel | vlak | upload
+
+
+class GerelateerdeJottem(BaseModel):
+    """Een jottem die hetzelfde object toont (V-9); getoond bij allebei de jottems."""
+    mediaId: uuid.UUID
+    titel: str
+    thumbnailUrl: str | None = None
+    url: str                              # duurzame link naar de gerelateerde jottem
 
 
 class JottemTegel(BaseModel):

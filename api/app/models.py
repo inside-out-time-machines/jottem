@@ -184,6 +184,26 @@ class MediaMetadata(Base):
     media: Mapped[Media] = relationship(back_populates="metadataRijen")
 
 
+class MediaRelatie(Base):
+    """Koppeling tussen twee jottems die hetzelfde object tonen (V-9, verrijkingen).
+
+    Eén rij per koppeling; beide richtingen worden bij het lezen samengevoegd, zodat de
+    relatie bij allebei de jottems zichtbaar is zonder dubbele administratie. Dit is de
+    bron van waarheid: de linking-annotatie in AnnoRepo en dcterms:relation in de RDF
+    zijn hiervan afgeleid en verschijnen pas als beide jottems gepubliceerd zijn.
+    """
+    __tablename__ = "media_relatie"
+
+    relatieId: Mapped[int] = mapped_column(Integer, primary_key=True)
+    bronMediaId: Mapped[uuid.UUID] = mapped_column(ForeignKey("media.mediaId"), index=True)
+    doelMediaId: Mapped[uuid.UUID] = mapped_column(ForeignKey("media.mediaId"), index=True)
+    aard: Mapped[str] = mapped_column(String(40), default="zelfde-object")
+    gebruikersId: Mapped[int] = mapped_column(ForeignKey("gebruiker.gebruikersId"))
+    creatieDatum: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=nu)
+
+    __table_args__ = (UniqueConstraint("bronMediaId", "doelMediaId", "aard"),)
+
+
 class Favoriet(Base):
     """Voorbereid datamodel voor GE-4 (favorieten); nog geen endpoints.
 

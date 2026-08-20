@@ -62,6 +62,11 @@ def _verwerk_regel(db, regel: Gebeurtenislog) -> None:
         # de (lege) annotatiecontainer aanmaken: de containerlink wordt bij
         # publicatie al geadverteerd (detail, IIIF-manifest) en mag geen 404 zijn
         maak_annotatiecontainer(db, payload["mediaId"])
+    # koppelingen (V-9): de afgeleide linking-annotaties gelijktrekken met de database,
+    # aan beide kanten, zowel bij publiceren als bij depubliceren
+    if regel.type in ("jottem.goedgekeurd", "jottem.gedepubliceerd") and payload.get("mediaId"):
+        from . import relaties
+        relaties.sync_beide_kanten(db, uuid.UUID(payload["mediaId"]))
     # 2. mail
     mail = payload.get("mail")
     if mail:

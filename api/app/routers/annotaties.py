@@ -23,6 +23,7 @@ from ..db import get_db
 from ..models import Gebruiker, Media, MediaStatus, Melding, Project, Rol
 from ..outbox import log
 from ..schemas import HTTP_URL, MeldingBesluit, MeldingIn, MeldingUit
+from .. import relaties
 from ..verrijkingen import PER_SLEUTEL, REAGEREN_MOTIVATION, actieve_sleutels
 from .jottem import canvas_iri
 
@@ -214,6 +215,11 @@ def _bouw_annotatie(media: Media, project: Project, gebruiker: Gebruiker,
         annotatie["body"] = [{"type": "TextualBody", "value": _json.dumps(geojson),
                               "format": "application/geo+json", "purpose": "describing"}] + (
             _bodies(invoer, "describing") if invoer.tekst else [])
+    elif invoer.verrijking == relaties.AARD:
+        # deze verrijking levert geen annotatie op maar een nieuwe jottem plus een
+        # koppeling; die ontstaat via de uploadflow, niet hier (V-9)
+        raise HTTPException(400, "Deze verrijking loopt via het uploadformulier, "
+                                 "niet via een annotatie")
     else:
         raise HTTPException(400, "Onbekende verrijking")
     return annotatie

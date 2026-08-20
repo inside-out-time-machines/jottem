@@ -12,7 +12,7 @@ from rdflib import Graph
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import anno, iiif
+from . import anno, iiif, relaties
 from .config import settings
 from .models import Gebruiker, Media, MediaStatus, Organisatie, Project
 
@@ -28,7 +28,8 @@ def dataset_uri(project_id: uuid.UUID | str) -> str:
     return f"{settings().data_basis_url}/project/{project_id}/dataset"
 
 
-def jottem_jsonld(db: Session, media: Media) -> dict:
+def jottem_jsonld(db: Session, media: Media,
+                  partners: list[uuid.UUID] | None = None) -> dict:
     """Eén gepubliceerde jottem als schema.org AP NDE JSON-LD."""
     cfg = settings()
     organisatie = db.get(Organisatie, media.organisatieId)
@@ -42,7 +43,8 @@ def jottem_jsonld(db: Session, media: Media) -> dict:
         # de externe context https://schema.org/ mapt kale termen naar
         # http://schema.org/; Turtle, de dump en de triplestore gebruiken
         # https://schema.org/. Pinnen houdt alle serialisaties één graaf
-        "@context": {"@vocab": "https://schema.org/"},
+        "@context": {"@vocab": "https://schema.org/",
+                     "dcterms": "http://purl.org/dc/terms/"},
         "@id": uri,
         "@type": "ImageObject",
         "name": media.titel,
@@ -126,6 +128,14 @@ def jottem_jsonld(db: Session, media: Media) -> dict:
         "@type": "CreativeWork",
         "name": "Webannotaties (W3C) bij deze jottem",
     }
+    # koppelingen naar jottems die hetzelfde object tonen (V-9); schema.org kent geen
+    # generieke relatie tussen twee CreativeWorks, vandaar dcterms:relation. Alleen
+    # gepubliceerde partners, anders wijst de graaf naar een 410-tombstone.
+    if partners is None:
+        partners = [p.mediaId for p in relaties.gepubliceerde_partners(db, media.mediaId)]
+    if partners:
+        doc["dcterms:relation"] = [{"@id": jottem_uri(p)} for p in partners]
+
     return {sleutel: waarde for sleutel, waarde in doc.items() if waarde is not None}
 
 
@@ -135,7 +145,15 @@ def project_jsonld(db: Session, project: Project) -> list[dict]:
         select(Media).where(Media.projectId == project.projectId,
                             Media.status == MediaStatus.goedgekeurd)
     ).all()
-    return [jottem_jsonld(db, media) for media in rijen]
+    # de koppelingen in één query in plaats van per jottem, want dit voedt ook de dump
+    gepubliceerd = {m.mediaId for m in rijen}
+    per_jottem = relaties.partners_per_jottem(db, [m.mediaId for m in rijen])
+    return [
+        jottem_jsonld(db, media,
+                      partners=[p for p in per_jottem.get(media.mediaId, [])
+                                if p in gepubliceerd])
+        for media in rijen
+    ]
 
 
 def naar_graaf(documenten: list[dict] | dict) -> Graph:
@@ -147,6 +165,7 @@ def naar_graaf(documenten: list[dict] | dict) -> Graph:
         lokaal = {**doc, "@context": {"@vocab": "https://schema.org/"}}
         graaf.parse(data=json.dumps(lokaal), format="json-ld")
     graaf.bind("schema", "https://schema.org/")
+    graaf.bind("dcterms", "http://purl.org/dc/terms/")
     return graaf
 
 

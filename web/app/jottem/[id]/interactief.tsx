@@ -11,6 +11,13 @@ import {
   type Verrijking, type W3CAnnotatie, type W3CBody,
 } from "./annotatie-model";
 
+export type GerelateerdeJottem = {
+  mediaId: string;
+  titel: string;
+  thumbnailUrl: string | null;
+  url: string;
+};
+
 export type Detail = {
   mediaId: string;
   titel: string;
@@ -25,6 +32,10 @@ export type Detail = {
   projectId: string;
   metadata: Record<string, string>;
   verrijkingen: Verrijking[];
+  // jottems die hetzelfde object tonen (V-9); getoond bij allebei de jottems
+  gerelateerd: GerelateerdeJottem[];
+  organisatieSlug?: string;
+  projectSlug?: string;
 };
 
 export default function Interactief({ detail }: { detail: Detail }) {
@@ -187,6 +198,9 @@ export default function Interactief({ detail }: { detail: Detail }) {
   function startVerrijking(v: Verrijking) {
     if (!ingelogd) { openDialoog("login"); return; }
     setVorm({ ...LEEG_FORMULIER });
+    // "upload" is geen formulier maar een doorverwijzing: de bijdrage wordt een eigen
+    // jottem, en de koppeling ontstaat bij het indienen (V-9)
+    if (v.doel === "upload") { openDialoog(v.sleutel); return; }
     if (v.doel === "vlak") {
       if (!annotatorRef.current) { setMelding("De viewer is nog niet klaar; probeer zo weer."); return; }
       setTekenen(true);
@@ -317,7 +331,11 @@ export default function Interactief({ detail }: { detail: Detail }) {
     setMelding("Bedankt voor je melding; een moderator kijkt ernaar.");
   }
 
-  const hoofdannotaties = annotaties.filter((a) => a["jottem:verrijking"] !== "reactie");
+  const hoofdannotaties = annotaties.filter(
+    // reacties hangen onder hun hoofdannotatie; de koppelingsannotaties zijn afgeleid van
+    // de database en staan al als kaartje onder de lijst (V-9)
+    (a) => !["reactie", "zelfde-object"].includes(a["jottem:verrijking"] ?? ""),
+  );
   const reactiesOp = (id: string) =>
     annotaties.filter((a) => a["jottem:verrijking"] === "reactie" && a.target === id);
   const isEigen = (a: W3CAnnotatie) =>
@@ -374,6 +392,26 @@ export default function Interactief({ detail }: { detail: Detail }) {
       )}
 
       {melding && <p className="memo" style={{ marginTop: "1rem" }}>{melding}</p>}
+
+      {/* jottems die hetzelfde object tonen (V-9); komt uit de database, niet uit de
+          annotatieserver, en staat bij allebei de jottems */}
+      {detail.gerelateerd?.length > 0 && (
+        <section style={{ marginTop: "1.8rem" }}>
+          <h2 style={{ fontSize: "1.25rem" }}>Zelfde object, andere foto&apos;s</h2>
+          <div className="gerelateerd-lijst">
+            {detail.gerelateerd.map((g) => (
+              <a className="gerelateerd" key={g.mediaId} href={`/jottem/${g.mediaId}`}>
+                {g.thumbnailUrl ? (
+                  <img src={g.thumbnailUrl} alt="" className="gerelateerd-foto" />
+                ) : (
+                  <span className="gerelateerd-foto gerelateerd-leeg" aria-hidden="true" />
+                )}
+                <span>{g.titel}</span>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* annotatielijst */}
       <section style={{ marginTop: "1.8rem" }}>
@@ -507,7 +545,30 @@ export default function Interactief({ detail }: { detail: Detail }) {
           </form>
         )}
 
-        {actie && !["login", "melding"].includes(actie) && (
+        {actie === "zelfde-object" && (
+          <div>
+            <h3>Heb je een foto van hetzelfde?</h3>
+            <p style={{ marginTop: ".6rem" }}>
+              Mooi. Die foto wordt een eigen bijdrage, met je eigen titel en beschrijving.
+              We koppelen hem aan deze jottem, zodat bezoekers ze naast elkaar zien.
+            </p>
+            <p style={{ marginTop: ".6rem" }}>
+              Je gaat nu naar het formulier om je foto toe te voegen. Een moderator kijkt er
+              eerst naar; daarna verschijnt de koppeling bij allebei de foto&apos;s.
+            </p>
+            <div className="dialoog-knoppen">
+              <a
+                className="knop knop-primair"
+                href={`/upload?project=${detail.organisatieSlug}/${detail.projectSlug}&gerelateerdAan=${detail.mediaId}`}
+              >
+                Ga naar het formulier
+              </a>
+              <button className="knop knop-secundair" type="button" onClick={sluitDialoog}>Annuleren</button>
+            </div>
+          </div>
+        )}
+
+        {actie && !["login", "melding", "zelfde-object"].includes(actie) && (
           <form onSubmit={opslaan}>
             <h3>
               {actie === "reactie"

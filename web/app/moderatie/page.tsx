@@ -14,6 +14,7 @@ type Jottem = {
   duurzameUrl: string | null;
   herkenbaar: boolean | null;
   toestemming: string | null;
+  gerelateerdAanTitel: string | null;
 };
 
 // De organisatie komt uit de rollen van de ingelogde moderator; hardgecodeerd werkte
@@ -145,6 +146,11 @@ export default function ModeratiePagina() {
                     >
                       herkenbaar · toestemming: {jottem.toestemming}
                     </span>
+                  </div>
+                )}
+                {jottem.gerelateerdAanTitel && (
+                  <div style={{ fontSize: ".85rem", color: "var(--grijs)" }}>
+                    zelfde object als: {jottem.gerelateerdAanTitel}
                   </div>
                 )}
                 {jottem.afkeurReden && (

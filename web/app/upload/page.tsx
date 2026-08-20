@@ -54,6 +54,9 @@ export default function UploadPagina() {
   const urlDialoog = useRef<HTMLDialogElement>(null);
 
   const [projectParam, setProjectParam] = useState<string | null>(null);
+  // koppeling: je voegt een foto toe van hetzelfde object als een bestaande jottem (V-9)
+  const [koppelAan, setKoppelAan] = useState<
+    { mediaId: string; titel: string; thumbnailUrl: string | null } | null>(null);
 
   useEffect(() => {
     setIngelogd(isIngelogd());
@@ -65,6 +68,14 @@ export default function UploadPagina() {
       return;
     }
     setProjectParam(param);
+    const gerelateerd = new URLSearchParams(window.location.search).get("gerelateerdAan");
+    if (gerelateerd) {
+      fetch(`${API_PUBLIEK}/jottem/${gerelateerd}/detail`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => d && setKoppelAan(
+          { mediaId: d.mediaId, titel: d.titel, thumbnailUrl: d.thumbnailUrl }))
+        .catch(() => {});
+    }
     // cameradetectie: toon "Maak een foto" alleen als er echt een camera is
     navigator.mediaDevices?.enumerateDevices?.()
       .then((apparaten) => setHeeftCamera(apparaten.some((a) => a.kind === "videoinput")))
@@ -114,6 +125,7 @@ export default function UploadPagina() {
       body: JSON.stringify({
         mediaId,
         projectId: gekozen?.projectId,
+        gerelateerdAan: koppelAan?.mediaId ?? null,
         titel,
         beschrijving: beschrijving || null,
         genre,
@@ -143,6 +155,7 @@ export default function UploadPagina() {
     setSteekwoorden("");
     setLocatie(null);
     setLicentieAkkoord(false);
+    setKoppelAan(null);
   }
 
   async function versturen(e: React.FormEvent) {
@@ -254,7 +267,7 @@ export default function UploadPagina() {
           bijdrage hoort en kunnen we je een berichtje sturen zodra hij online staat.
         </p>
         <p style={{ marginTop: "1.2rem" }}>
-          <button className="knop knop-primair" onClick={() => void startLogin("/upload")}>
+          <button className="knop knop-primair" onClick={() => void startLogin(`/upload${window.location.search}`)}>
             Inloggen of registreren
           </button>
         </p>
@@ -389,6 +402,24 @@ export default function UploadPagina() {
             </div>
           )}
         </div>
+        {koppelAan && (
+          <div className="veld">
+            <label>Je koppelt deze foto aan</label>
+            <a className="gerelateerd" href={`/jottem/${koppelAan.mediaId}`}>
+              {koppelAan.thumbnailUrl ? (
+                <img src={koppelAan.thumbnailUrl} alt="" className="gerelateerd-foto" />
+              ) : (
+                <span className="gerelateerd-foto gerelateerd-leeg" aria-hidden="true" />
+              )}
+              <span>{koppelAan.titel}</span>
+            </a>
+            <p style={{ fontSize: ".85rem", color: "var(--grijs)", marginTop: ".4rem" }}>
+              Jouw foto wordt een eigen bijdrage. Zodra de moderator hem goedkeurt, staan de
+              twee foto&apos;s naar elkaar te verwijzen.
+            </p>
+          </div>
+        )}
+
         <div className="veld">
           <label>Project</label>
           <p style={{ fontWeight: 600 }}>

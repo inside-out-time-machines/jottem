@@ -17,7 +17,7 @@ class Verrijking:
     label: str            # korte naam voor beheer-checkbox en weergave
     cta: str              # call-to-action op de jottem-pagina (V-2)
     motivation: str       # W3C Web Annotation motivation
-    doel: str             # "heel" (hele jottem), "vlak" (getekend vlak) of "beide"
+    doel: str             # "heel" (hele jottem), "vlak" (vak op de foto) of "upload"
     mvp: bool = True
 
 
@@ -62,6 +62,13 @@ CATALOGUS: list[Verrijking] = [
         "Waar stond de fotograaf? Zet een speld en draai het pijltje in de kijkrichting.",
         "describing", "heel",
     ),
+    # geen annotatie maar een doorverwijzing: doel "upload" brengt de bezoeker naar het
+    # uploadformulier, waarna de nieuwe jottem aan deze wordt gekoppeld (V-9)
+    Verrijking("zelfde-object", "Zelfde object, andere foto",
+               "Heb je zelf een foto van hetzelfde, maar uit een andere tijd of vanuit een "
+               "andere hoek? Voeg hem toe.",
+               "linking", "upload"),
+
     # fase 2 en later (V-5): nog niet activeerbaar in de MVP
     Verrijking("transcriptie", "Transcriptie",
                "Kun je lezen wat hier staat? Typ het over, dan kan iedereen het vinden.",
