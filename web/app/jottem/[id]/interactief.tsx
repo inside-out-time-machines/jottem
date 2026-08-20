@@ -393,26 +393,6 @@ export default function Interactief({ detail }: { detail: Detail }) {
 
       {melding && <p className="memo" style={{ marginTop: "1rem" }}>{melding}</p>}
 
-      {/* jottems die hetzelfde object tonen (V-9); komt uit de database, niet uit de
-          annotatieserver, en staat bij allebei de jottems */}
-      {detail.gerelateerd?.length > 0 && (
-        <section style={{ marginTop: "1.8rem" }}>
-          <h2 style={{ fontSize: "1.25rem" }}>Zelfde object, andere foto&apos;s</h2>
-          <div className="gerelateerd-lijst">
-            {detail.gerelateerd.map((g) => (
-              <a className="gerelateerd" key={g.mediaId} href={`/jottem/${g.mediaId}`}>
-                {g.thumbnailUrl ? (
-                  <img src={g.thumbnailUrl} alt="" className="gerelateerd-foto" />
-                ) : (
-                  <span className="gerelateerd-foto gerelateerd-leeg" aria-hidden="true" />
-                )}
-                <span>{g.titel}</span>
-              </a>
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* annotatielijst */}
       <section style={{ marginTop: "1.8rem" }}>
         <h2 style={{ fontSize: "1.25rem" }}>
@@ -500,6 +480,26 @@ export default function Interactief({ detail }: { detail: Detail }) {
           })}
         </div>
       </section>
+
+      {/* jottems die hetzelfde object tonen (V-9); komt uit de database, niet uit de
+          annotatieserver, en staat bij allebei de jottems */}
+      {detail.gerelateerd?.length > 0 && (
+        <section style={{ marginTop: "1.8rem" }}>
+          <h2 style={{ fontSize: "1.25rem" }}>Zelfde object, andere foto&apos;s</h2>
+          <div className="gerelateerd-lijst">
+            {detail.gerelateerd.map((g) => (
+              <a className="gerelateerd" key={g.mediaId} href={`/jottem/${g.mediaId}`}>
+                {g.thumbnailUrl ? (
+                  <img src={g.thumbnailUrl} alt="" className="gerelateerd-foto" />
+                ) : (
+                  <span className="gerelateerd-foto gerelateerd-leeg" aria-hidden="true" />
+                )}
+                <span>{g.titel}</span>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* dialoog voor alle acties */}
       <dialog
