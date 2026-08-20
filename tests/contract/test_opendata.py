@@ -5,6 +5,7 @@ Dit is de kant die harvesters en viewers zien; hier mag een uplift niets aan ver
 import gzip
 
 import httpx
+import pytest
 
 
 def test_iiif_manifest(api: httpx.Client, jottem_id: str):
@@ -62,8 +63,10 @@ def test_content_negotiation(api: httpx.Client, jottem_id: str):
     doc = jsonld.json()
     assert doc["@type"] == "ImageObject"
     # de namespace is gepind op https, gelijk aan Turtle, de dump en de triplestore;
-    # de externe context https://schema.org/ zou naar http://schema.org/ mappen
-    assert doc["@context"] == {"@vocab": "https://schema.org/"}
+    # de externe context https://schema.org/ zou naar http://schema.org/ mappen. Naast
+    # @vocab staan hier de prefixen die de mapping gebruikt (dcterms voor koppelingen).
+    assert doc["@context"]["@vocab"] == "https://schema.org/"
+    assert doc["@context"].get("dcterms") == "http://purl.org/dc/terms/"
     assert {"name", "isPartOf", "mainEntityOfPage"} <= set(doc)
 
     turtle = api.get(f"/jottem/{jottem_id}", headers={"Accept": "text/turtle"})
@@ -159,3 +162,37 @@ def test_termennetwerk(api: httpx.Client):
     assert zoek.status_code == 200
     if zoek.json():
         assert {"uri", "label", "bron"} <= set(zoek.json()[0])
+
+
+def test_koppeling_tussen_jottems(api: httpx.Client, organisatie: dict, project: dict):
+    """Een koppeling "zelfde object" is bij beide jottems zichtbaar en staat in de RDF.
+
+    De koppeling leeft in de database; de linking-annotatie en dcterms:relation zijn
+    afgeleid (V-9). Deze toets slaat over als er in dit project nog geen koppeling is.
+    """
+    tegels = api.get(
+        f"/organisatie/{organisatie['slug']}/project/{project['slug']}/publiek"
+    ).json()["jottems"]
+    met_relatie = None
+    for tegel in tegels:
+        detail = api.get(f"/jottem/{tegel['mediaId']}/detail").json()
+        if detail.get("gerelateerd"):
+            met_relatie = detail
+            break
+    if not met_relatie:
+        pytest.skip("nog geen gekoppelde jottems in dit project")
+
+    partner = met_relatie["gerelateerd"][0]
+    assert {"mediaId", "titel", "url"} <= set(partner)
+    assert partner["url"].endswith(partner["mediaId"])
+
+    # de koppeling is wederkerig
+    terug = api.get(f"/jottem/{partner['mediaId']}/detail").json()
+    assert met_relatie["mediaId"] in [g["mediaId"] for g in terug["gerelateerd"]]
+
+    # en staat in de RDF van allebei
+    for media_id in (met_relatie["mediaId"], partner["mediaId"]):
+        doc = api.get(f"/jottem/{media_id}",
+                      headers={"Accept": "application/ld+json"}).json()
+        assert doc["@context"]["dcterms"] == "http://purl.org/dc/terms/"
+        assert doc["dcterms:relation"], "koppeling ontbreekt in de RDF"

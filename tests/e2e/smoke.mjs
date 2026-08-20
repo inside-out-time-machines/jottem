@@ -29,7 +29,9 @@ async function vindDoelen() {
   const publiek = await (
     await fetch(`${API}/organisatie/${org.slug}/project/${project.slug}/publiek`)
   ).json();
-  // liefst een jottem mét annotaties, zodat de annotatielijst echt getoetst wordt
+  // liefst een jottem mét annotaties, zodat de annotatielijst echt getoetst wordt.
+  // Koppelingen (zelfde-object) tellen niet mee: die staan als kaartje onder de lijst,
+  // niet in de lijst zelf, dus een jottem met alleen een koppeling zou de toets vervalsen.
   for (const tegel of publiek.jottems) {
     const detail = await (await fetch(`${API}/jottem/${tegel.mediaId}/detail`)).json();
     if (!detail.annotatiesUrl) continue;
@@ -37,7 +39,9 @@ async function vindDoelen() {
       { headers: { Accept: "application/ld+json" } });
     if (!container.ok) continue;
     const body = await container.json();
-    if ((body.first?.items ?? []).length > 0) {
+    const inhoudelijk = (body.first?.items ?? [])
+      .filter((a) => a["jottem:verrijking"] !== "zelfde-object");
+    if (inhoudelijk.length > 0) {
       return { org, project, jottemId: tegel.mediaId };
     }
   }
