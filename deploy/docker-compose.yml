@@ -121,7 +121,7 @@ services:
     # het platform: de modellen zijn MIT en Apache-2.0, dus anders dan bij Herkenbaar werkt
     # er geen AGPL door. Alleen in het dev-profiel zolang de dienst wordt beproefd (V-5).
     profiles: ["dev"]
-    build: ../../suggesties-api
+    build: https://github.com/inside-out-time-machines/suggesties-api.git
     restart: unless-stopped
     environment:
       # meer threads is hier langzamer; zes is op deze machine gemeten het snelst
