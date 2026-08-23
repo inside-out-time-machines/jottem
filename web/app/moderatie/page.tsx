@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { API_PUBLIEK, authHeaders, isIngelogd } from "@/lib/api";
+import { kopVoetCss, projectStijl } from "@/lib/kleuren";
 import { startLogin } from "@/lib/oidc";
 
 type Jottem = {
@@ -20,6 +21,10 @@ type Jottem = {
 // De organisatie komt uit de rollen van de ingelogde moderator; hardgecodeerd werkte
 // alleen zolang er één organisatie was.
 type Rolregel = { rol: string; organisatieId: number | null; organisatieSlug?: string | null };
+
+// naam en huisstijl van de organisatie waarvoor je modereert: de moderatieomgeving
+// hoort in dezelfde kleuren te staan als het project waar het materiaal in landt
+type Organisatie = { naam: string; kleurPrimair: string | null; kleurSecundair: string | null };
 
 type MeldingRij = {
   meldingId: number;
@@ -48,6 +53,7 @@ export default function ModeratiePagina() {
   const [melding, setMelding] = useState<string | null>(null);
   const [ingelogd, setIngelogd] = useState<boolean | null>(null);
   const [organisatie, setOrganisatie] = useState<string | null>(null);
+  const [huisstijl, setHuisstijl] = useState<Organisatie | null>(null);
 
   useEffect(() => {
     setIngelogd(isIngelogd());
@@ -61,6 +67,14 @@ export default function ModeratiePagina() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!organisatie) return;
+    fetch(`${API_PUBLIEK}/organisatie/${organisatie}/publiek`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((o: Organisatie | null) => setHuisstijl(o))
+      .catch(() => {});
+  }, [organisatie]);
 
   const headers = { "Content-Type": "application/json", ...authHeaders() };
 
@@ -101,6 +115,12 @@ export default function ModeratiePagina() {
     laden();
   }
 
+  const kleurStijl = projectStijl(huisstijl?.kleurPrimair, huisstijl?.kleurSecundair);
+  const kopVoet = kopVoetCss(huisstijl?.kleurPrimair, huisstijl?.kleurSecundair);
+  const kopVoetBlok = kopVoet ? (
+    <style href={`organisatiekleuren-${organisatie}`} precedence="high">{kopVoet}</style>
+  ) : null;
+
   if (ingelogd === null) {
     return <main><h1>Moderatie</h1></main>;
   }
@@ -118,10 +138,11 @@ export default function ModeratiePagina() {
   }
 
   return (
-    <main>
+    <main style={kleurStijl}>
+      {kopVoetBlok}
       <h1>Moderatie</h1>
       <p style={{ marginTop: ".5rem" }}>
-        Alle jottems van <strong>Streekarchief Midden-Holland</strong>.
+        Alle jottems van <strong>{huisstijl?.naam ?? "je organisatie"}</strong>.
       </p>
       {melding && <p className="memo" style={{ marginTop: "1rem" }}>{melding}</p>}
       <table className="lijst stapel">

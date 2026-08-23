@@ -2,6 +2,7 @@
 
 import { use, useCallback, useEffect, useState } from "react";
 import { API_PUBLIEK, authHeaders, isIngelogd } from "@/lib/api";
+import { kopVoetCss, projectStijl } from "@/lib/kleuren";
 import { startLogin } from "@/lib/oidc";
 
 // Wat de moderator ziet is meer dan de publiekspagina toont: die bestaat pas na
@@ -15,6 +16,8 @@ type Detail = {
   status: string;
   organisatie: string;
   organisatieSlug: string;
+  organisatieKleurPrimair: string | null;
+  organisatieKleurSecundair: string | null;
   project: string;
   projectSlug: string;
   metadata: Record<string, string>;
@@ -103,6 +106,17 @@ export default function BeoordeelPagina({ params }: { params: Promise<{ id: stri
     laden();
   }
 
+  const detailOfNiets = beoordeling?.detail;
+  const kleurStijl = projectStijl(detailOfNiets?.organisatieKleurPrimair,
+                                  detailOfNiets?.organisatieKleurSecundair);
+  const kopVoet = kopVoetCss(detailOfNiets?.organisatieKleurPrimair,
+                             detailOfNiets?.organisatieKleurSecundair);
+  const kopVoetBlok = kopVoet ? (
+    <style href={`organisatiekleuren-${detailOfNiets?.organisatieSlug}`} precedence="high">
+      {kopVoet}
+    </style>
+  ) : null;
+
   if (ingelogd === null) return <main><h1>Beoordelen</h1></main>;
   if (!ingelogd) {
     return (
@@ -133,7 +147,8 @@ export default function BeoordeelPagina({ params }: { params: Promise<{ id: stri
     .filter(([veld]) => veld !== "steekwoord" && !veld.endsWith("termUri") && !veld.endsWith("Uri"));
 
   return (
-    <main>
+    <main style={kleurStijl}>
+      {kopVoetBlok}
       <p><a href="/moderatie">&larr; terug naar de wachtrij</a></p>
       <div style={{ display: "flex", gap: "1rem", alignItems: "baseline", flexWrap: "wrap" }}>
         <h1>{detail.titel}</h1>
