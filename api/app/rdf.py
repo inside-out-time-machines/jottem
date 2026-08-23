@@ -35,7 +35,15 @@ def jottem_jsonld(db: Session, media: Media,
     organisatie = db.get(Organisatie, media.organisatieId)
     project = db.get(Project, media.projectId)
     uploader = db.get(Gebruiker, media.uploaderId)
-    metadata = {r.veld: r.waarde for r in media.metadataRijen}
+    # twee weergaven van dezelfde rijen: de meeste velden zijn enkelvoudig (adres, datering),
+    # maar steekwoorden komen meerdere keren voor onder dezelfde veldnaam. Een kale dict liet
+    # daar alleen de laatste van over, waardoor er in schema:keywords maar één steekwoord
+    # belandde, hoeveel de inzender er ook opgaf.
+    metadata: dict[str, str] = {}
+    alle_waarden: dict[str, list[str]] = {}
+    for rij in media.metadataRijen:
+        metadata[rij.veld] = rij.waarde
+        alle_waarden.setdefault(rij.veld, []).append(rij.waarde)
     uri = jottem_uri(media.mediaId)
     iiif_service = f"{cfg.iiif_basis_url}/iiif/3/{media.mediaId}.tif"
 
@@ -103,7 +111,8 @@ def jottem_jsonld(db: Session, media: Media,
     if metadata.get("jaarVan") or metadata.get("jaarTot"):
         doc["temporalCoverage"] = f"{metadata.get('jaarVan', '..')}/{metadata.get('jaarTot', '..')}"
 
-    steekwoorden = [w for v, w in metadata.items() if v.startswith("steekwoord")]
+    steekwoorden = [w for veld, lijst in alle_waarden.items()
+                    if veld.startswith("steekwoord") for w in lijst]
     if steekwoorden:
         doc["keywords"] = steekwoorden
 

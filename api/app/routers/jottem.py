@@ -60,6 +60,14 @@ def iiif_rights(licentie: str | None) -> str | None:
     return licentie
 
 
+def _metadata_plat(media: Media) -> dict[str, str]:
+    """Metadatarijen als veld -> waarde; meervoudige velden komma-gescheiden."""
+    per_veld: dict[str, list[str]] = {}
+    for rij in media.metadataRijen:
+        per_veld.setdefault(rij.veld, []).append(rij.waarde)
+    return {veld: ", ".join(waarden) for veld, waarden in per_veld.items()}
+
+
 def _detail(db: Session, media: Media) -> JottemDetail:
     organisatie = db.get(Organisatie, media.organisatieId)
     project = db.get(Project, media.projectId)
@@ -85,7 +93,9 @@ def _detail(db: Session, media: Media) -> JottemDetail:
         project=project.naam,
         projectSlug=project.slug,
         projectId=project.projectId,
-        metadata={r.veld: r.waarde for r in media.metadataRijen},
+        # meerdere rijen onder dezelfde veldnaam (steekwoorden) worden samengevoegd in
+        # plaats van overschreven, anders toont de detailpagina er maar één
+        metadata=_metadata_plat(media),
         afbeeldingUrl=afbeelding_url(media),
         thumbnailUrl=thumbnail_url(media),
         breedte=media.breedte,

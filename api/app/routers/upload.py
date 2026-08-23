@@ -57,6 +57,9 @@ def externe_bron(vraag: ExterneBronVraag, p: Principal = Depends(principal)):
         "service": resultaat.service,
         "breedte": resultaat.breedte,
         "hoogte": resultaat.hoogte,
+        "titel": resultaat.titel,
+        "beschrijving": resultaat.beschrijving,
+        "metadata": resultaat.metadata or {},
     }
 
 

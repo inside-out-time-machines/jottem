@@ -51,6 +51,10 @@ class ExterneBron:
     breedte: int | None = None
     hoogte: int | None = None
     mimeType: str | None = None
+    # beschrijvende gegevens uit het manifest; het uploadformulier vult ze voor
+    titel: str | None = None
+    beschrijving: str | None = None
+    metadata: dict[str, str] | None = None
 
 
 def _adres_toegestaan(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
@@ -126,6 +130,42 @@ def _service_uit_canvas(canvas: dict) -> tuple[str | None, int | None, int | Non
     return service, body.get("width") or canvas.get("width"), body.get("height") or canvas.get("height")
 
 
+# labels in het metadata-blok van een manifest zijn vrije tekst; deze paar herkennen we en
+# mappen we op de metadatavelden die de RDF-mapping al kent. Wat we niet herkennen laten we
+# vallen: liever niets dan rommel in de open data.
+MANIFEST_VELDEN = {
+    "datering": "datering", "datum": "datering", "jaar": "datering",
+    "vervaardiger": "vervaardiger", "fotograaf": "vervaardiger", "maker": "vervaardiger",
+    "adres": "adres", "straat": "adres", "locatie": "adres",
+}
+
+
+def _tekst(waarde: dict | None) -> str | None:
+    """Eén regel uit een meertalige IIIF-map ({"nl": [...], "none": [...]})."""
+    if not isinstance(waarde, dict):
+        return None
+    for taal in ("nl", "en", "none"):
+        regels = waarde.get(taal)
+        if regels:
+            return " ".join(str(r) for r in regels).strip() or None
+    for regels in waarde.values():   # onbekende taalcode: neem wat er is
+        if regels:
+            return " ".join(str(r) for r in regels).strip() or None
+    return None
+
+
+def _manifest_metadata(manifest: dict) -> dict[str, str]:
+    """De herkende regels uit het metadata-blok van een manifest."""
+    gevonden: dict[str, str] = {}
+    for regel in manifest.get("metadata") or []:
+        label = (_tekst(regel.get("label")) or "").strip().lower().rstrip(":")
+        veld = MANIFEST_VELDEN.get(label)
+        waarde = _tekst(regel.get("value"))
+        if veld and waarde and veld not in gevonden:
+            gevonden[veld] = waarde[:2000]
+    return gevonden
+
+
 def _uit_manifest(manifest: dict, manifest_url: str, media_uuid: str | None) -> ExterneBron:
     canvases = manifest.get("items") or []
     if not canvases:
@@ -146,6 +186,11 @@ def _uit_manifest(manifest: dict, manifest_url: str, media_uuid: str | None) -> 
         bron="iiif", bronUrl=manifest_url,
         previewUrl=iiif.afbeelding_url(service, breedte, hoogte, 1200),
         service=service, breedte=breedte, hoogte=hoogte, mimeType="image/jpeg",
+        # de beeldbank heeft het materiaal al beschreven; die beschrijving overnemen
+        # scheelt de inzender werk en levert betere metadata dan een leeg veld
+        titel=_tekst(gekozen.get("label")) or _tekst(manifest.get("label")),
+        beschrijving=_tekst(manifest.get("summary")),
+        metadata=_manifest_metadata(manifest) or None,
     )
 
 

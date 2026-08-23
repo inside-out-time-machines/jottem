@@ -19,8 +19,19 @@ type Organisatie = {
   spatialLat: number | null; spatialLon: number | null;
 };
 
-// CHT-waardelijst (platformconfiguratie, zie de data-architectuur; audio volgt in fase 2)
-const GENRES = ["foto", "menukaart", "advertentie", "folder", "krantenartikel", "vergunning", "overig"];
+// Waardelijst met term-URI (platformconfiguratie, zie de data-architectuur; audio volgt in
+// fase 2). De URI gaat als metadata.genreUri mee en wordt schema:additionalType in de RDF.
+// Vijf van de zeven hebben een nette term in de CHT of de AAT; voor krantenartikel en
+// overig is er geen passende term, en een gedwongen benadering is slechter dan geen URI.
+const GENRES: { waarde: string; uri?: string }[] = [
+  { waarde: "foto", uri: "http://vocab.getty.edu/aat/300046300" },
+  { waarde: "menukaart", uri: "https://data.cultureelerfgoed.nl/term/id/cht/b2a75fb6-ae8b-416a-a52c-ed7ace77aff7" },
+  { waarde: "advertentie", uri: "https://data.cultureelerfgoed.nl/term/id/cht/b41e2448-298d-47e4-9b8f-44612deabeed" },
+  { waarde: "folder", uri: "https://data.cultureelerfgoed.nl/term/id/cht/60f7e1bc-f01d-474a-95dd-79cfbb724179" },
+  { waarde: "krantenartikel" },
+  { waarde: "vergunning", uri: "http://vocab.getty.edu/aat/300027833" },
+  { waarde: "overig" },
+];
 
 export default function UploadPagina() {
   const [organisaties, setOrganisaties] = useState<Organisatie[]>([]);
@@ -54,6 +65,17 @@ export default function UploadPagina() {
   const urlDialoog = useRef<HTMLDialogElement>(null);
 
   const [projectParam, setProjectParam] = useState<string | null>(null);
+  // titel en beschrijving komen uit het manifest van de beeldbank; dat vermelden we,
+  // zodat de inzender weet dat het niet zijn eigen tekst is
+  const [uitBeeldbank, setUitBeeldbank] = useState(false);
+  // datering, vervaardiger en adres uit datzelfde manifest; gaan mee als metadata
+  const [bronMetadata, setBronMetadata] = useState<Record<string, string>>({});
+  // het formulier loopt in twee stappen: eerst de foto, dan de gegevens erbij
+  const [stap, setStap] = useState<1 | 2>(1);
+  // een gekozen bestand gaat al aan het eind van stap 1 naar de opslag, zodat de
+  // Herkenbaar-check loopt terwijl de inzender de gegevens invult
+  const [geupload, setGeupload] = useState<
+    { mediaId: string; herkenbaar: boolean | null; betrouwbaarheid: number | null } | null>(null);
   // koppeling: je voegt een foto toe van hetzelfde object als een bestaande jottem (V-9)
   const [koppelAan, setKoppelAan] = useState<
     { mediaId: string; titel: string; thumbnailUrl: string | null } | null>(null);
@@ -113,8 +135,19 @@ export default function UploadPagina() {
   }, [projectParam, organisaties]);
   const headers = { "Content-Type": "application/json", ...authHeaders() };
 
+  // voorbeeldweergave van een gekozen bestand (stap 2 toont waar het over gaat)
+  const [bestandPreview, setBestandPreview] = useState<string | null>(null);
+  useEffect(() => {
+    if (!bestand) { setBestandPreview(null); return; }
+    const url = URL.createObjectURL(bestand);
+    setBestandPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [bestand]);
+
   async function indienen(mediaId: string, toestemming: "ja" | "nee" | null) {
-    const metadata: Record<string, string> = {};
+    const metadata: Record<string, string> = { ...bronMetadata };
+    const genreUri = GENRES.find((g) => g.waarde === genre)?.uri;
+    if (genreUri) metadata.genreUri = genreUri;
     if (locatie) {
       metadata.lat = String(locatie.lat);
       metadata.lon = String(locatie.lon);
@@ -156,23 +189,31 @@ export default function UploadPagina() {
     setLocatie(null);
     setLicentieAkkoord(false);
     setKoppelAan(null);
+    setGeupload(null);
+    setStap(1);
+    setUitBeeldbank(false);
+    setBronMetadata({});
   }
 
-  async function versturen(e: React.FormEvent) {
-    e.preventDefault();
-    if ((!bestand && !externeBron) || !gekozen || !titel || !licentieAkkoord) {
-      setMelding("Vul alles in en bevestig de licentie.");
+  /** Stap 1 afronden: een gekozen bestand nu al uploaden en laten controleren. */
+  async function naarStap2() {
+    if (!bestand && !externeBron) {
+      setMelding("Kies eerst een foto of geef een link.");
+      return;
+    }
+    setMelding(null);
+    // een externe bron staat al ergens anders; de server haalt hem zelf op bij het indienen
+    if (externeBron) {
+      setStap(2);
+      return;
+    }
+    // hetzelfde bestand niet twee keer uploaden als de inzender heen en weer loopt
+    if (geupload) {
+      setStap(2);
       return;
     }
     setBezig(true);
-    setMelding(null);
     try {
-      if (externeBron) {
-        // externe bron: geen upload; de server valideert de URL opnieuw en doet de
-        // Herkenbaar-check op een verkleinde download
-        await indienen(crypto.randomUUID(), null);
-        return;
-      }
       const urlAntwoord = await fetch(`${API_PUBLIEK}/upload-url`, {
         method: "POST",
         headers,
@@ -192,18 +233,53 @@ export default function UploadPagina() {
       });
       if (!putAntwoord.ok) throw new Error(`Upload naar opslag mislukt (${putAntwoord.status})`);
 
-      // Herkenbaar-check: bij "ja" eerst de toestemmingsvraag stellen
+      // Herkenbaar-check: het antwoord bewaren, de vraag stellen we pas bij het indienen
       const checkAntwoord = await fetch(`${API_PUBLIEK}/herkenbaar-check`, {
         method: "POST",
         headers,
         body: JSON.stringify({ mediaId }),
       });
       const check = checkAntwoord.ok ? await checkAntwoord.json() : { herkenbaar: null };
-      if (check.herkenbaar === true) {
-        setToestemmingsVraag({ mediaId, betrouwbaarheid: check.betrouwbaarheid });
+      setGeupload({
+        mediaId,
+        herkenbaar: check.herkenbaar ?? null,
+        betrouwbaarheid: check.betrouwbaarheid ?? null,
+      });
+      setStap(2);
+    } catch (fout) {
+      setMelding(`Er ging iets mis: ${(fout as Error).message}`);
+    } finally {
+      setBezig(false);
+    }
+  }
+
+  async function versturen(e: React.FormEvent) {
+    e.preventDefault();
+    if (!gekozen || !titel || !licentieAkkoord) {
+      setMelding("Vul een titel in en bevestig de licentie.");
+      return;
+    }
+    setBezig(true);
+    setMelding(null);
+    try {
+      if (externeBron) {
+        // externe bron: geen upload; de server valideert de URL opnieuw en doet de
+        // Herkenbaar-check op een verkleinde download
+        await indienen(crypto.randomUUID(), null);
         return;
       }
-      await indienen(mediaId, null);
+      if (!geupload) {
+        setMelding("Je foto is nog niet geüpload; ga terug naar stap 1.");
+        return;
+      }
+      if (geupload.herkenbaar === true) {
+        setToestemmingsVraag({
+          mediaId: geupload.mediaId,
+          betrouwbaarheid: geupload.betrouwbaarheid,
+        });
+        return;
+      }
+      await indienen(geupload.mediaId, null);
     } catch (fout) {
       setMelding(`Er ging iets mis: ${(fout as Error).message}`);
     } finally {
@@ -237,6 +313,14 @@ export default function UploadPagina() {
         soort: urlSoort, url: urlInvoer.trim(),
         bronUrl: inhoud.bronUrl, previewUrl: inhoud.previewUrl,
       });
+      // de beeldbank heeft het materiaal al beschreven: die gegevens overnemen als
+      // voorstel, zolang de inzender zelf nog niets heeft ingevuld
+      if (inhoud.titel && !titel) { setTitel(inhoud.titel); setUitBeeldbank(true); }
+      if (inhoud.beschrijving && !beschrijving) {
+        setBeschrijving(inhoud.beschrijving);
+        setUitBeeldbank(true);
+      }
+      setBronMetadata(inhoud.metadata ?? {});
       setBestand(null);
       urlDialoog.current?.close();
     } finally {
@@ -340,6 +424,9 @@ export default function UploadPagina() {
         online komt.
       </p>
       <form className="formulier" onSubmit={versturen}>
+      {stap === 1 && (
+        <>
+        <p className="stap-teller">Stap 1 van 2: je foto</p>
         <div className="veld">
           <label>Je foto</label>
           <input
@@ -347,7 +434,7 @@ export default function UploadPagina() {
             type="file"
             accept="image/jpeg,image/png,image/tiff"
             style={{ display: "none" }}
-            onChange={(e) => setBestand(e.target.files?.[0] ?? null)}
+            onChange={(e) => { setGeupload(null); setBestand(e.target.files?.[0] ?? null); }}
           />
           <div className="bestand-knoppen">
             {wijzen.includes("bestand") && (
@@ -402,6 +489,34 @@ export default function UploadPagina() {
             </div>
           )}
         </div>
+        <div className="dialoog-knoppen" style={{ marginTop: "1.2rem" }}>
+          <button className="knop knop-primair" type="button" disabled={bezig}
+                  onClick={naarStap2}>
+            {bezig ? "Bezig..." : "Verder"}
+          </button>
+        </div>
+        </>
+      )}
+
+      {stap === 2 && (
+        <>
+        <p className="stap-teller">
+          Stap 2 van 2: vertel erover
+          <button className="annotatie-actie" type="button"
+                  onClick={() => { setMelding(null); setStap(1); }}>
+            terug naar je foto
+          </button>
+        </p>
+        <div className="veld">
+          <label>Je foto</label>
+          {(externeBron?.previewUrl || bestandPreview) && (
+            <img
+              src={externeBron?.previewUrl || bestandPreview!}
+              alt="De foto die je hebt gekozen"
+              style={{ maxHeight: "8rem", borderRadius: ".35rem", border: "1px solid var(--kartonrand)" }}
+            />
+          )}
+        </div>
         {koppelAan && (
           <div className="veld">
             <label>Je koppelt deze foto aan</label>
@@ -428,13 +543,19 @@ export default function UploadPagina() {
         </div>
         <div className="veld">
           <label htmlFor="titel">Titel</label>
-          <input id="titel" type="text" value={titel} onChange={(e) => setTitel(e.target.value)} />
+          <input id="titel" type="text" value={titel}
+                 onChange={(e) => { setUitBeeldbank(false); setTitel(e.target.value); }} />
+          {uitBeeldbank && (
+            <p style={{ fontSize: ".85rem", color: "var(--grijs)", marginTop: ".3rem" }}>
+              Overgenomen uit de beeldbank. Je mag het aanpassen.
+            </p>
+          )}
         </div>
         <div className="veld">
           <label htmlFor="genre">Wat voor iets is dit?</label>
           <select id="genre" value={genre} onChange={(e) => setGenre(e.target.value)}>
             {GENRES.map((g) => (
-              <option key={g} value={g}>{g}</option>
+              <option key={g.waarde} value={g.waarde}>{g.waarde}</option>
             ))}
           </select>
         </div>
@@ -509,6 +630,8 @@ export default function UploadPagina() {
         <button className="knop knop-primair" type="submit" disabled={bezig}>
           {bezig ? "Bezig..." : "Verstuur je jottem"}
         </button>
+        </>
+      )}
       </form>
       {melding && <p className="memo" style={{ marginTop: "1.2rem" }}>{melding}</p>}
 

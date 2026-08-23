@@ -312,6 +312,13 @@ dialog.dialoog h2 { font-family: var(--kop); font-size: 1.35rem; margin-bottom: 
 }
 .cta-knop:hover, .cta-knop:focus { background: var(--papier); border-left-color: var(--knop-tekst); }
 
+/* uploadformulier in twee stappen */
+.stap-teller {
+  font-family: var(--kop); font-weight: 600; color: var(--grijs);
+  display: flex; gap: .8rem; align-items: baseline; flex-wrap: wrap;
+  margin-bottom: .2rem;
+}
+
 /* gekoppelde jottems: zelfde object, andere foto (V-9) */
 .gerelateerd-lijst { display: flex; flex-wrap: wrap; gap: .8rem; margin-top: 1rem; }
 .gerelateerd {
