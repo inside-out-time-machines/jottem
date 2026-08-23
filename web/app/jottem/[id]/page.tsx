@@ -60,6 +60,37 @@ function ogBeeld(jottem: Detail) {
   };
 }
 
+// veldnamen zoals een bezoeker ze kent; onbekende sleutels tonen we ongewijzigd
+const VELDNAAM: Record<string, string> = {
+  steekwoord: "Steekwoorden",
+  datering: "Datering",
+  jaarVan: "Van jaar",
+  jaarTot: "Tot jaar",
+  vervaardiger: "Vervaardiger",
+  adres: "Adres",
+  archiefbron: "Bron",
+  persoon: "Persoon",
+  gebouw: "Gebouw",
+  bedrijf: "Bedrijf",
+  gebeurtenis: "Gebeurtenis",
+  plaats: "Plaats",
+};
+
+/**
+ * De metadatarijen die een bezoeker te zien krijgt.
+ *
+ * Term-URI's horen hier niet: ze staan naast het label dat ze beschrijven, dus op de
+ * pagina zou "menukaarten" twee keer voorkomen, één keer als woord en één keer als
+ * lange URL. In de RDF en het IIIF-manifest staan ze wél, met het label erbij; daar
+ * zijn ze juist het punt. Ook de coördinaten laten we weg: die horen bij de kaart.
+ */
+function metadataRijen(metadata: Record<string, string>): [string, string][] {
+  return Object.entries(metadata).filter(
+    ([veld]) => !veld.endsWith("Uri") && !veld.endsWith("-termUri")
+                && veld !== "lat" && veld !== "lon",
+  );
+}
+
 function ogBeschrijving(jottem: Detail) {
   return jottem.beschrijving
     ?? `Een jottem uit het project ${jottem.project} van ${jottem.organisatie}.`;
@@ -174,8 +205,8 @@ export default async function JottemPagina({
               {jottem.bron === "iiif" && <span style={{ fontSize: ".85rem", color: "var(--grijs)" }}> (IIIF, uit een beeldbank)</span>}
             </td></tr>
           )}
-            {Object.entries(jottem.metadata).map(([veld, waarde]) => (
-              <tr key={veld}><th>{veld}</th><td>{waarde}</td></tr>
+            {metadataRijen(jottem.metadata).map(([veld, waarde]) => (
+              <tr key={veld}><th>{VELDNAAM[veld] ?? veld}</th><td>{waarde}</td></tr>
             ))}
           </tbody>
         </table>
