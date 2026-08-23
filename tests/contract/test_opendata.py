@@ -98,6 +98,28 @@ def test_annotatie_aggregaties(api: httpx.Client, organisatie: dict, project: di
         assert "total" in collectie
 
 
+def test_annotatie_op_eigen_iri_heeft_context(api: httpx.Client, project: dict):
+    """Elke annotatie moet op haar eigen IRI zelfbeschrijvend zijn.
+
+    De annotatieserver haalt @context weg uit de items van een containerlijst; die erven
+    de context van de pagina. Wie zo'n item terugschrijft (de naamsync deed dat), maakt de
+    gestripte vorm tot de opgeslagen vorm, en dan is op de canonieke IRI niets meer op te
+    lossen: niet alleen jottem:verrijking, ook type, body en target niet.
+    """
+    collectie = api.get(f"/project/{project['projectId']}/annotations").json()
+    items = collectie.get("first", {}).get("items", [])
+    if not items:
+        pytest.skip("geen annotaties in dit project")
+    for item in items[:5]:
+        annotatie = httpx.get(item["id"], timeout=20).json()
+        context = annotatie.get("@context")
+        assert context, f"annotatie zonder context: {item['id']}"
+        assert "http://www.w3.org/ns/anno.jsonld" in context
+        if any(sleutel.startswith("jottem:") for sleutel in annotatie):
+            assert any(isinstance(deel, dict) and "jottem" in deel for deel in context), (
+                f"jottem-prefix ontbreekt terwijl de annotatie hem gebruikt: {item['id']}")
+
+
 def test_rss_feeds(api: httpx.Client, organisatie: dict, project: dict):
     for pad in ("/rss", f"/organisatie/{organisatie['slug']}/rss",
                 f"/project/{project['projectId']}/rss"):
