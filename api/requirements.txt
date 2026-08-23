@@ -16,3 +16,6 @@ pyvips==3.1.1
 httpx==0.28.1
 python-multipart==0.0.32
 rdflib==7.6.0
+# JSON-LD-framing voor het framed profiel op de duurzame URL's; pyld is de enige
+# Python-implementatie met framing en haalt niets van internet (eigen document loader)
+pyld==3.2.0

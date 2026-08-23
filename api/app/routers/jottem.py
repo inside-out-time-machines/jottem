@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
-from .. import anno, iiif, relaties, s3
+from .. import accept, anno, frames, iiif, relaties, s3
 from ..auth import Principal, principal
 from ..config import settings
 from ..db import get_db
@@ -20,6 +20,12 @@ from ..verrijkingen import actieve_verrijkingen
 from .publiek import thumbnail_url
 
 router = APIRouter(tags=["Jottems"])
+
+# de representaties die deze URL kent, in volgorde van voorkeur bij een gelijkspel
+VARIANTEN = ["text/html", "application/ld+json", "text/turtle", "application/rdf+xml",
+             "application/json"]
+# vier representaties op één URL: zonder dit zou een cache de eerste voor alle vier bewaren
+VARY = {"Vary": "Accept"}
 
 
 def _iiif_service(media: Media) -> str | None:
@@ -143,23 +149,30 @@ def jottem(media_id: uuid.UUID, request: Request, db: Session = Depends(get_db))
         raise HTTPException(404, "Jottem niet gepubliceerd")
 
     # content negotiation (data-architectuur): HTML voor mensen, RDF conform
-    # schema.org AP NDE voor machines (JSON-LD, Turtle of RDF/XML)
+    # schema.org AP NDE voor machines (JSON-LD, Turtle of RDF/XML), en desgevraagd
+    # geframede JSON-LD volgens het gedocumenteerde frame
     from .. import rdf
     from fastapi.responses import Response
 
-    accept = request.headers.get("accept", "")
-    if "text/turtle" in accept:
+    kop = request.headers.get("accept", "")
+    # text/html staat vooraan: een kale */* hoort op de publiekspagina uit te komen
+    keuze = accept.beste(kop, VARIANTEN)
+    if keuze == "text/turtle":
         return Response(rdf.serialiseer(rdf.jottem_jsonld(db, media), "turtle"),
-                        media_type="text/turtle")
-    if "application/rdf+xml" in accept:
+                        media_type="text/turtle", headers=VARY)
+    if keuze == "application/rdf+xml":
         return Response(rdf.serialiseer(rdf.jottem_jsonld(db, media), "xml"),
-                        media_type="application/rdf+xml")
-    if "application/ld+json" in accept or "application/json" in accept:
-        return JSONResponse(rdf.jottem_jsonld(db, media), media_type="application/ld+json")
+                        media_type="application/rdf+xml", headers=VARY)
+    if keuze in ("application/ld+json", "application/json"):
+        document = rdf.jottem_jsonld(db, media)
+        if accept.framed_gevraagd(kop):
+            return frames.antwoord(document, "jottem")
+        return JSONResponse(document, media_type="application/ld+json", headers=VARY)
 
     # HTML-weergave leeft in de frontend: 303 See Other (content negotiation conform design)
     return RedirectResponse(
-        f"{settings().publieke_basis_url}/jottem/{media_id}", status_code=303
+        f"{settings().publieke_basis_url}/jottem/{media_id}", status_code=303,
+        headers=VARY,
     )
 
 

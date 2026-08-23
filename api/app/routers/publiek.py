@@ -5,12 +5,12 @@ import math
 import uuid
 
 import redis
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .. import anno, iiif, s3
+from .. import accept, anno, frames, iiif, s3
 from ..config import settings
 from ..db import get_db
 from ..models import Media, MediaStatus, Organisatie, Project
@@ -148,19 +148,30 @@ def project_publiek(
     )
 
 
-ANNO_MEDIA_TYPE = 'application/ld+json;profile="http://www.w3.org/ns/anno.jsonld"'
+ANNO_PROFIEL = "http://www.w3.org/ns/anno.jsonld"
+ANNO_MEDIA_TYPE = f'application/ld+json;profile="{ANNO_PROFIEL}"'
+# bovengrens voor framen van een aggregatie; daarboven blijft de gewone representatie over
+MAX_FRAME_ITEMS = 5000
 
 
 def _aggregatie(db: Session, media_ids: list[uuid.UUID], collectie_id: str, label: str,
-                cache_sleutel: str) -> JSONResponse:
+                cache_sleutel: str, kop: str = "") -> JSONResponse:
     """Aggregerende AnnotationCollection over de containers van meerdere jottems.
 
     Op pilotschaal lezen we de containers live uit AnnoRepo, met een korte
     Valkey-cache; de per-jottem-containers blijven de canonieke W3C-bron.
+
+    Vraagt de client een geframede representatie, dan wordt die apart gecacht: framing
+    kost werk en deze collectie is de enige die met het project mee kan groeien.
     """
-    gecached = _valkey.get(cache_sleutel)
+    geframed = accept.framed_gevraagd(kop)
+    sleutel = f"{cache_sleutel}:framed" if geframed else cache_sleutel
+    gecached = _valkey.get(sleutel)
     if gecached:
-        return JSONResponse(json.loads(gecached), media_type=ANNO_MEDIA_TYPE)
+        return (frames.antwoord(json.loads(gecached), "annotatiecollectie", (ANNO_PROFIEL,))
+                if geframed
+                else JSONResponse(json.loads(gecached), media_type=ANNO_MEDIA_TYPE,
+                                  headers={"Vary": "Accept"}))
     items: list[dict] = []
     for media_id in media_ids:
         items.extend(anno.alle_annotaties(str(media_id)))
@@ -181,11 +192,21 @@ def _aggregatie(db: Session, media_ids: list[uuid.UUID], collectie_id: str, labe
         },
     }
     _valkey.setex(cache_sleutel, 300, json.dumps(collectie))
-    return JSONResponse(collectie, media_type=ANNO_MEDIA_TYPE)
+    if geframed:
+        # boven deze omvang is framen (de hele graaf moet in het geheugen) duurder dan
+        # het oplevert; dan krijgt de client de gewone representatie, zoals de
+        # data-architectuur ook adviseert bij grote grafen
+        if len(items) > MAX_FRAME_ITEMS:
+            return JSONResponse(collectie, media_type=ANNO_MEDIA_TYPE,
+                                headers={"Vary": "Accept"})
+        _valkey.setex(f"{cache_sleutel}:framed", 300, json.dumps(collectie))
+        return frames.antwoord(collectie, "annotatiecollectie", (ANNO_PROFIEL,))
+    return JSONResponse(collectie, media_type=ANNO_MEDIA_TYPE, headers={"Vary": "Accept"})
 
 
 @router.get("/project/{project_id}/annotations")
-def project_annotaties(project_id: uuid.UUID, db: Session = Depends(get_db)):
+def project_annotaties(project_id: uuid.UUID, request: Request,
+                       db: Session = Depends(get_db)):
     project = db.get(Project, project_id)
     if not project:
         raise HTTPException(404, "Project onbekend")
@@ -198,11 +219,13 @@ def project_annotaties(project_id: uuid.UUID, db: Session = Depends(get_db)):
         f"{settings().api_basis_url}/project/{project_id}/annotations",
         f"Annotaties bij project {project.naam}",
         f"annotaties:project:{project_id}",
+        request.headers.get("accept", ""),
     )
 
 
 @router.get("/organisatie/{slug}/annotations")
-def organisatie_annotaties(slug: str, db: Session = Depends(get_db)):
+def organisatie_annotaties(slug: str, request: Request,
+                           db: Session = Depends(get_db)):
     organisatie = db.scalar(select(Organisatie).where(Organisatie.slug == slug))
     if not organisatie:
         raise HTTPException(404, "Organisatie onbekend")
@@ -216,4 +239,5 @@ def organisatie_annotaties(slug: str, db: Session = Depends(get_db)):
         f"{settings().api_basis_url}/organisatie/{slug}/annotations",
         f"Annotaties bij {organisatie.naam}",
         f"annotaties:organisatie:{slug}",
+        request.headers.get("accept", ""),
     )

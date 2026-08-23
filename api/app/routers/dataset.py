@@ -9,12 +9,13 @@ import uuid
 from datetime import datetime, timezone
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from .. import accept, frames
 from ..auth import Principal, principal
 from ..config import settings
 from ..db import get_db
@@ -130,14 +131,18 @@ def _dataset_jsonld(db: Session, project: Project) -> dict:
 
 
 @router.get("/project/{project_id}/dataset")
-def dataset_publiek(project_id: uuid.UUID, db: Session = Depends(get_db)):
+def dataset_publiek(project_id: uuid.UUID, request: Request, db: Session = Depends(get_db)):
     """Publieke datasetbeschrijving; alleen beschikbaar met gepubliceerde jottems."""
     project = db.get(Project, project_id)
     if not project:
         raise HTTPException(404, "Project onbekend")
     if not _aantal_openbaar(db, project_id):
         raise HTTPException(404, "Dit project heeft nog geen openbare data")
-    return JSONResponse(_dataset_jsonld(db, project), media_type="application/ld+json")
+    document = _dataset_jsonld(db, project)
+    if accept.framed_gevraagd(request.headers.get("accept", "")):
+        return frames.antwoord(document, "dataset")
+    return JSONResponse(document, media_type="application/ld+json",
+                        headers={"Vary": "Accept"})
 
 
 @router.get("/project/{project_id}/datasetbeschrijving")

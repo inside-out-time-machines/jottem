@@ -12,12 +12,12 @@ from email.utils import format_datetime
 from xml.sax.saxutils import escape, quoteattr
 
 import redis
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .. import rdf
+from .. import accept, frames, rdf
 from ..config import settings
 from ..db import get_db
 from ..models import Media, MediaStatus, Organisatie, Project
@@ -314,7 +314,7 @@ def project_dump_oud(project_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.get("/datacatalog")
-def datacatalogus(db: Session = Depends(get_db)):
+def datacatalogus(request: Request, db: Session = Depends(get_db)):
     """Platformbrede datacatalogus (schema:DataCatalog): alle projectdatasets met
     openbare data; samen dekken die alle gepubliceerde jottems."""
     cfg = settings()
@@ -340,4 +340,7 @@ def datacatalogus(db: Session = Depends(get_db)):
         "inLanguage": "nl",
         "dataset": datasets,
     }
-    return JSONResponse(catalogus, media_type="application/ld+json")
+    if accept.framed_gevraagd(request.headers.get("accept", "")):
+        return frames.antwoord(catalogus, "datacatalog")
+    return JSONResponse(catalogus, media_type="application/ld+json",
+                        headers={"Vary": "Accept"})

@@ -1,0 +1,43 @@
+{
+  "@context": [
+    {
+      "@vocab": "https://schema.org/"
+    },
+    {
+      "distribution": {
+        "@id": "https://schema.org/distribution",
+        "@container": "@set"
+      },
+      "inLanguage": {
+        "@id": "https://schema.org/inLanguage",
+        "@container": "@set"
+      }
+    }
+  ],
+  "@type": "Dataset",
+  "@embed": "@once",
+  "@omitDefault": true,
+  "publisher": {
+    "@type": "Organization",
+    "@embed": "@always",
+    "contactPoint": {
+      "@embed": "@always"
+    }
+  },
+  "creator": {
+    "@type": "Organization",
+    "@embed": "@always",
+    "contactPoint": {
+      "@embed": "@always"
+    }
+  },
+  "spatialCoverage": {
+    "@embed": "@always"
+  },
+  "distribution": {
+    "@embed": "@always"
+  },
+  "includedInDataCatalog": {
+    "@embed": "@never"
+  }
+}

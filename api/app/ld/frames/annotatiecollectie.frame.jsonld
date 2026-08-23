@@ -1,0 +1,36 @@
+{
+  "@context": [
+    "http://www.w3.org/ns/anno.jsonld",
+    {
+      "jottem": "https://data.iotm.nl/ns/jottem.jsonld#",
+      "body": {
+        "@id": "http://www.w3.org/ns/oa#hasBody",
+        "@container": "@set"
+      },
+      "target": {
+        "@id": "http://www.w3.org/ns/oa#hasTarget",
+        "@container": "@set"
+      }
+    }
+  ],
+  "type": "AnnotationCollection",
+  "@embed": "@once",
+  "@omitDefault": true,
+  "first": {
+    "type": "AnnotationPage",
+    "@embed": "@always",
+    "items": {
+      "type": "Annotation",
+      "@embed": "@always",
+      "body": {
+        "@embed": "@always"
+      },
+      "target": {
+        "@embed": "@always"
+      },
+      "creator": {
+        "@embed": "@always"
+      }
+    }
+  }
+}

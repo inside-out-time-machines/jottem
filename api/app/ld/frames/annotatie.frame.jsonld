@@ -1,0 +1,31 @@
+{
+  "@context": [
+    "http://www.w3.org/ns/anno.jsonld",
+    {
+      "jottem": "https://data.iotm.nl/ns/jottem.jsonld#",
+      "body": {
+        "@id": "http://www.w3.org/ns/oa#hasBody",
+        "@container": "@set"
+      },
+      "target": {
+        "@id": "http://www.w3.org/ns/oa#hasTarget",
+        "@container": "@set"
+      }
+    }
+  ],
+  "type": "Annotation",
+  "@embed": "@once",
+  "@omitDefault": true,
+  "body": {
+    "@embed": "@always"
+  },
+  "target": {
+    "@embed": "@always"
+  },
+  "creator": {
+    "@embed": "@always"
+  },
+  "generator": {
+    "@embed": "@once"
+  }
+}

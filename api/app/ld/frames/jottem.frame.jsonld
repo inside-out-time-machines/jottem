@@ -1,0 +1,79 @@
+{
+  "@context": [
+    {
+      "@vocab": "https://schema.org/",
+      "dcterms": "http://purl.org/dc/terms/"
+    },
+    {
+      "keywords": {
+        "@id": "https://schema.org/keywords",
+        "@container": "@set"
+      },
+      "about": {
+        "@id": "https://schema.org/about",
+        "@container": "@set"
+      },
+      "inLanguage": {
+        "@id": "https://schema.org/inLanguage",
+        "@container": "@set"
+      },
+      "contributor": {
+        "@id": "https://schema.org/contributor",
+        "@container": "@set"
+      },
+      "subjectOf": {
+        "@id": "https://schema.org/subjectOf",
+        "@container": "@set"
+      },
+      "dcterms:relation": {
+        "@id": "http://purl.org/dc/terms/relation",
+        "@container": "@set"
+      }
+    }
+  ],
+  "@type": [
+    "ImageObject",
+    "AudioObject"
+  ],
+  "@embed": "@once",
+  "@omitDefault": true,
+  "publisher": {
+    "@type": "Organization",
+    "@embed": "@always"
+  },
+  "creator": {
+    "@embed": "@always"
+  },
+  "contributor": {
+    "@embed": "@always"
+  },
+  "contentLocation": {
+    "@type": "Place",
+    "@embed": "@always",
+    "geo": {
+      "@type": "GeoCoordinates",
+      "@embed": "@always"
+    }
+  },
+  "subjectOf": {
+    "@embed": "@always"
+  },
+  "mainEntityOfPage": {
+    "@embed": "@once"
+  },
+  "isPartOf": {
+    "@embed": "@never"
+  },
+  "isBasedOn": {
+    "@embed": "@never"
+  },
+  "includedInDataCatalog": {
+    "@embed": "@never"
+  },
+  "additionalType": {
+    "@embed": "@never"
+  },
+  "dcterms:relation": {
+    "@embed": "@never"
+  }
+}

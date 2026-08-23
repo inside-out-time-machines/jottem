@@ -1,0 +1,22 @@
+{
+  "@context": [
+    {
+      "@vocab": "https://schema.org/"
+    },
+    {
+      "dataset": {
+        "@id": "https://schema.org/dataset",
+        "@container": "@set"
+      }
+    }
+  ],
+  "@type": "DataCatalog",
+  "@embed": "@once",
+  "@omitDefault": true,
+  "publisher": {
+    "@embed": "@always"
+  },
+  "dataset": {
+    "@embed": "@once"
+  }
+}
