@@ -2,6 +2,18 @@ import type { NextConfig } from "next";
 
 const config: NextConfig = {
   output: "standalone",
+  async redirects() {
+    return [
+      {
+        // De naamsruimte is verhuisd naar de datahost, waar de API hem uitlevert. Dit pad
+        // blijft permanent doorverwijzen: eerder gepubliceerde annotaties dragen IRI's
+        // onder de oude host, en een naamsruimte-IRI hoort niet dood te gaan.
+        source: "/ns/:pad*",
+        destination: `${process.env.NEXT_PUBLIC_DATA_URL ?? "https://data.dev.iotm.nl"}/ns/:pad*`,
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {
