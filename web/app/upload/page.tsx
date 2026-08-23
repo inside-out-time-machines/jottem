@@ -6,6 +6,7 @@ import { licentieInfo } from "@/lib/licenties";
 import { startLogin } from "@/lib/oidc";
 import CameraOpname from "./camera-opname";
 import LocatieKiezer from "./locatie-kiezer";
+import Wachtverzachter from "./wachtverzachter";
 import { kopVoetCss, projectStijl } from "@/lib/kleuren";
 
 type Project = {
@@ -48,9 +49,12 @@ export default function UploadPagina() {
   const [ingelogd, setIngelogd] = useState<boolean | null>(null);
   const [heeftCamera, setHeeftCamera] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
+  // de vraag komt op twee momenten: vroeg, meteen na de foto (vervolg "verder"), en als
+  // vangnet bij het indienen wanneer de server alsnog personen ziet (vervolg "indienen")
   const [toestemmingsVraag, setToestemmingsVraag] = useState<{
     mediaId: string;
     betrouwbaarheid: number | null;
+    vervolg: "verder" | "indienen";
   } | null>(null);
   // externe fotobron (beeldbank-permalink of foto-URL): alleen verwijzing, geen upload
   const [externeBron, setExterneBron] = useState<{
@@ -76,7 +80,12 @@ export default function UploadPagina() {
   // datering, vervaardiger en adres uit datzelfde manifest; gaan mee als metadata
   const [bronMetadata, setBronMetadata] = useState<Record<string, string>>({});
   // het formulier loopt in twee stappen: eerst de foto, dan de gegevens erbij
-  const [stap, setStap] = useState<1 | 2>(1);
+  const [stap, setStap] = useState<1 | "toestemming" | "wachten" | 2>(1);
+  // de keuze bij herkenbare personen wordt hier geparkeerd en pas bij het indienen
+  // meegestuurd; vroeg indienen kan niet, want titel en licentie bestaan dan nog niet
+  const [toestemming, setToestemming] = useState<"ja" | "nee" | null>(null);
+  // de lopende suggestie-aanvraag, zodat het wachtscherm eraan kan hangen
+  const suggestieBelofte = useRef<Promise<void> | null>(null);
   // een gekozen bestand gaat al aan het eind van stap 1 naar de opslag, zodat de
   // Herkenbaar-check loopt terwijl de inzender de gegevens invult
   const [geupload, setGeupload] = useState<
@@ -149,7 +158,7 @@ export default function UploadPagina() {
     return () => URL.revokeObjectURL(url);
   }, [bestand]);
 
-  async function indienen(mediaId: string, toestemming: "ja" | "nee" | null) {
+  async function indienen(mediaId: string, keuze: "ja" | "nee" | null) {
     const metadata: Record<string, string> = { ...bronMetadata };
     const genreUri = GENRES.find((g) => g.waarde === genre)?.uri;
     if (genreUri) metadata.genreUri = genreUri;
@@ -170,7 +179,7 @@ export default function UploadPagina() {
         licentieBevestigd: licentieAkkoord,
         steekwoorden: steekwoorden.split(",").map((w) => w.trim()).filter(Boolean),
         metadata,
-        toestemming,
+        toestemming: keuze,
         externeBron: externeBron ? { soort: externeBron.soort, url: externeBron.url } : null,
       }),
     });
@@ -178,8 +187,8 @@ export default function UploadPagina() {
       const detail = (await antwoord.json()).detail ?? antwoord.statusText;
       // gezaghebbende Herkenbaar-check op de server: bij herkenbare personen
       // stelt de server de toestemmingsvraag via deze 422
-      if (antwoord.status === 422 && String(detail).includes("herkenbare personen") && toestemming === null) {
-        setToestemmingsVraag({ mediaId, betrouwbaarheid: null });
+      if (antwoord.status === 422 && String(detail).includes("herkenbare personen") && keuze === null) {
+        setToestemmingsVraag({ mediaId, betrouwbaarheid: null, vervolg: "indienen" });
         return;
       }
       throw new Error(detail);
@@ -196,54 +205,98 @@ export default function UploadPagina() {
     setKoppelAan(null);
     setGeupload(null);
     setStap(1);
+    setToestemming(null);
     setUitBeeldbank(false);
     setBronMetadata({});
     setVoorstel(null);
   }
 
-  /** Stap 1 afronden: een gekozen bestand nu al uploaden en laten controleren. */
+  // Wachten op de suggesties, met twee grenzen: minstens 1,2 seconde zodat het scherm
+  // niet knippert als de dienst snel is, en hooguit 15 seconden zodat een trage of
+  // afwezige dienst niemand ophoudt. Daarna gaat het formulier open met wat er is.
+  useEffect(() => {
+    if (stap !== "wachten") return;
+    let afgebroken = false;
+    const door = () => { if (!afgebroken) setStap(2); };
+    const ondergrens = new Promise((klaar) => setTimeout(klaar, 1200));
+    const bovengrens = new Promise((klaar) => setTimeout(klaar, 15000));
+    Promise.race([
+      Promise.all([suggestieBelofte.current ?? Promise.resolve(), ondergrens]),
+      bovengrens,
+    ]).then(door);
+    return () => { afgebroken = true; };
+  }, [stap]);
+
+  /** De suggestie-aanvraag starten en niet afwachten; het wachtscherm hangt eraan. */
+  function startSuggesties(beeld: Record<string, unknown>) {
+    suggestieBelofte.current = fetch(`${API_PUBLIEK}/suggesties`, {
+      method: "POST", headers, body: JSON.stringify(beeld),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((v) => {
+        if (!v) return;
+        setVoorstel(v);
+        // een leeg veld vullen we alvast; wat de inzender zelf typte laten we staan
+        setTitel((huidig) => huidig || v.titel || "");
+      })
+      .catch(() => {});   // een storing blijft onzichtbaar (V-10)
+  }
+
+  /**
+   * Stap 1 afronden. Volgorde: het beeld klaarzetten, de suggesties starten, en dan de
+   * controle op herkenbare personen afwachten. Die vraag komt vóór het formulier, zodat
+   * niemand eerst alle metadata invult om daarna alsnog te moeten kiezen.
+   */
   async function naarStap2() {
     if (!bestand && !externeBron) {
       setMelding("Kies eerst een foto of geef een link.");
       return;
     }
     setMelding(null);
-    // een externe bron staat al ergens anders; de server haalt hem zelf op bij het indienen
-    if (externeBron) {
-      setStap(2);
-      return;
-    }
-    // hetzelfde bestand niet twee keer uploaden als de inzender heen en weer loopt
+    // heen en weer lopen mag: hetzelfde bestand niet twee keer uploaden en niet
+    // twee keer laten analyseren
     if (geupload) {
       setStap(2);
       return;
     }
     setBezig(true);
     try {
-      const urlAntwoord = await fetch(`${API_PUBLIEK}/upload-url`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          bestandsnaam: bestand!.name || "camera-foto.jpg",
-          contentType: bestand!.type,
-          grootte: bestand!.size,
-        }),
-      });
-      if (!urlAntwoord.ok) throw new Error((await urlAntwoord.json()).detail ?? urlAntwoord.statusText);
-      const { mediaId, uploadUrl } = await urlAntwoord.json();
+      // het beeld waar beide controles over gaan: een geupload origineel of de externe
+      // bron, die de server zelf ophaalt
+      let beeld: Record<string, unknown>;
+      let mediaId: string;
+      if (externeBron) {
+        mediaId = crypto.randomUUID();
+        beeld = { externeBron: { soort: externeBron.soort, url: externeBron.url } };
+      } else {
+        const urlAntwoord = await fetch(`${API_PUBLIEK}/upload-url`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            bestandsnaam: bestand!.name || "camera-foto.jpg",
+            contentType: bestand!.type,
+            grootte: bestand!.size,
+          }),
+        });
+        if (!urlAntwoord.ok) throw new Error((await urlAntwoord.json()).detail ?? urlAntwoord.statusText);
+        const uit = await urlAntwoord.json();
+        mediaId = uit.mediaId;
 
-      const putAntwoord = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": bestand!.type },
-        body: bestand,
-      });
-      if (!putAntwoord.ok) throw new Error(`Upload naar opslag mislukt (${putAntwoord.status})`);
+        const putAntwoord = await fetch(uit.uploadUrl, {
+          method: "PUT",
+          headers: { "Content-Type": bestand!.type },
+          body: bestand,
+        });
+        if (!putAntwoord.ok) throw new Error(`Upload naar opslag mislukt (${putAntwoord.status})`);
+        beeld = { mediaId };
+      }
 
-      // Herkenbaar-check: het antwoord bewaren, de vraag stellen we pas bij het indienen
+      // eerst starten, dan pas wachten: de analyse loopt terwijl de inzender de
+      // toestemmingsvraag leest, dus die tijd is niet verloren
+      startSuggesties(beeld);
+
       const checkAntwoord = await fetch(`${API_PUBLIEK}/herkenbaar-check`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ mediaId }),
+        method: "POST", headers, body: JSON.stringify(beeld),
       });
       const check = checkAntwoord.ok ? await checkAntwoord.json() : { herkenbaar: null };
       setGeupload({
@@ -251,25 +304,35 @@ export default function UploadPagina() {
         herkenbaar: check.herkenbaar ?? null,
         betrouwbaarheid: check.betrouwbaarheid ?? null,
       });
-      setStap(2);
-      // de analyse loopt terwijl de inzender stap 2 invult; niet op wachten, en een
-      // storing blijft onzichtbaar (V-10)
-      fetch(`${API_PUBLIEK}/suggesties`, {
-        method: "POST", headers, body: JSON.stringify({ mediaId }),
-      })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((v) => {
-          if (!v) return;
-          setVoorstel(v);
-          // een leeg veld vullen we alvast; wat de inzender zelf typte laten we staan
-          setTitel((huidig) => huidig || v.titel || "");
-        })
-        .catch(() => {});
+      if (check.herkenbaar === true) {
+        setToestemmingsVraag({
+          mediaId, betrouwbaarheid: check.betrouwbaarheid ?? null, vervolg: "verder",
+        });
+        setStap("toestemming");
+        return;
+      }
+      setStap("wachten");
     } catch (fout) {
       setMelding(`Er ging iets mis: ${(fout as Error).message}`);
     } finally {
       setBezig(false);
     }
+  }
+
+  /** De keuze bij herkenbare personen: parkeren en door, of alsnog indienen. */
+  function beantwoordToestemming(keuze: "ja" | "nee") {
+    setToestemming(keuze);
+    const vraag = toestemmingsVraag;
+    setToestemmingsVraag(null);
+    if (vraag?.vervolg === "verder") {
+      setStap("wachten");
+      return;
+    }
+    // vangnet: de server vond alsnog personen, alle metadata staat er al
+    setBezig(true);
+    indienen(vraag!.mediaId, keuze)
+      .catch((f) => setMelding(`Er ging iets mis: ${(f as Error).message}`))
+      .finally(() => setBezig(false));
   }
 
   async function versturen(e: React.FormEvent) {
@@ -281,24 +344,14 @@ export default function UploadPagina() {
     setBezig(true);
     setMelding(null);
     try {
-      if (externeBron) {
-        // externe bron: geen upload; de server valideert de URL opnieuw en doet de
-        // Herkenbaar-check op een verkleinde download
-        await indienen(crypto.randomUUID(), null);
-        return;
-      }
       if (!geupload) {
         setMelding("Je foto is nog niet geüpload; ga terug naar stap 1.");
         return;
       }
-      if (geupload.herkenbaar === true) {
-        setToestemmingsVraag({
-          mediaId: geupload.mediaId,
-          betrouwbaarheid: geupload.betrouwbaarheid,
-        });
-        return;
-      }
-      await indienen(geupload.mediaId, null);
+      // de vraag is al vóór het formulier gesteld; de keuze gaat nu mee. Zag de
+      // clientcheck niets terwijl de server straks wél personen vindt, dan komt de vraag
+      // alsnog via de 422 in indienen()
+      await indienen(geupload.mediaId, toestemming);
     } catch (fout) {
       setMelding(`Er ging iets mis: ${(fout as Error).message}`);
     } finally {
@@ -392,39 +445,49 @@ export default function UploadPagina() {
           <button
             className="knop knop-primair"
             disabled={bezig}
-            onClick={() => {
-              setBezig(true);
-              indienen(toestemmingsVraag.mediaId, "ja")
-                .catch((f) => setMelding(`Er ging iets mis: ${(f as Error).message}`))
-                .finally(() => setBezig(false));
-            }}
+            onClick={() => beantwoordToestemming("ja")}
           >
             Ja, ik verklaar dat ik toestemming heb
           </button>
           <button
             className="knop knop-secundair"
             disabled={bezig}
-            onClick={() => {
-              setBezig(true);
-              indienen(toestemmingsVraag.mediaId, "nee")
-                .catch((f) => setMelding(`Er ging iets mis: ${(f as Error).message}`))
-                .finally(() => setBezig(false));
-            }}
+            onClick={() => beantwoordToestemming("nee")}
           >
-            Nee, maar dien toch in (de moderator beoordeelt het)
+            {toestemmingsVraag.vervolg === "indienen"
+              ? "Nee, maar dien toch in (de moderator beoordeelt het)"
+              : "Nee, maar ga toch verder (de moderator beoordeelt het)"}
           </button>
           <button
             className="knop knop-secundair"
             disabled={bezig}
             onClick={() => {
+              const vervolg = toestemmingsVraag.vervolg;
               setToestemmingsVraag(null);
-              setMelding("Upload geannuleerd; je jottem is niet ingediend.");
+              if (vervolg === "verder") {
+                // terug naar de foto: er is nog niets ingevuld om kwijt te raken
+                setStap(1);
+                setMelding("Geannuleerd; kies gerust een andere foto.");
+              } else {
+                setStap(2);
+                setMelding("Upload geannuleerd; je jottem is niet ingediend.");
+              }
             }}
           >
             Annuleren
           </button>
         </div>
         {melding && <p className="memo" style={{ marginTop: "1.2rem" }}>{melding}</p>}
+      </main>
+    );
+  }
+
+  if (stap === "wachten") {
+    return (
+      <main style={kleurStijl}>
+        {kopVoetBlok}
+        <h1>Deel je materiaal</h1>
+        <Wachtverzachter onOverslaan={() => setStap(2)} />
       </main>
     );
   }
@@ -453,7 +516,7 @@ export default function UploadPagina() {
             type="file"
             accept="image/jpeg,image/png,image/tiff"
             style={{ display: "none" }}
-            onChange={(e) => { setGeupload(null); setVoorstel(null);
+            onChange={(e) => { setGeupload(null); setVoorstel(null); setToestemming(null);
                                setBestand(e.target.files?.[0] ?? null); }}
           />
           <div className="bestand-knoppen">

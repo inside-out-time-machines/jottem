@@ -319,6 +319,22 @@ dialog.dialoog h2 { font-family: var(--kop); font-size: 1.35rem; margin-bottom: 
   margin-bottom: .2rem;
 }
 
+/* wachtscherm tussen de foto en het formulier, zie app/upload/wachtverzachter.tsx.
+   Eén beweging, rustig tempo: de vis deint, de staart geeft mee. De kill-switch voor
+   prefers-reduced-motion onderaan dit bestand zet allebei uit. */
+.wachten { text-align: center; margin: 2.5rem auto; max-width: 34rem; }
+.wachten-tekst { font-family: var(--kop); font-size: 1.15rem; margin: .6rem 0 .4rem; }
+.vis { animation: deinen 4s ease-in-out infinite; }
+.vis-staart { transform-origin: 140px 60px; animation: kwispel 4s ease-in-out infinite; }
+@keyframes deinen {
+  0%, 100% { transform: translateY(-5px) rotate(-1.2deg); }
+  50%      { transform: translateY(5px) rotate(1.2deg); }
+}
+@keyframes kwispel {
+  0%, 100% { transform: rotate(9deg) scaleX(.9); }
+  50%      { transform: rotate(-9deg) scaleX(1); }
+}
+
 /* voorstellen bij het uploaden (V-10): klikbaar, nooit vanzelf ingevuld */
 .voorstel { font-size: .85rem; color: var(--grijs); margin-top: .35rem;
   display: flex; gap: .4rem; align-items: baseline; flex-wrap: wrap; }

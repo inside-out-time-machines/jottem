@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # Alleen http(s) in velden die als link of als RDF-identifier naar buiten gaan: een
 # `javascript:`-URI belandt anders in de publieke annotatie, het IIIF-manifest en de RDF.
@@ -175,8 +175,25 @@ class GebruikerRolUit(BaseModel):
     gekoppeld: bool              # False zolang de uitgenodigde nog niet heeft ingelogd
 
 
-class HerkenbaarCheckVraag(BaseModel):
-    mediaId: uuid.UUID
+class BeeldVraag(BaseModel):
+    """Verwijst naar één beeld: een geüpload origineel of een externe bron.
+
+    Beide controles vóór het indienen (herkenbare personen en de suggesties) werken op
+    hetzelfde beeld, en sinds de uploadflow ook voor een beeldbank-permalink en een
+    foto-URL de volgorde doorloopt, moeten ze allebei kunnen kiezen.
+    """
+    mediaId: uuid.UUID | None = None
+    externeBron: ExterneBronVraag | None = None
+
+    @model_validator(mode="after")
+    def eis_een_bron(self):
+        if not self.mediaId and not self.externeBron:
+            raise ValueError("geef een mediaId of een externeBron")
+        return self
+
+
+# oude naam, nog in gebruik als responsemodel-partner van /herkenbaar-check
+HerkenbaarCheckVraag = BeeldVraag
 
 
 class HerkenbaarCheckAntwoord(BaseModel):

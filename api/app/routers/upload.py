@@ -18,7 +18,7 @@ from ..models import (Media, MediaMetadata, MediaRelatie, MediaStatus, Project,
 from ..outbox import log
 from ..schemas import (
     MAX_BESTAND_MB, TOEGESTANE_TYPES, ExterneBronVraag, HerkenbaarCheckAntwoord,
-    HerkenbaarCheckVraag, JottemIndienen, SuggestiesAntwoord, UploadUrlAntwoord,
+    BeeldVraag, JottemIndienen, SuggestiesAntwoord, UploadUrlAntwoord,
     UploadUrlVraag,
 )
 
@@ -64,14 +64,33 @@ def externe_bron(vraag: ExterneBronVraag, p: Principal = Depends(principal)):
     }
 
 
-@router.post("/herkenbaar-check", response_model=HerkenbaarCheckAntwoord)
-def herkenbaar_check(vraag: HerkenbaarCheckVraag, p: Principal = Depends(principal)):
-    """Directe controle op herkenbare personen, na de upload en vóór het indienen
-    (Herkenbaar API); bij "ja" vraagt de frontend om de toestemmingsverklaring."""
+def _beeld_bytes(vraag: BeeldVraag) -> bytes | None:
+    """De bytes van het beeld waar een controle over gaat.
+
+    Een geüpload origineel komt uit de bucket; een beeldbank-permalink of foto-URL wordt
+    opgehaald zoals dat bij het indienen ook gebeurt (voor IIIF een verkleinde versie).
+    Levert None bij een externe bron die niet op te halen is; de aanroeper behandelt dat
+    als "niet bepaald", want deze controles zijn hulpsignalen.
+    """
+    if vraag.externeBron:
+        bron = bronnen.resolve(vraag.externeBron.soort, vraag.externeBron.url)
+        return bronnen.haal_beeld_bytes(bron)
     object_key = _object_key_voor(vraag.mediaId)
     if not object_key:
         raise HTTPException(409, "Bestand niet gevonden; upload eerst via de upload-URL")
-    gevonden, score = herkenbaar.check_object(object_key)
+    origineel = s3.intern().get_object(
+        Bucket=s3.settings().s3_bucket_originals, Key=object_key)
+    return origineel["Body"].read()
+
+
+@router.post("/herkenbaar-check", response_model=HerkenbaarCheckAntwoord)
+def herkenbaar_check(vraag: BeeldVraag, p: Principal = Depends(principal)):
+    """Directe controle op herkenbare personen, na de upload en vóór het indienen
+    (Herkenbaar API); bij "ja" vraagt de frontend om de toestemmingsverklaring."""
+    data = _beeld_bytes(vraag)
+    if data is None:
+        return HerkenbaarCheckAntwoord(herkenbaar=None, betrouwbaarheid=None)
+    gevonden, score = herkenbaar.check_bytes(data)
     return HerkenbaarCheckAntwoord(herkenbaar=gevonden, betrouwbaarheid=score)
 
 
@@ -100,17 +119,16 @@ def _controleer_geupload_bestand(object_key: str) -> None:
 
 
 @router.post("/suggesties", response_model=SuggestiesAntwoord)
-def suggesties_voor_upload(vraag: HerkenbaarCheckVraag, p: Principal = Depends(principal)):
+def suggesties_voor_upload(vraag: BeeldVraag, p: Principal = Depends(principal)):
     """Voorstellen voor titel, categorie en steekwoorden, na de upload en vóór het indienen.
 
     Draait tussen stap 1 en stap 2 van het formulier. Levert de dienst niets op (uit,
     storing, te traag), dan komen er lege velden terug en merkt de inzender daar niets van.
     """
-    object_key = _object_key_voor(vraag.mediaId)
-    if not object_key:
-        raise HTTPException(409, "Bestand niet gevonden; upload eerst via de upload-URL")
-    uitkomst = suggesties.voor_object(object_key)
-    return SuggestiesAntwoord(**uitkomst)
+    data = _beeld_bytes(vraag)
+    if data is None:
+        return SuggestiesAntwoord()
+    return SuggestiesAntwoord(**suggesties.voor_bytes(data))
 
 
 @router.post("/jottem", status_code=201)
