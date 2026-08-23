@@ -14,6 +14,19 @@ from .config import settings
 ANNO_PROFIEL = 'application/ld+json; profile="http://www.w3.org/ns/anno.jsonld"'
 
 
+def context() -> list:
+    """De JSON-LD-context van elke annotatie die het platform schrijft.
+
+    Naast de W3C-context staat hier de eigen naamsruimte, want `jottem:verrijking` en
+    `jottem:aard` zijn zonder die prefix onvindbaar. Eén definitie voor alle schrijvers:
+    de annotatieroutes, de afgeleide koppelingsannotaties en het herstel hieronder.
+    """
+    return [
+        "http://www.w3.org/ns/anno.jsonld",
+        {"jottem": f"{settings().publieke_basis_url}/ns/jottem.jsonld#"},
+    ]
+
+
 def _headers(extra: dict | None = None) -> dict:
     kop = {
         "Authorization": f"Bearer {settings().anno_api_key}",
@@ -50,6 +63,12 @@ def zorg_voor_container(client: httpx.Client, container: str, label: str) -> Non
         f"{settings().anno_url}/w3c/",
         headers=_headers({"Content-Type": ANNO_PROFIEL, "Slug": container}),
         json={
+            # AnnoRepo negeert deze context: ContainerPage.kt zet er bij het uitleveren
+            # zijn eigen [anno, ldp] voor in de plaats, en er is geen veld waarin een
+            # container een eigen prefix kan bewaren. Onze `jottem:`-prefix erbij zetten
+            # heeft dus geen effect; in de containerweergave op de annotatieserver blijven
+            # jottem:verrijking en jottem:aard daardoor onoplosbaar. De eigen
+            # verzamelroutes (/project/{id}/annotations) zetten de prefix er wel bij.
             "@context": ["http://www.w3.org/ns/anno.jsonld", "http://www.w3.org/ns/ldp.jsonld"],
             "type": ["BasicContainer", "AnnotationCollection"],
             "label": label,
@@ -93,6 +112,15 @@ def haal_annotatie(iri: str) -> dict:
 
 
 def vervang_annotatie(iri: str, annotatie: dict) -> dict:
+    """Overschrijf een annotatie; zonder context erin zetten we hem er alsnog bij.
+
+    AnnoRepo haalt `@context` weg uit de items van een containerlijst: die erven de
+    context van de pagina. Wie zo'n item leest, iets aanpast en terugschrijft, maakt de
+    gestripte vorm tot de opgeslagen vorm, en dan is de annotatie op haar eigen IRI
+    ineens geen JSON-LD meer (ook `type` en `body` zijn dan onvindbaar). Dat is hier
+    één keer misgegaan bij de naamsync; deze regel sluit die route af voor iedereen.
+    """
+    annotatie = {"@context": context(), **annotatie} if "@context" not in annotatie else annotatie
     with httpx.Client(timeout=15) as client:
         etag = _etag(client, iri)
         r = client.put(

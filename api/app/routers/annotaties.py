@@ -65,13 +65,6 @@ class AnnotatieIn(BaseModel):
     doelAnnotatie: str | None = None     # IRI, alleen bij verrijking == "reactie"
 
 
-def _context() -> list:
-    return [
-        "http://www.w3.org/ns/anno.jsonld",
-        {"jottem": f"{settings().publieke_basis_url}/ns/jottem.jsonld#"},
-    ]
-
-
 def _creator(gebruiker: Gebruiker) -> dict:
     return {
         "id": f"urn:uuid:{gebruiker.publiekeId}",
@@ -115,7 +108,7 @@ def _bouw_annotatie(media: Media, project: Project, gebruiker: Gebruiker,
         if not invoer.doelAnnotatie.startswith(basis):
             raise HTTPException(400, "De doelannotatie hoort niet bij deze jottem")
         return {
-            "@context": _context(),
+            "@context": anno.context(),
             "type": "Annotation",
             "motivation": REAGEREN_MOTIVATION,
             "target": invoer.doelAnnotatie,
@@ -147,7 +140,7 @@ def _bouw_annotatie(media: Media, project: Project, gebruiker: Gebruiker,
         target = jottem_uri
 
     annotatie: dict = {
-        "@context": _context(),
+        "@context": anno.context(),
         "type": "Annotation",
         "motivation": verrijking.motivation,
         "target": target,

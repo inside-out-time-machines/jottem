@@ -64,8 +64,7 @@ def partners_per_jottem(db: Session, media_ids: list[uuid.UUID]) -> dict[uuid.UU
 def _relatie_annotatie(media_id: uuid.UUID, partner_id: uuid.UUID) -> dict:
     """De afgeleide linking-annotatie, in de vorm uit het verrijkingenhoofdstuk."""
     return {
-        "@context": ["http://www.w3.org/ns/anno.jsonld",
-                     {"jottem": f"{settings().publieke_basis_url}/ns/jottem.jsonld#"}],
+        "@context": anno.context(),
         "type": "Annotation",
         "motivation": "linking",
         "target": jottem_uri(media_id),
