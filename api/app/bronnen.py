@@ -136,8 +136,14 @@ def _service_uit_canvas(canvas: dict) -> tuple[str | None, int | None, int | Non
 MANIFEST_VELDEN = {
     "datering": "datering", "datum": "datering", "jaar": "datering",
     "vervaardiger": "vervaardiger", "fotograaf": "vervaardiger", "maker": "vervaardiger",
-    "adres": "adres", "straat": "adres", "locatie": "adres",
+    "adres": "adres", "straat": "adres", "locatie": "adres", "plaatsnaam": "adres",
 }
+
+# labels waaronder een beeldbank de eigenlijke beschrijving kwijt kan
+BESCHRIJVING_LABELS = ("beschrijving", "omschrijving", "titel", "onderwerp")
+
+# sommige beeldbanken vullen het label met een plaatsaanduiding in plaats van een titel
+GEEN_TITEL = {"no title", "zonder titel", "untitled", "geen titel", ""}
 
 
 def _tekst(waarde: dict | None) -> str | None:
@@ -154,16 +160,42 @@ def _tekst(waarde: dict | None) -> str | None:
     return None
 
 
-def _manifest_metadata(manifest: dict) -> dict[str, str]:
-    """De herkende regels uit het metadata-blok van een manifest."""
+def _manifest_metadata(manifest: dict) -> tuple[dict[str, str], str | None]:
+    """De herkende regels uit het metadata-blok, plus de beschrijving als die er staat."""
     gevonden: dict[str, str] = {}
+    beschrijving: str | None = None
     for regel in manifest.get("metadata") or []:
         label = (_tekst(regel.get("label")) or "").strip().lower().rstrip(":")
-        veld = MANIFEST_VELDEN.get(label)
         waarde = _tekst(regel.get("value"))
-        if veld and waarde and veld not in gevonden:
+        if not waarde:
+            continue
+        if label in BESCHRIJVING_LABELS and not beschrijving:
+            beschrijving = waarde[:2000]
+        veld = MANIFEST_VELDEN.get(label)
+        if veld and veld not in gevonden:
             gevonden[veld] = waarde[:2000]
-    return gevonden
+    return gevonden, beschrijving
+
+
+def _bruikbare_titel(*kandidaten: str | None) -> str | None:
+    """De eerste kandidaat die als titel doorgaat.
+
+    Beeldbanken vullen het manifestlabel soms met "No title" of met een archiefcode van
+    het scanbestand; dan is de beschrijving uit het metadata-blok een betere titel. Een
+    hele beschrijving is te lang voor een titelveld, dus die knippen we bij de eerste punt.
+    """
+    for kandidaat in kandidaten:
+        if not kandidaat:
+            continue
+        schoon = kandidaat.strip()
+        if schoon.lower() in GEEN_TITEL:
+            continue
+        # archiefcodes als NL-GdSAMH_0440_58352_Fotocollectie_MH zijn geen titel
+        if "_" in schoon and " " not in schoon:
+            continue
+        eerste = schoon.split(". ")[0].strip(" .")
+        return (eerste if 3 <= len(eerste) <= 120 else schoon)[:120]
+    return None
 
 
 def _uit_manifest(manifest: dict, manifest_url: str, media_uuid: str | None) -> ExterneBron:
@@ -182,15 +214,17 @@ def _uit_manifest(manifest: dict, manifest_url: str, media_uuid: str | None) -> 
         raise HTTPException(422, "In het manifest is geen IIIF image service gevonden")
     # de service-URL komt uit het manifest van een derde: dezelfde eisen als aan invoer
     _eis_publieke_url(service)
+    velden, uit_metadata = _manifest_metadata(manifest)
+    beschrijving = _tekst(manifest.get("summary")) or uit_metadata
+    titel = _bruikbare_titel(_tekst(manifest.get("label")),
+                             _tekst(gekozen.get("label")), beschrijving)
     return ExterneBron(
         bron="iiif", bronUrl=manifest_url,
         previewUrl=iiif.afbeelding_url(service, breedte, hoogte, 1200),
         service=service, breedte=breedte, hoogte=hoogte, mimeType="image/jpeg",
         # de beeldbank heeft het materiaal al beschreven; die beschrijving overnemen
         # scheelt de inzender werk en levert betere metadata dan een leeg veld
-        titel=_tekst(gekozen.get("label")) or _tekst(manifest.get("label")),
-        beschrijving=_tekst(manifest.get("summary")),
-        metadata=_manifest_metadata(manifest) or None,
+        titel=titel, beschrijving=beschrijving, metadata=velden or None,
     )
 
 
