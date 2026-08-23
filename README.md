@@ -64,9 +64,11 @@ docker compose --profile prod up -d     # productie (externe S3 en MTA via .env)
    `docker compose exec authentik-worker ak apply_blueprint /blueprints/custom/<bestand>.yaml`.
 4. De redirect-URI's bij de social-loginproviders (Google, Microsoft, Facebook) omzetten
    naar de nieuwe `auth.`-host.
-5. Controleren wat er al gepubliceerd is: de JSON-LD-context
-   (`<frontend>/ns/jottem.jsonld`) en de annotatie-IRI's in AnnoRepo dragen het oude
-   domein. Dat is een gegevensmigratie, geen configuratie.
+5. Controleren wat er al gepubliceerd is: de annotatie-IRI's in AnnoRepo dragen de
+   naamsruimte van het oude domein. Dat is een gegevensmigratie, geen configuratie:
+   `docker compose exec worker celery -A app.worker call app.worker.migreer_annotatiecontext`.
+   Het vocabulaire zelf (`<datahost>/ns/jottem.jsonld`) en de frames volgen automatisch:
+   de API levert ze uit en zet de canonieke IRI om naar de host van deze omgeving.
 
 Vooraf controleren wat een `.env` oplevert kan zonder iets te starten:
 `docker compose --profile prod config | grep -E 'Host\(|JOTTEM_'`.
