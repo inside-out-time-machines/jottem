@@ -196,3 +196,27 @@ def test_koppeling_tussen_jottems(api: httpx.Client, organisatie: dict, project:
                       headers={"Accept": "application/ld+json"}).json()
         assert doc["@context"]["dcterms"] == "http://purl.org/dc/terms/"
         assert doc["dcterms:relation"], "koppeling ontbreekt in de RDF"
+
+
+def test_meerdere_steekwoorden(api: httpx.Client, organisatie: dict, project: dict):
+    """Alle steekwoorden van een jottem komen in schema:keywords, niet alleen de laatste.
+
+    De metadatarijen staan allemaal onder dezelfde veldnaam; wie ze tot een dict platslaat
+    houdt er één over. Deze toets bewaakt dat, want het is stil kapot: de upload slaagt,
+    de jottem verschijnt, en pas in de open data mist het grootste deel.
+    """
+    tegels = api.get(
+        f"/organisatie/{organisatie['slug']}/project/{project['slug']}/publiek"
+    ).json()["jottems"]
+    for tegel in tegels:
+        doc = api.get(f"/jottem/{tegel['mediaId']}",
+                      headers={"Accept": "application/ld+json"}).json()
+        woorden = doc.get("keywords")
+        if isinstance(woorden, list) and len(woorden) > 1:
+            assert len(woorden) == len(set(woorden)), "steekwoorden komen dubbel voor"
+            turtle = api.get(f"/jottem/{tegel['mediaId']}",
+                             headers={"Accept": "text/turtle"}).text
+            for woord in woorden:
+                assert f'"{woord}"' in turtle, f"{woord} ontbreekt in de Turtle"
+            return
+    pytest.skip("geen jottem met meer dan één steekwoord in dit project")
