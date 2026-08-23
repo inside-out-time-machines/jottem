@@ -11,6 +11,18 @@
       "inLanguage": {
         "@id": "https://schema.org/inLanguage",
         "@container": "@set"
+      },
+      "name": {
+        "@id": "https://schema.org/name",
+        "@language": "nl"
+      },
+      "description": {
+        "@id": "https://schema.org/description",
+        "@language": "nl"
+      },
+      "genre": {
+        "@id": "https://schema.org/genre",
+        "@language": "nl"
       }
     }
   ],

@@ -7,7 +7,8 @@
     {
       "keywords": {
         "@id": "https://schema.org/keywords",
-        "@container": "@set"
+        "@container": "@set",
+        "@language": "nl"
       },
       "about": {
         "@id": "https://schema.org/about",
@@ -28,6 +29,18 @@
       "dcterms:relation": {
         "@id": "http://purl.org/dc/terms/relation",
         "@container": "@set"
+      },
+      "name": {
+        "@id": "https://schema.org/name",
+        "@language": "nl"
+      },
+      "description": {
+        "@id": "https://schema.org/description",
+        "@language": "nl"
+      },
+      "genre": {
+        "@id": "https://schema.org/genre",
+        "@language": "nl"
       }
     }
   ],
