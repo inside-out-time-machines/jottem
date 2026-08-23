@@ -7,6 +7,8 @@ import gzip
 import httpx
 import pytest
 
+from tests.conftest import DATA
+
 
 def test_iiif_manifest(api: httpx.Client, jottem_id: str):
     antwoord = api.get(f"/jottem/{jottem_id}/iiif/manifest")
@@ -94,8 +96,27 @@ def test_annotatie_aggregaties(api: httpx.Client, organisatie: dict, project: di
         # en jottem:aard in deze representatie geen resolvebare termen
         context = collectie["@context"]
         assert context[0] == "http://www.w3.org/ns/anno.jsonld"
-        assert context[1]["jottem"].endswith("/ns/jottem.jsonld#")
+        assert context[1]["jottem"] == f"{DATA}/ns/jottem.jsonld#"
         assert "total" in collectie
+
+
+def test_naamsruimte_is_zelfconsistent(data: httpx.Client):
+    """Het vocabulaire moet op zijn eigen URL staan en zichzelf daar ook zo noemen.
+
+    De naamsruimte stond eerder als statisch bestand in de frontend met hardgecodeerde
+    dev-IRI's erin. Bij een domeinwissel zou het vocabulaire dan andere termen beschrijven
+    dan de data gebruikt, en dat is precies wat je niet merkt zonder deze toets.
+    """
+    antwoord = data.get("/ns/jottem.jsonld")
+    assert antwoord.status_code == 200
+    assert antwoord.headers["content-type"].startswith("application/ld+json")
+    assert antwoord.headers.get("access-control-allow-origin") == "*"
+    assert "max-age" in antwoord.headers.get("cache-control", "")
+    document = antwoord.json()
+    assert document["@context"]["jottem"] == f"{DATA}/ns/jottem.jsonld#"
+    # de termen zelf horen onder diezelfde URL te staan, niet onder een andere host
+    for term in document["@graph"]:
+        assert term["@id"].startswith(f"{DATA}/ns/jottem.jsonld#"), term["@id"]
 
 
 def test_annotatie_op_eigen_iri_heeft_context(api: httpx.Client, project: dict):
