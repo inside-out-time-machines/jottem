@@ -4,7 +4,8 @@ Celery beat pollt elke 10 seconden onverwerkte regels; per regel wordt (nu) de m
 verstuurd en verwerktOp gezet. Daarnaast: een dagelijkse bundeltaak voor de
 attenderingsmails (notificaties 10/11, max één mail per dag) en de naamsync naar de
 annotatieserver bij een profielwijziging. Latere iteraties haken hier de zoekindex-,
-RDF- en cache-purge-synchronisatie aan, plus de nachtelijke reconciliatiejob.
+RDF-synchronisatie aan, plus de nachtelijke reconciliatiejob. De cache-purge van de
+beeldketen loopt sinds de depublicatieroute mee in `_verwerk_regel`.
 """
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -62,6 +63,12 @@ def _verwerk_regel(db, regel: Gebeurtenislog) -> None:
         # de (lege) annotatiecontainer aanmaken: de containerlink wordt bij
         # publicatie al geadverteerd (detail, IIIF-manifest) en mag geen 404 zijn
         maak_annotatiecontainer(db, payload["mediaId"])
+    # 1b. depublicatie: het beeld uit de keten halen. Alleen de status omzetten liet
+    #     het derivaat in de bucket en de kopie in Varnish staan, zodat de foto na een
+    #     gehonoreerd verwijderverzoek nog dagenlang zichtbaar was (MO-5)
+    if regel.type == "jottem.gedepubliceerd" and payload.get("mediaId"):
+        from .beeldcache import schoon_beeldketen
+        schoon_beeldketen(uuid.UUID(payload["mediaId"]))
     # koppelingen (V-9): de afgeleide linking-annotaties gelijktrekken met de database,
     # aan beide kanten, zowel bij publiceren als bij depubliceren
     if regel.type in ("jottem.goedgekeurd", "jottem.gedepubliceerd") and payload.get("mediaId"):

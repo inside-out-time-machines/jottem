@@ -178,6 +178,11 @@ services:
       CANTALOUPE_S3SOURCE_SECRET_KEY: ${S3_SECRET_KEY}
       CANTALOUPE_S3SOURCE_BASICLOOKUPSTRATEGY_BUCKET_NAME: derivatives
       CANTALOUPE_ENDPOINT_IIIF_3_ENABLED: "true"
+      # bij depublicatie verdwijnt het derivaat uit de bucket. Zonder deze twee bleef
+      # Cantaloupe de info.json van een verwijderd beeld uit zijn geheugen serveren;
+      # nu controleert hij eerst de bron en gooit hij de cache weg als die weg is (MO-5)
+      CANTALOUPE_CACHE_SERVER_RESOLVE_FIRST: "true"
+      CANTALOUPE_CACHE_SERVER_PURGE_MISSING: "true"
       JAVA_OPTS: "-Xmx1g"
     depends_on:
       minio:
@@ -189,6 +194,9 @@ services:
     restart: unless-stopped
     environment:
       VARNISH_SIZE: 512M
+      # zonder sleutel weigert de vcl elke PURGE en BAN: publiek verkeer komt via
+      # Traefik binnen en zou anders op het interne adres door de acl heen glippen
+      VARNISH_BEHEERSLEUTEL: ${VARNISH_BEHEERSLEUTEL}
     volumes:
       - ./varnish/default.vcl:/etc/varnish/default.vcl:ro
     depends_on:
@@ -324,6 +332,8 @@ services:
       JOTTEM_BOOTSTRAP_BEHEERDER: ${BOOTSTRAP_BEHEERDER:-}
       JOTTEM_AMR_VERPLICHT: ${AMR_VERPLICHT:-1}
       JOTTEM_IIIF_BASIS_URL: ${IIIF_PUBLIEK:-https://iiif.${BASISDOMEIN}}
+      JOTTEM_VARNISH_URL: http://varnish
+      JOTTEM_VARNISH_SLEUTEL: ${VARNISH_BEHEERSLEUTEL}
       JOTTEM_HERKENBAAR_URL: http://herkenbaar:4050
       JOTTEM_SUGGESTIES_URL: ${SUGGESTIES_URL:-http://suggesties:4060}
       JOTTEM_ANNO_URL: http://annorepo:8080
@@ -369,6 +379,8 @@ services:
       JOTTEM_PUBLIEKE_BASIS_URL: ${WEB_PUBLIEK:-https://${WEB_HOST:-${BASISDOMEIN}}}
       JOTTEM_API_BASIS_URL: ${API_PUBLIEK:-https://api.${BASISDOMEIN}}
       JOTTEM_IIIF_BASIS_URL: ${IIIF_PUBLIEK:-https://iiif.${BASISDOMEIN}}
+      JOTTEM_VARNISH_URL: http://varnish
+      JOTTEM_VARNISH_SLEUTEL: ${VARNISH_BEHEERSLEUTEL}
       JOTTEM_ANNO_URL: http://annorepo:8080
       JOTTEM_ANNO_BASIS_URL: ${ANNO_PUBLIEK:-https://anno.${BASISDOMEIN}}
       JOTTEM_ANNO_API_KEY: ${ANNO_API_KEY}

@@ -27,6 +27,11 @@ class Settings(BaseSettings):
 
     # IIIF (Cantaloupe achter Varnish)
     iiif_basis_url: str = "https://iiif.dev.iotm.nl"
+    # de cache voor Cantaloupe; bij depublicatie gooit de worker daar het beeld uit.
+    # Zonder sleutel weigert Varnish die opdracht, en dat hoort ook: dan is er iets
+    # misgegaan in de configuratie en moet dat opvallen in plaats van stil doorgaan.
+    varnish_url: str = "http://varnish"
+    varnish_sleutel: str = ""
 
     # Herkenbaar API (interne container)
     herkenbaar_url: str = "http://herkenbaar:4050"

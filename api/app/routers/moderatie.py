@@ -28,12 +28,22 @@ _valkey = redis.Redis.from_url(settings().valkey_url, decode_responses=False)
 PAGINA_GROOTTE = 50
 
 
+def _dump_cache_leeg(project_id: uuid.UUID) -> None:
+    """De gzip-datadump van een project staat een uur in de cache.
+
+    Na een publicatie of depublicatie klopt die dump niet meer. Bij depublicatie is dat
+    meer dan een verversingskwestie: de teruggetrokken jottem zou dan nog een uur lang
+    in de open data staan, terwijl MO-5 juist belooft dat hij daaruit verdwijnt.
+    """
+    _valkey.delete(f"dump:{project_id}")
+
+
 def _raak_partners_aan(db: Session, media: Media) -> None:
     """Een koppeling verschijnt of verdwijnt ook bij de andere jottem (V-9).
 
     Die andere jottem verandert dus van inhoud zonder dat er iets aan hemzelf gebeurt:
     zijn wijzigingsDatum moet mee (anders geen Update in de Change Discovery-feed en een
-    verkeerde schema:dateModified) en de gecachte datadump van het project is verouderd.
+    verkeerde schema:dateModified).
     """
     partners = relaties.partner_ids(db, media.mediaId)
     if not partners:
@@ -41,7 +51,6 @@ def _raak_partners_aan(db: Session, media: Media) -> None:
     nu = datetime.now(timezone.utc)
     for partner in db.scalars(select(Media).where(Media.mediaId.in_(partners))):
         partner.wijzigingsDatum = nu
-    _valkey.delete(f"dump:{media.projectId}")
 
 
 def duurzame_url(media_id: uuid.UUID) -> str:
@@ -108,6 +117,7 @@ def depubliceren(
         raise HTTPException(409, "Alleen een gepubliceerde jottem kan worden gedepubliceerd")
     media.status = MediaStatus.gedepubliceerd
     _raak_partners_aan(db, media)
+    _dump_cache_leeg(media.projectId)
     log(db, "jottem.gedepubliceerd",
         organisatie_id=media.organisatieId, project_id=media.projectId,
         gebruikers_id=p.gebruiker.gebruikersId,
@@ -151,6 +161,7 @@ def beoordelen(
         media.afkeurReden = None
         media.publicatieDatum = media.wijzigingsDatum
         _raak_partners_aan(db, media)
+        _dump_cache_leeg(media.projectId)
         log(db, "jottem.goedgekeurd",
             organisatie_id=media.organisatieId, project_id=media.projectId,
             gebruikers_id=p.gebruiker.gebruikersId,
