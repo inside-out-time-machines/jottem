@@ -354,9 +354,10 @@ services:
       - traefik.docker.network=jottem_default
       - traefik.http.routers.api.rule=Host(`api.${BASISDOMEIN}`)
       - traefik.http.routers.api.tls.certresolver=letsencrypt
-      # datasetbeschrijving, dump en datacatalogus ook op data.dev (URI-strategie);
-      # de rest van data.dev is de statische open-data-pagina (service datapagina)
-      - traefik.http.routers.data.rule=Host(`data.${BASISDOMEIN}`) && (PathPrefix(`/project`) || Path(`/datacatalog`))
+      # datasetbeschrijving, dump, datacatalogus en de naamsruimte (het vocabulaire
+      # achter jottem: plus de frames) ook op data.dev (URI-strategie); de rest van
+      # data.dev is de statische open-data-pagina (service datapagina)
+      - traefik.http.routers.data.rule=Host(`data.${BASISDOMEIN}`) && (PathPrefix(`/project`) || Path(`/datacatalog`) || PathPrefix(`/ns`))
       - traefik.http.routers.data.priority=10
       - traefik.http.routers.data.tls.certresolver=letsencrypt
       - traefik.http.routers.data.service=api

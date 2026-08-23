@@ -1,0 +1,49 @@
+{
+  "@context": {
+    "@version": 1.1,
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "jottem": "https://data.iotm.nl/ns/jottem.jsonld#",
+    "label": { "@id": "rdfs:label", "@language": "nl" },
+    "comment": { "@id": "rdfs:comment", "@language": "nl" },
+    "aard": {
+      "@id": "jottem:aard",
+      "@type": "@vocab",
+      "@context": {
+        "@vocab": "https://data.iotm.nl/ns/jottem.jsonld#aard-"
+      }
+    },
+    "verrijking": { "@id": "jottem:verrijking" },
+    "betrouwbaarheid": { "@id": "jottem:betrouwbaarheid" }
+  },
+  "@graph": [
+    {
+      "@id": "https://data.iotm.nl/ns/jottem.jsonld#aard",
+      "@type": "rdf:Property",
+      "label": "Aard van de bijdrage",
+      "comment": "Onderscheidt een persoonlijke herinnering van een historisch verifieerbaar feit (V-4 uit het verrijkingenhoofdstuk van het Jottem-design). Waarden: 'herinnering' of 'feit'. Altijd zichtbaar in de weergave."
+    },
+    {
+      "@id": "https://data.iotm.nl/ns/jottem.jsonld#verrijking",
+      "@type": "rdf:Property",
+      "label": "Verrijkingstype",
+      "comment": "De sleutel van de verrijkingsmogelijkheid uit de Jottem-catalogus (bijv. herinnering, vlak, tag, vraag, bron, periode, begrip, zichtveld, reactie) waarmee deze annotatie is gemaakt."
+    },
+    {
+      "@id": "https://data.iotm.nl/ns/jottem.jsonld#betrouwbaarheid",
+      "@type": "rdf:Property",
+      "label": "Betrouwbaarheidsscore",
+      "comment": "Score (0-1) van een AI-suggestie; alleen aanwezig op annotaties met een generator. AI-gegenereerde inhoud draagt daarnaast een zichtbaar AI-label, conform de AI Act (V-6). Gereserveerd voor een latere fase."
+    },
+    {
+      "@id": "https://data.iotm.nl/ns/jottem.jsonld#aard-herinnering",
+      "label": "Herinnering",
+      "comment": "Een persoonlijke herinnering: waardevol als getuigenis, niet als vaststaand feit."
+    },
+    {
+      "@id": "https://data.iotm.nl/ns/jottem.jsonld#aard-feit",
+      "label": "Feit",
+      "comment": "Een historisch verifieerbaar gegeven, bij voorkeur met bronvermelding."
+    }
+  ]
+}

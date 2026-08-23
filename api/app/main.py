@@ -8,7 +8,7 @@ from . import s3
 from .config import settings
 from .db import engine
 from .routers import (
-    annotaties, dataset, jottem, mijn, moderatie, opendata, organisatiebeheer,
+    annotaties, dataset, jottem, mijn, moderatie, ns, opendata, organisatiebeheer,
     projectbeheer, publiek, termennetwerk, upload,
 )
 
@@ -44,8 +44,10 @@ OPEN_DATA_EINDEN = ("/annotations", "/activity-stream", "/rss", "/datacatalog", 
 
 
 def _is_open_data(pad: str) -> bool:
+    # /ns/ hoort er nadrukkelijk bij: een JSON-LD-verwerker in de browser dereferencet de
+    # naamsruimte en de frames, en loopt zonder deze regel op CORS stuk terwijl curl 200 geeft
     return ("/iiif/" in pad or pad.endswith(OPEN_DATA_EINDEN)
-            or pad.startswith("/jottem/") or pad == "/organisaties")
+            or pad.startswith(("/jottem/", "/ns/")) or pad == "/organisaties")
 
 
 @app.middleware("http")
@@ -85,6 +87,7 @@ app.include_router(mijn.router)
 app.include_router(publiek.router)
 app.include_router(annotaties.router)
 app.include_router(opendata.router)
+app.include_router(ns.router)
 
 
 @app.get("/healthz", tags=["Systeem"])
