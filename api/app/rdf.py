@@ -20,18 +20,6 @@ from .models import Gebruiker, Media, MediaStatus, Organisatie, Project
 ABOUT_VELDEN = ("persoon", "gebouw", "bedrijf", "gebeurtenis", "plaats")
 
 
-def nl(tekst: str | None) -> dict | None:
-    """Nederlandstalige tekst als taalgemerkte waarde.
-
-    Zonder taalmerk is een literal een kale xsd:string en weet een afnemer niet in
-    welke taal hij staat; `inLanguage` op het document zegt iets over het werk, niet
-    over elk veld. Alles wat een mens leest krijgt daarom @nl: titel, beschrijving,
-    steekwoorden en de labels bij term-URI's. Identificatoren, datums, formaten en
-    URL's niet, want die zijn niet in een taal geschreven.
-    """
-    return {"@value": tekst, "@language": "nl"} if tekst else None
-
-
 def jottem_uri(media_id: uuid.UUID | str) -> str:
     return f"{settings().publieke_basis_url}/jottem/{media_id}"
 
@@ -62,13 +50,26 @@ def jottem_jsonld(db: Session, media: Media,
     doc: dict = {
         # de externe context https://schema.org/ mapt kale termen naar
         # http://schema.org/; Turtle, de dump en de triplestore gebruiken
-        # https://schema.org/. Pinnen houdt alle serialisaties één graaf
+        # https://schema.org/. Pinnen houdt alle serialisaties één graaf.
+        #
+        # De velden die een mens leest krijgen hun taalmerk in de context in plaats
+        # van per waarde: zo blijft de JSON leesbaar ("keywords": ["menukaarten"])
+        # terwijl elke serialisatie er "menukaarten"@nl van maakt. Zonder taalmerk is
+        # een label een kale xsd:string, en dan weet een afnemer die een term-URI
+        # binnenhaalt niet in welke taal het label erbij staat. Identificatoren,
+        # datums, formaten en URL's blijven bewust ongemerkt: die staan niet in een taal.
         "@context": {"@vocab": "https://schema.org/",
-                     "dcterms": "http://purl.org/dc/terms/"},
+                     "dcterms": "http://purl.org/dc/terms/",
+                     "name": {"@id": "https://schema.org/name", "@language": "nl"},
+                     "description": {"@id": "https://schema.org/description",
+                                     "@language": "nl"},
+                     "genre": {"@id": "https://schema.org/genre", "@language": "nl"},
+                     "keywords": {"@id": "https://schema.org/keywords",
+                                  "@language": "nl"}},
         "@id": uri,
         "@type": "ImageObject",
-        "name": nl(media.titel),
-        "description": nl(media.beschrijving),
+        "name": media.titel,
+        "description": media.beschrijving,
         "license": media.licentie,
         "datePublished": media.publicatieDatum.isoformat() if media.publicatieDatum else None,
         "dateModified": media.wijzigingsDatum.isoformat(),
@@ -76,7 +77,7 @@ def jottem_jsonld(db: Session, media: Media,
         "publisher": {
             "@id": organisatie.website or f"{cfg.publieke_basis_url}/organisatie/{organisatie.slug}",
             "@type": "Organization",
-            "name": nl(organisatie.naam),
+            "name": organisatie.naam,
         },
         "isPartOf": {"@id": dataset_uri(media.projectId)},
         "encodingFormat": media.mimeType,
@@ -97,7 +98,7 @@ def jottem_jsonld(db: Session, media: Media,
         doc["thumbnailUrl"] = iiif.afbeelding_url(
             iiif_service, media.breedte, media.hoogte, 400)
     if media.genre:
-        doc["genre"] = nl(media.genre)
+        doc["genre"] = media.genre
         if metadata.get("genreUri"):
             doc["additionalType"] = {"@id": metadata["genreUri"]}
     if metadata.get("datering"):
@@ -126,20 +127,20 @@ def jottem_jsonld(db: Session, media: Media,
     steekwoorden = [w for veld, lijst in alle_waarden.items()
                     if veld.startswith("steekwoord") for w in lijst]
     if steekwoorden:
-        doc["keywords"] = [nl(woord) for woord in steekwoorden]
+        doc["keywords"] = steekwoorden
 
     # een steekwoord dat uit een thesaurus komt draagt een term-URI, opgeslagen onder
     # "<label>-termUri". Zo'n term is meer dan een woord: die gaat als schema:about de
     # graaf in, met het label en de URI, en is daarmee koppelbaar aan andere collecties.
     onderwerpen = [
-        {"@id": uri, "name": nl(veld[: -len("-termUri")])}
+        {"@id": uri, "name": veld[: -len("-termUri")]}
         for veld, uri in metadata.items() if veld.endswith("-termUri")
     ]
 
     about = []
     for veld in ABOUT_VELDEN:
         if metadata.get(veld):
-            item: dict = {"name": nl(metadata[veld])}
+            item: dict = {"name": metadata[veld]}
             if metadata.get(f"{veld}Uri"):
                 item["@id"] = metadata[f"{veld}Uri"]
             about.append(item)
@@ -147,7 +148,7 @@ def jottem_jsonld(db: Session, media: Media,
     if about:
         doc["about"] = about
     if metadata.get("archiefbron"):
-        bron: dict = {"name": nl(metadata["archiefbron"])}
+        bron: dict = {"name": metadata["archiefbron"]}
         if metadata.get("archiefbronUri"):
             bron["@id"] = metadata["archiefbronUri"]
         doc["subjectOf"] = bron
@@ -156,7 +157,7 @@ def jottem_jsonld(db: Session, media: Media,
     doc["mainEntityOfPage"] = {
         "@id": anno.container_url_publiek(str(media.mediaId)),
         "@type": "CreativeWork",
-        "name": nl("Webannotaties (W3C) bij deze jottem"),
+        "name": "Webannotaties (W3C) bij deze jottem",
     }
     # koppelingen naar jottems die hetzelfde object tonen (V-9); schema.org kent geen
     # generieke relatie tussen twee CreativeWorks, vandaar dcterms:relation. Alleen
