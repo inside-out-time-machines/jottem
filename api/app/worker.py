@@ -204,6 +204,51 @@ def hersync_rdf() -> int:
     return aantal
 
 
+@celery.task(name="app.worker.migreer_annotatiecontext")
+def migreer_annotatiecontext() -> dict:
+    """Zet de jottem-prefix in bestaande annotaties op de naamsruimte van deze omgeving.
+
+    Eenmalig te draaien na een verhuizing van de naamsruimte of van het domein. Niet in de
+    nachtelijke planning: dit is een gegevensmigratie, geen onderhoud.
+
+    Elke annotatie wordt op haar eigen IRI gelezen en niet uit de containerlijst: daar
+    heeft de annotatieserver `@context` al uit gehaald, en zo'n item terugschrijven is
+    precies de fout die de naamsync ooit maakte (zie anno.vervang_annotatie).
+    """
+    from . import anno, ns
+    from .models import Media
+
+    goed = anno.context()
+    db = SessionLocal()
+    geteld = {"bekeken": 0, "bijgewerkt": 0, "mislukt": 0}
+    try:
+        for media_id in db.scalars(select(Media.mediaId)):
+            for kort in anno.alle_annotaties(str(media_id)):
+                iri = kort.get("id")
+                if not iri:
+                    continue
+                geteld["bekeken"] += 1
+                try:
+                    volledig = anno.haal_annotatie(iri)
+                    if volledig.get("@context") == goed:
+                        continue
+                    zonder_id = {s: w for s, w in volledig.items() if s != "id"}
+                    # de context is hier aanwezig maar verouderd, en vervang_annotatie
+                    # vult alleen een ontbrekende context aan; dus expliciet meegeven
+                    anno.vervang_annotatie(iri, {**zonder_id, "@context": goed})
+                    geteld["bijgewerkt"] += 1
+                except Exception as fout:  # noqa: BLE001 - één annotatie mag de rest niet ophouden
+                    geteld["mislukt"] += 1
+                    print(f"migratie: {iri} mislukt: {fout}")
+    finally:
+        db.close()
+    # de aggregaties staan vijf minuten in de cache; zonder flush lijkt de migratie mislukt
+    for sleutel in _valkey.scan_iter("annotaties:*"):
+        _valkey.delete(sleutel)
+    print(f"migratie naar {ns.prefix()}: {geteld}")
+    return geteld
+
+
 def maak_annotatiecontainer(db, media_id: str) -> None:
     """Best effort: bestaat de container niet, dan maakt de eerste annotatie hem alsnog."""
     import httpx

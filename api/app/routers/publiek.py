@@ -165,10 +165,9 @@ def _aggregatie(db: Session, media_ids: list[uuid.UUID], collectie_id: str, labe
     for media_id in media_ids:
         items.extend(anno.alle_annotaties(str(media_id)))
     collectie = {
-        # dezelfde context als op de losse annotatie: zonder de jottem-prefix
-        # zijn jottem:verrijking en jottem:aard hier geen resolvebare termen
-        "@context": ["http://www.w3.org/ns/anno.jsonld",
-                     {"jottem": f"{settings().publieke_basis_url}/ns/jottem.jsonld#"}],
+        # dezelfde context als op de losse annotatie, uit dezelfde definitie: zonder de
+        # jottem-prefix zijn jottem:verrijking en jottem:aard hier geen resolvebare termen
+        "@context": anno.context(),
         "id": collectie_id,
         "type": "AnnotationCollection",
         "label": label,

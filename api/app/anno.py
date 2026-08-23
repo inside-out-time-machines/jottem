@@ -9,6 +9,7 @@ de actuele ETag; die halen we per operatie op.
 import httpx
 from fastapi import HTTPException
 
+from . import ns
 from .config import settings
 
 ANNO_PROFIEL = 'application/ld+json; profile="http://www.w3.org/ns/anno.jsonld"'
@@ -19,12 +20,10 @@ def context() -> list:
 
     Naast de W3C-context staat hier de eigen naamsruimte, want `jottem:verrijking` en
     `jottem:aard` zijn zonder die prefix onvindbaar. Eén definitie voor alle schrijvers:
-    de annotatieroutes, de afgeleide koppelingsannotaties en het herstel hieronder.
+    de annotatieroutes, de afgeleide koppelingsannotaties en het herstel hieronder. De
+    prefix komt uit `ns`, want het vocabulaire woont op de datahost (zie ns.py).
     """
-    return [
-        "http://www.w3.org/ns/anno.jsonld",
-        {"jottem": f"{settings().publieke_basis_url}/ns/jottem.jsonld#"},
-    ]
+    return ["http://www.w3.org/ns/anno.jsonld", {"jottem": ns.prefix()}]
 
 
 def _headers(extra: dict | None = None) -> dict:
