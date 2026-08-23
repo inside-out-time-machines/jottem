@@ -116,6 +116,14 @@ def jottem_jsonld(db: Session, media: Media,
     if steekwoorden:
         doc["keywords"] = steekwoorden
 
+    # een steekwoord dat uit een thesaurus komt draagt een term-URI, opgeslagen onder
+    # "<label>-termUri". Zo'n term is meer dan een woord: die gaat als schema:about de
+    # graaf in, met het label en de URI, en is daarmee koppelbaar aan andere collecties.
+    onderwerpen = [
+        {"@id": uri, "name": veld[: -len("-termUri")]}
+        for veld, uri in metadata.items() if veld.endswith("-termUri")
+    ]
+
     about = []
     for veld in ABOUT_VELDEN:
         if metadata.get(veld):
@@ -123,6 +131,7 @@ def jottem_jsonld(db: Session, media: Media,
             if metadata.get(f"{veld}Uri"):
                 item["@id"] = metadata[f"{veld}Uri"]
             about.append(item)
+    about.extend(onderwerpen)
     if about:
         doc["about"] = about
     if metadata.get("archiefbron"):

@@ -30,6 +30,9 @@ class Settings(BaseSettings):
 
     # Herkenbaar API (interne container)
     herkenbaar_url: str = "http://herkenbaar:4050"
+    # Suggesties API (interne container): titel, categorie en steekwoorden bij het
+    # uploaden. Leeg betekent uit; dan stelt het platform niets voor (V-5).
+    suggesties_url: str = ""
 
     # annotatieserver (AnnoRepo): intern schrijven met api-key, publiek lezen
     anno_url: str = "http://annorepo:8080"

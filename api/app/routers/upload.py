@@ -10,7 +10,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from .. import bronnen, herkenbaar, relaties, s3
+from .. import bronnen, herkenbaar, relaties, s3, suggesties
 from ..auth import Principal, principal
 from ..db import get_db
 from ..models import (Media, MediaMetadata, MediaRelatie, MediaStatus, Project,
@@ -18,7 +18,8 @@ from ..models import (Media, MediaMetadata, MediaRelatie, MediaStatus, Project,
 from ..outbox import log
 from ..schemas import (
     MAX_BESTAND_MB, TOEGESTANE_TYPES, ExterneBronVraag, HerkenbaarCheckAntwoord,
-    HerkenbaarCheckVraag, JottemIndienen, UploadUrlAntwoord, UploadUrlVraag,
+    HerkenbaarCheckVraag, JottemIndienen, SuggestiesAntwoord, UploadUrlAntwoord,
+    UploadUrlVraag,
 )
 
 router = APIRouter(tags=["Uploaden"])
@@ -96,6 +97,20 @@ def _controleer_geupload_bestand(object_key: str) -> None:
     if not any(begin.startswith(handtekening) for handtekening, _ in MAGISCHE_BYTES):
         client.delete_object(Bucket=bucket, Key=object_key)
         raise HTTPException(415, "Het bestand is geen JPG, PNG of TIFF")
+
+
+@router.post("/suggesties", response_model=SuggestiesAntwoord)
+def suggesties_voor_upload(vraag: HerkenbaarCheckVraag, p: Principal = Depends(principal)):
+    """Voorstellen voor titel, categorie en steekwoorden, na de upload en vóór het indienen.
+
+    Draait tussen stap 1 en stap 2 van het formulier. Levert de dienst niets op (uit,
+    storing, te traag), dan komen er lege velden terug en merkt de inzender daar niets van.
+    """
+    object_key = _object_key_voor(vraag.mediaId)
+    if not object_key:
+        raise HTTPException(409, "Bestand niet gevonden; upload eerst via de upload-URL")
+    uitkomst = suggesties.voor_object(object_key)
+    return SuggestiesAntwoord(**uitkomst)
 
 
 @router.post("/jottem", status_code=201)

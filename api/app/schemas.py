@@ -237,6 +237,20 @@ class VerrijkingUit(BaseModel):
     doel: str                            # heel | vlak | upload
 
 
+class SteekwoordSuggestie(BaseModel):
+    label: str
+    uri: str | None = None              # term-URI uit de CHT of de AAT
+    score: float | None = None
+
+
+class SuggestiesAntwoord(BaseModel):
+    """Voorstellen bij het uploaden (V-10); alles mag leeg zijn."""
+    titel: str | None = None
+    genre: str | None = None
+    steekwoorden: list[SteekwoordSuggestie] = []
+    model: str | None = None            # welke modellen het voorstel maakten (V-6)
+
+
 class GerelateerdeJottem(BaseModel):
     """Een jottem die hetzelfde object toont (V-9); getoond bij allebei de jottems."""
     mediaId: uuid.UUID

@@ -319,6 +319,16 @@ dialog.dialoog h2 { font-family: var(--kop); font-size: 1.35rem; margin-bottom: 
   margin-bottom: .2rem;
 }
 
+/* voorstellen bij het uploaden (V-10): klikbaar, nooit vanzelf ingevuld */
+.voorstel { font-size: .85rem; color: var(--grijs); margin-top: .35rem;
+  display: flex; gap: .4rem; align-items: baseline; flex-wrap: wrap; }
+.voorstel-knop {
+  font: inherit; font-size: .85rem; cursor: pointer;
+  background: var(--geel); color: var(--inkt);
+  border: 1px solid var(--kartonrand); border-radius: 99px; padding: .1rem .6rem;
+}
+.voorstel-knop:hover, .voorstel-knop:focus { background: var(--karton); }
+
 /* gekoppelde jottems: zelfde object, andere foto (V-9) */
 .gerelateerd-lijst { display: flex; flex-wrap: wrap; gap: .8rem; margin-top: 1rem; }
 .gerelateerd {

@@ -116,6 +116,28 @@ services:
     build: https://github.com/inside-out-time-machines/herkenbaar-api.git
     restart: unless-stopped
 
+  suggesties:
+    # suggesties bij het uploaden (titel, categorie, steekwoorden) - eigen repo, EUPL zoals
+    # het platform: de modellen zijn MIT en Apache-2.0, dus anders dan bij Herkenbaar werkt
+    # er geen AGPL door. Alleen in het dev-profiel zolang de dienst wordt beproefd (V-5).
+    profiles: ["dev"]
+    build: ../../suggesties-api
+    restart: unless-stopped
+    environment:
+      # meer threads is hier langzamer; zes is op deze machine gemeten het snelst
+      SUGGESTIES_THREADS: ${SUGGESTIES_THREADS:-6}
+    # de modellen houden ruim 2,5 GB vast; een grens voorkomt dat een geheugenlek de
+    # rest van de stack meesleurt
+    mem_limit: 6g
+    cpus: 8
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request;urllib.request.urlopen('http://127.0.0.1:4060/health',timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 180s
+      retries: 3
+
   mongo:
     # database voor AnnoRepo (annotatieserver); niet publiek ontsloten
     image: mongo:6.0.27
@@ -303,6 +325,7 @@ services:
       JOTTEM_AMR_VERPLICHT: ${AMR_VERPLICHT:-1}
       JOTTEM_IIIF_BASIS_URL: ${IIIF_PUBLIEK:-https://iiif.${BASISDOMEIN}}
       JOTTEM_HERKENBAAR_URL: http://herkenbaar:4050
+      JOTTEM_SUGGESTIES_URL: ${SUGGESTIES_URL:-http://suggesties:4060}
       JOTTEM_ANNO_URL: http://annorepo:8080
       JOTTEM_ANNO_BASIS_URL: ${ANNO_PUBLIEK:-https://anno.${BASISDOMEIN}}
       JOTTEM_ANNO_API_KEY: ${ANNO_API_KEY}

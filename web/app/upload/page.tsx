@@ -65,6 +65,11 @@ export default function UploadPagina() {
   const urlDialoog = useRef<HTMLDialogElement>(null);
 
   const [projectParam, setProjectParam] = useState<string | null>(null);
+  // voorstellen van de suggestiedienst (V-10): de inzender kiest, wij vullen niets
+  // ongevraagd in behalve een leeg veld. Blijft leeg als de dienst uitstaat of faalt.
+  const [voorstel, setVoorstel] = useState<
+    { titel: string | null; genre: string | null;
+      steekwoorden: { label: string; uri: string | null }[] } | null>(null);
   // titel en beschrijving komen uit het manifest van de beeldbank; dat vermelden we,
   // zodat de inzender weet dat het niet zijn eigen tekst is
   const [uitBeeldbank, setUitBeeldbank] = useState(false);
@@ -193,6 +198,7 @@ export default function UploadPagina() {
     setStap(1);
     setUitBeeldbank(false);
     setBronMetadata({});
+    setVoorstel(null);
   }
 
   /** Stap 1 afronden: een gekozen bestand nu al uploaden en laten controleren. */
@@ -246,6 +252,19 @@ export default function UploadPagina() {
         betrouwbaarheid: check.betrouwbaarheid ?? null,
       });
       setStap(2);
+      // de analyse loopt terwijl de inzender stap 2 invult; niet op wachten, en een
+      // storing blijft onzichtbaar (V-10)
+      fetch(`${API_PUBLIEK}/suggesties`, {
+        method: "POST", headers, body: JSON.stringify({ mediaId }),
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((v) => {
+          if (!v) return;
+          setVoorstel(v);
+          // een leeg veld vullen we alvast; wat de inzender zelf typte laten we staan
+          setTitel((huidig) => huidig || v.titel || "");
+        })
+        .catch(() => {});
     } catch (fout) {
       setMelding(`Er ging iets mis: ${(fout as Error).message}`);
     } finally {
@@ -434,7 +453,8 @@ export default function UploadPagina() {
             type="file"
             accept="image/jpeg,image/png,image/tiff"
             style={{ display: "none" }}
-            onChange={(e) => { setGeupload(null); setBestand(e.target.files?.[0] ?? null); }}
+            onChange={(e) => { setGeupload(null); setVoorstel(null);
+                               setBestand(e.target.files?.[0] ?? null); }}
           />
           <div className="bestand-knoppen">
             {wijzen.includes("bestand") && (
@@ -550,9 +570,23 @@ export default function UploadPagina() {
               Overgenomen uit de beeldbank. Je mag het aanpassen.
             </p>
           )}
+          {!uitBeeldbank && voorstel?.titel && titel === voorstel.titel && (
+            <p style={{ fontSize: ".85rem", color: "var(--grijs)", marginTop: ".3rem" }}>
+              Voorgesteld door de computer aan de hand van je foto. Klopt het niet? Pas het aan.
+            </p>
+          )}
         </div>
         <div className="veld">
           <label htmlFor="genre">Wat voor iets is dit?</label>
+          {voorstel?.genre && voorstel.genre !== genre && (
+            <p className="voorstel">
+              Voorstel:{" "}
+              <button type="button" className="voorstel-knop"
+                      onClick={() => setGenre(voorstel.genre!)}>
+                {voorstel.genre}
+              </button>
+            </p>
+          )}
           <select id="genre" value={genre} onChange={(e) => setGenre(e.target.value)}>
             {GENRES.map((g) => (
               <option key={g.waarde} value={g.waarde}>{g.waarde}</option>
@@ -577,6 +611,32 @@ export default function UploadPagina() {
             value={steekwoorden}
             onChange={(e) => setSteekwoorden(e.target.value)}
           />
+          {(voorstel?.steekwoorden?.length ?? 0) > 0 && (
+            <p className="voorstel">
+              Voorstel:{" "}
+              {voorstel!.steekwoorden
+                .filter((s) => !steekwoorden.toLowerCase().includes(s.label.toLowerCase()))
+                .map((s) => (
+                  <button
+                    key={s.label}
+                    type="button"
+                    className="voorstel-knop"
+                    title={s.uri ? `term: ${s.uri}` : undefined}
+                    onClick={() => {
+                      setSteekwoorden((h) => (h.trim() ? `${h.replace(/,\s*$/, "")}, ${s.label}` : s.label));
+                      // de term-URI bewaren onder de naam van het steekwoord zelf, zodat
+                      // de RDF-mapping het paar terugvindt; de achtervoegselnaam laat de
+                      // bestaande URL-validatie op de server zijn werk doen
+                      if (s.uri) {
+                        setBronMetadata((m) => ({ ...m, [`${s.label}-termUri`]: s.uri! }));
+                      }
+                    }}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+            </p>
+          )}
         </div>
         <div className="veld">
           <label>Waar was dit? (mag)</label>
