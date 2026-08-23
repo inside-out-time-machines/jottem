@@ -34,6 +34,14 @@ def test_organisatiebeheer_zonder_token(api: httpx.Client, organisatie: dict):
     assert api.get(f"/organisatie/{slug}/gebruikers").status_code == 401
 
 
+def test_beoordeelweergave_zonder_token(api: httpx.Client, jottem_id: str):
+    """De beoordeelweergave toont wie iets inzond en wat de Herkenbaar API meldde;
+    die gegevens horen achter een moderatorrol te blijven."""
+    assert api.get(f"/jottem/{jottem_id}/moderatie").status_code == 401
+    assert api.get(f"/jottem/{jottem_id}/moderatie",
+                   headers={"X-Dev-Sub": "dev-mona"}).status_code == 401
+
+
 def test_schrijfacties_zonder_token(api: httpx.Client, jottem_id: str):
     assert api.put(f"/jottem/{jottem_id}/status",
                    json={"besluit": "goedgekeurd"}).status_code == 401

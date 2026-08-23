@@ -246,6 +246,25 @@ class JottemDetail(BaseModel):
     gerelateerd: list["GerelateerdeJottem"] = []
 
 
+class JottemModeratie(BaseModel):
+    """Wat een moderator nodig heeft om te beslissen, boven op de detailweergave.
+
+    Deze velden staan bewust niet in JottemDetail: die weergave is ook de publieke
+    pagina, en de naam van de inzender hoort daar alleen te staan als hij dat zelf
+    heeft aangezet. Hier gaat het om een beoordeling binnen de eigen organisatie,
+    dus mag de moderator zien wie het inzond, wat de Herkenbaar API meldde en wat de
+    inzender over toestemming verklaarde.
+    """
+    detail: "JottemDetail"
+    inzenderNaam: str
+    inzenderNaamPubliek: bool            # komt de naam straks in de open data?
+    creatieDatum: datetime
+    herkenbaar: bool | None              # None = de dienst gaf geen uitsluitsel
+    herkenbaarScore: float | None
+    toestemming: str                     # nvt | ja | nee
+    afkeurReden: str | None = None
+
+
 class VerrijkingUit(BaseModel):
     sleutel: str
     label: str

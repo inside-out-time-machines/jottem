@@ -68,7 +68,7 @@ def _metadata_plat(media: Media) -> dict[str, str]:
     return {veld: ", ".join(waarden) for veld, waarden in per_veld.items()}
 
 
-def _detail(db: Session, media: Media) -> JottemDetail:
+def bouw_detail(db: Session, media: Media) -> JottemDetail:
     organisatie = db.get(Organisatie, media.organisatieId)
     project = db.get(Project, media.projectId)
     uploader = db.get(Gebruiker, media.uploaderId)
@@ -271,7 +271,7 @@ async def jottem_detail(
     if media.status == MediaStatus.gedepubliceerd:
         raise HTTPException(410, "Deze jottem is verwijderd")
     if media.status == MediaStatus.goedgekeurd:
-        return _detail(db, media)
+        return bouw_detail(db, media)
 
     if not authorization and not x_dev_sub:
         raise HTTPException(401, "Niet ingelogd")
@@ -283,4 +283,4 @@ async def jottem_detail(
            or p.heeft_rol(Rol.platformbeheerder))
     if not mag:
         raise HTTPException(403, "Geen toegang tot deze jottem")
-    return _detail(db, media)
+    return bouw_detail(db, media)

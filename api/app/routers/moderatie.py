@@ -17,7 +17,8 @@ from ..config import settings
 from ..db import get_db
 from ..models import Gebruiker, Media, MediaStatus, Organisatie, Rol
 from ..outbox import log
-from ..schemas import JottemKort, ModeratieBesluit
+from ..schemas import JottemKort, JottemModeratie, ModeratieBesluit
+from .jottem import bouw_detail
 
 router = APIRouter(tags=["Moderatie"])
 
@@ -93,6 +94,37 @@ def wachtrij(
         )
         for m in rijen
     ]
+
+
+@router.get("/jottem/{media_id}/moderatie", response_model=JottemModeratie)
+def beoordeelweergave(
+    media_id: uuid.UUID,
+    p: Principal = Depends(eis_rol(Rol.moderator)),
+    db: Session = Depends(get_db),
+):
+    """Alles wat nodig is om één bijdrage te beoordelen.
+
+    De wachtrij toont alleen titels; wie daarop moest beslissen, besliste blind. De
+    publiekspagina kon dat gat niet vullen, want die toont per definitie alleen
+    gepubliceerd materiaal, en de detailroute daarachter draait op de server zonder
+    de sessie van de moderator.
+    """
+    media = db.get(Media, media_id)
+    if not media:
+        raise HTTPException(404, "Jottem onbekend")
+    if not p.heeft_rol(Rol.moderator, media.organisatieId):
+        raise HTTPException(403, "Geen moderator van deze organisatie")
+    inzender = db.get(Gebruiker, media.uploaderId)
+    return JottemModeratie(
+        detail=bouw_detail(db, media),
+        inzenderNaam=inzender.naam,
+        inzenderNaamPubliek=bool(inzender.naamPubliek),
+        creatieDatum=media.creatieDatum,
+        herkenbaar=media.herkenbaar,
+        herkenbaarScore=media.herkenbaarScore,
+        toestemming=media.toestemming.value,
+        afkeurReden=media.afkeurReden,
+    )
 
 
 @router.delete("/jottem/{media_id}/publicatie", status_code=200)

@@ -256,6 +256,15 @@ table.lijst th { font-size: .82rem; letter-spacing: .1em; text-transform: upperc
 .polaroid img { max-width: 100%; height: auto; display: block; }
 .polaroid figcaption { font-family: var(--kop); font-style: italic; color: var(--grijs); font-size: .95rem; padding-top: .5rem; text-align: center; }
 
+/* beoordelen: het origineel op ware grootte tonen zonder de pagina op te blazen.
+   Er is nog geen IIIF-derivaat (dat komt pas bij goedkeuring), dus dit is een gewone
+   afbeelding via een tijdelijke link */
+.beoordeel-beeld {
+    max-width: 100%; max-height: 70vh; width: auto; height: auto;
+    border: 1px solid var(--kartonrand); border-radius: 4px;
+    background: var(--papier); box-shadow: var(--schaduw);
+}
+
 /* profielfoto's */
 .avatar {
     width: 1.6rem; height: 1.6rem; border-radius: 50%; object-fit: cover;

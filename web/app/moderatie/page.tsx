@@ -137,7 +137,7 @@ export default function ModeratiePagina() {
           {jottems.map((jottem) => (
             <tr key={jottem.mediaId}>
               <td data-label="Titel">
-                <a href={`/jottem/${jottem.mediaId}`}>{jottem.titel}</a>
+                <a href={`/moderatie/${jottem.mediaId}`}>{jottem.titel}</a>
                 {jottem.herkenbaar && (
                   <div>
                     <span
@@ -209,7 +209,7 @@ export default function ModeratiePagina() {
                   <div style={{ fontSize: ".85rem", color: "var(--grijs)" }}>door {rij.annotatie.creator.name}</div>
                 )}
                 {rij.mediaId && (
-                  <div style={{ fontSize: ".85rem" }}><a href={`/jottem/${rij.mediaId}`}>bekijk de jottem</a></div>
+                  <div style={{ fontSize: ".85rem" }}><a href={`/moderatie/${rij.mediaId}`}>bekijk de jottem</a></div>
                 )}
               </td>
               <td data-label="Reden">
