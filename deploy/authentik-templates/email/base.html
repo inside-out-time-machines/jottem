@@ -111,9 +111,11 @@ Kleuren uit de merkgids; systeemfonts, want webfonts zijn in mailclients onbetro
                 <table width="100%" style="background-color: #ffffff; border-spacing: 0; margin-top: 15px;">
                   <tr height="80">
                     <td align="center" style="padding: 20px 0;">
-                      {# maten als attribuut én inline: webmailclients strippen de head-CSS,
-                         en zonder maat rendert het 590x150-PNG op ware grootte en drukt het
-                         de hele kaart breed (590x150 op hoogte 40 = breedte 157) #}
+                      {% comment %}
+                        Maten als attribuut én inline: webmailclients strippen de head-CSS,
+                        en zonder maat rendert het 590x150-PNG op ware grootte en drukt het
+                        de hele kaart breed (590x150 op hoogte 40 = breedte 157).
+                      {% endcomment %}
                       <img src="{% block logo_url %}cid:logo{% endblock %}" border="0" alt="Jottem"
                            width="157" height="40" style="max-width: 100%; height: auto; max-height: 40px;"
                            class="flexibleImage logo">
