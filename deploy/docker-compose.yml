@@ -343,6 +343,7 @@ services:
       JOTTEM_DATA_BASIS_URL: ${DATA_PUBLIEK:-https://data.${BASISDOMEIN}}
       JOTTEM_SMTP_HOST: ${SMTP_HOST:-mailpit}
       JOTTEM_SMTP_PORT: ${SMTP_PORT:-1025}
+      JOTTEM_MAIL_AFZENDER: ${MAIL_AFZENDER:-noreply@iotm.nl}
     depends_on:
       postgres:
         condition: service_healthy
@@ -389,6 +390,7 @@ services:
       JOTTEM_DATA_BASIS_URL: ${DATA_PUBLIEK:-https://data.${BASISDOMEIN}}
       JOTTEM_SMTP_HOST: ${SMTP_HOST:-mailpit}
       JOTTEM_SMTP_PORT: ${SMTP_PORT:-1025}
+      JOTTEM_MAIL_AFZENDER: ${MAIL_AFZENDER:-noreply@iotm.nl}
     depends_on:
       postgres:
         condition: service_healthy

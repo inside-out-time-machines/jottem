@@ -55,6 +55,16 @@ def verstuur(slug: str, aan: str, context: dict) -> None:
     bericht["From"] = f'{context["organisatie"]["naam"]} <{cfg.mail_afzender}>'
     bericht["To"] = aan
     bericht["Subject"] = onderwerp
+    # RFC 8058 (one-click unsubscribe) op attenderingsmails: de uitschakellink
+    # bestaat al als ongeauthenticeerde POST-route (/attenderingen/uit); Gmail en
+    # Yahoo eisen deze headers bij echte bezorging. Transactionele mails hebben
+    # geen uitschakelUrl in de context en blijven zonder (bewust, zie het ontwerp).
+    if context.get("uitschakelUrl"):
+        bericht["List-Unsubscribe"] = (
+            f'<{context["uitschakelUrl"]}>, '
+            f'<mailto:{cfg.mail_afzender}?subject=unsubscribe>'
+        )
+        bericht["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
     bericht.set_content(tekst)
     try:
         html = _omgeving.get_template(f"{slug}.html.j2").render(**context)

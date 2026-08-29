@@ -20,7 +20,7 @@ De stack draait op **dev.iotm.nl** achter Traefik (TLS per hostnaam via Let's En
 met de HTTP-01-challenge): `api.dev.iotm.nl`, `auth.dev.iotm.nl` (Authentik),
 `iiif.dev.iotm.nl`, `anno.dev.iotm.nl`, `data.dev.iotm.nl`, `status.dev.iotm.nl`
 (Grafana), plus twee hosts die alleen in deze omgeving bestaan: `s3.dev.iotm.nl`
-(MinIO) en `mail.dev.iotm.nl` (Mailpit).
+(MinIO) en `mail.dev.iotm.nl` (Mailpit; sinds augustus 2026 verstuurt de dev-omgeving echt via de exim-relay op het privénet en is Mailpit de terugvaloptie, zie deploy/.env.example).
 
 ```sh
 cd deploy
