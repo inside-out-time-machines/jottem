@@ -113,7 +113,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     return {
       title: `${jottem.titel} · Jottem`,
       description: ogBeschrijving(jottem),
-      alternates: { canonical: `/jottem/${id}` },
+      alternates: {
+        canonical: `/jottem/${id}`,
+        // oEmbed-discovery (D-7): consumers vinden zo het embed voor deze jottem
+        types: {
+          "application/json+oembed": [{
+            url: `${SITE_URL}/oembed?url=${encodeURIComponent(`${SITE_URL}/jottem/${id}`)}&format=json`,
+            title: jottem.titel,
+          }],
+        },
+      },
     };
   } catch {
     return {};

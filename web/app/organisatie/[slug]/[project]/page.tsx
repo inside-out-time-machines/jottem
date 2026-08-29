@@ -1,4 +1,4 @@
-import { API_PUBLIEK, DATA_URL, apiServer } from "@/lib/api";
+import { API_PUBLIEK, DATA_URL, SITE_URL, apiServer } from "@/lib/api";
 import { notFound } from "next/navigation";
 import OpenGraph from "../../../open-graph";
 import { kopVoetCss, projectStijl } from "@/lib/kleuren";
@@ -48,13 +48,17 @@ export async function generateMetadata({
     return {
       title: `${project.naam} · ${project.organisatieNaam}`,
       description: project.oproep ?? project.beschrijving ?? undefined,
-      // de RSS-feed van dit project als alternate-link in de head
+      // de RSS-feed en het oEmbed-endpoint (D-7) als alternate-links in de head
       alternates: {
         canonical: pad,
         types: {
           "application/rss+xml": [{
             url: `${API_PUBLIEK}/project/${project.projectId}/rss`,
             title: `Nieuwe jottems in ${project.naam}`,
+          }],
+          "application/json+oembed": [{
+            url: `${SITE_URL}/oembed?url=${encodeURIComponent(`${SITE_URL}/organisatie/${slug}/${projectSlug}`)}&format=json`,
+            title: project.naam,
           }],
         },
       },
