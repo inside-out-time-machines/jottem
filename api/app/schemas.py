@@ -303,6 +303,28 @@ class JottemTegel(BaseModel):
     publicatieDatum: datetime | None
 
 
+class WidgetCta(BaseModel):
+    """Willekeurig gekozen actieve verrijkings-CTA voor widget en deelteksten (D-4/D-5)."""
+    sleutel: str
+    cta: str
+
+
+class ProjectWidget(BaseModel):
+    """Gegevens voor de inbedbare widgets (hoofdstuk Deelbaarheid, D-1)."""
+    projectId: uuid.UUID
+    naam: str
+    slug: str
+    organisatieSlug: str
+    organisatieNaam: str
+    kleurPrimair: str | None
+    logoUrl: str | None
+    beschrijving: str | None
+    oproep: str | None
+    aantalJottems: int
+    cta: WidgetCta | None
+    jottems: list[JottemTegel]
+
+
 class ProjectPubliek(BaseModel):
     projectId: uuid.UUID
     naam: str

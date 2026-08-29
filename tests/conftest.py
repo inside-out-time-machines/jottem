@@ -33,6 +33,12 @@ def data() -> httpx.Client:
 
 
 @pytest.fixture(scope="session")
+def site() -> httpx.Client:
+    with httpx.Client(base_url=SITE, timeout=TIMEOUT, follow_redirects=False) as client:
+        yield client
+
+
+@pytest.fixture(scope="session")
 def organisaties(api: httpx.Client) -> list[dict]:
     antwoord = api.get("/organisaties")
     antwoord.raise_for_status()

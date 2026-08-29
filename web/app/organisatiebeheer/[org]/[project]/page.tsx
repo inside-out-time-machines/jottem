@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { API_PUBLIEK, authHeaders, isIngelogd } from "@/lib/api";
+import { API_PUBLIEK, SITE_URL, authHeaders, isIngelogd } from "@/lib/api";
 import { startLogin } from "@/lib/oidc";
 import ProjectFormulier, { LEEG_PROJECT, ProjectVorm } from "../../project-formulier";
 
@@ -124,6 +124,55 @@ export default function ProjectBewerkPagina() {
           )}
         </section>
       )}
+
+      {project && <WidgetSectie org={org} projectSlug={projectSlug} />}
     </main>
+  );
+}
+
+const CODEBLOK_STIJL = {
+  background: "var(--papier)", border: "1px solid var(--kartonrand)",
+  borderRadius: ".3rem", padding: ".6rem", overflowX: "auto" as const,
+  fontSize: ".82rem", marginTop: ".4rem",
+};
+
+// Widgetlinks en voorbeeldcode voor de organisatiebeheerder (D-6): drie routes,
+// beide inbedvormen en een levend voorbeeld. Zie het hoofdstuk Deelbaarheid.
+function WidgetSectie({ org, projectSlug }: { org: string; projectSlug: string }) {
+  const basis = `${SITE_URL}/widget/${org}/${projectSlug}`;
+  const iframeVoorbeeld =
+    `<iframe src="${basis}/recent/3"\n`
+    + `        style="width:100%; height:220px; border:0" title="Jottem"></iframe>`;
+  const scriptVoorbeeld =
+    `<div id="jottem-widget"></div>\n`
+    + `<script async src="${SITE_URL}/widget.js"\n`
+    + `        data-doel="#jottem-widget"\n`
+    + `        data-src="${basis}/recent/3"></script>`;
+  return (
+    <section style={{ marginTop: "2.5rem", maxWidth: "42rem" }}>
+      <h2>Widgets</h2>
+      <p style={{ marginTop: ".4rem", fontSize: ".95rem", color: "var(--grijs)" }}>
+        Toon dit project op je eigen website. Er zijn drie widgets; plak de code
+        hieronder in je site (in WordPress: een &quot;Aangepaste HTML&quot;-blok).
+        Voeg <code>?stijl=neutraal</code> toe voor een variant zonder kleuraccent.
+      </p>
+      <ul style={{ marginTop: ".6rem", fontSize: ".95rem" }}>
+        <li><a href={basis} target="_blank" rel="noopener noreferrer">{basis}</a> - projectinfo</li>
+        <li><a href={`${basis}/recent/3`} target="_blank" rel="noopener noreferrer">{`${basis}/recent/3`}</a> - recentste jottems (1 t/m 12)</li>
+        <li><a href={`${basis}/willekeurig/4`} target="_blank" rel="noopener noreferrer">{`${basis}/willekeurig/4`}</a> - willekeurige jottems (1 t/m 12)</li>
+      </ul>
+      <h3 style={{ marginTop: "1.2rem" }}>Inbedden met een iframe</h3>
+      <pre style={CODEBLOK_STIJL}>{iframeVoorbeeld}</pre>
+      <h3 style={{ marginTop: "1.2rem" }}>Inbedden met een script</h3>
+      <p style={{ marginTop: ".2rem", fontSize: ".9rem", color: "var(--grijs)" }}>
+        De widget neemt dan het lettertype en de kleuren van je eigen site over.
+      </p>
+      <pre style={CODEBLOK_STIJL}>{scriptVoorbeeld}</pre>
+      <h3 style={{ marginTop: "1.2rem" }}>Zo zien ze eruit</h3>
+      <iframe src={basis} title="Voorbeeld: projectinfo-widget"
+              style={{ width: "100%", height: "180px", border: "1px solid var(--kartonrand)", borderRadius: ".3rem", marginTop: ".4rem" }} />
+      <iframe src={`${basis}/recent/3`} title="Voorbeeld: recente jottems-widget"
+              style={{ width: "100%", height: "220px", border: "1px solid var(--kartonrand)", borderRadius: ".3rem", marginTop: ".8rem" }} />
+    </section>
   );
 }

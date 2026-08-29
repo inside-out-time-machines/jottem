@@ -2,6 +2,7 @@
 aggregerende W3C AnnotationCollections per project en organisatie (AP-4)."""
 import json
 import math
+import random
 import uuid
 
 import redis
@@ -14,7 +15,8 @@ from .. import accept, anno, frames, iiif, s3
 from ..config import settings
 from ..db import get_db
 from ..models import Media, MediaStatus, Organisatie, Project
-from ..schemas import JottemTegel, OrganisatiePubliek, ProjectPubliek
+from ..schemas import JottemTegel, OrganisatiePubliek, ProjectPubliek, ProjectWidget, WidgetCta
+from ..verrijkingen import actieve_verrijkingen
 
 router = APIRouter(tags=["Publiek"])
 
@@ -145,6 +147,48 @@ def project_publiek(
         ],
         pagina=pagina,
         paginas=paginas,
+    )
+
+
+@router.get("/organisatie/{org_slug}/project/{project_slug}/widget", response_model=ProjectWidget)
+def project_widget(
+    org_slug: str, project_slug: str,
+    aantal: int = Query(default=4, ge=1, le=12),
+    volgorde: str = Query(default="recent", pattern="^(recent|willekeurig)$"),
+    db: Session = Depends(get_db),
+):
+    """Gegevens voor de inbedbare widgets (hoofdstuk Deelbaarheid, D-1): projectinfo,
+    de {aantal} recentste of willekeurige gepubliceerde jottems, en een willekeurige
+    actieve verrijkings-CTA (D-4). De widget-HTML zelf komt uit de webapplicatie."""
+    organisatie, project = _project(db, org_slug, project_slug)
+    orden = func.random() if volgorde == "willekeurig" else Media.publicatieDatum.desc()
+    rijen = db.scalars(
+        select(Media)
+        .where(Media.projectId == project.projectId, Media.status == MediaStatus.goedgekeurd)
+        .order_by(orden).limit(aantal)
+    ).all()
+    keuze = actieve_verrijkingen(project)
+    gekozen = random.choice(keuze) if keuze else None
+    return ProjectWidget(
+        projectId=project.projectId,
+        naam=project.naam,
+        slug=project.slug,
+        organisatieSlug=organisatie.slug,
+        organisatieNaam=organisatie.naam,
+        kleurPrimair=organisatie.kleurPrimair,
+        logoUrl=s3.presigned_get(organisatie.logo, bucket=settings().s3_bucket_thumbs)
+        if organisatie.logo else None,
+        beschrijving=project.beschrijving,
+        oproep=project.oproep,
+        aantalJottems=_aantal_gepubliceerd(db, project.projectId),
+        cta=WidgetCta(sleutel=gekozen.sleutel, cta=gekozen.cta) if gekozen else None,
+        jottems=[
+            JottemTegel(
+                mediaId=m.mediaId, titel=m.titel,
+                thumbnailUrl=thumbnail_url(m), publicatieDatum=m.publicatieDatum,
+            )
+            for m in rijen
+        ],
     )
 
 

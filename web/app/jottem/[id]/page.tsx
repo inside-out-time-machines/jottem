@@ -96,6 +96,15 @@ function ogBeschrijving(jottem: Detail) {
     ?? `Een jottem uit het project ${jottem.project} van ${jottem.organisatie}.`;
 }
 
+// De oproep achter de titel in og:title en de Web Share-tekst: een willekeurige,
+// binnen het project actieve verrijkings-CTA (D-5), zodat een gedeelde link meteen
+// om een concrete bijdrage vraagt en per deelmoment varieert. Zonder actieve
+// verrijkingen valt de oproep terug op de vaste tekst.
+function deelOproep(jottem: Detail): string {
+  const ctas = jottem.verrijkingen?.map((verrijking) => verrijking.cta) ?? [];
+  return ctas.length ? ctas[Math.floor(Math.random() * ctas.length)] : "weet jij hier meer van?";
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
@@ -133,7 +142,8 @@ export default async function JottemPagina({
   const kopVoet = kopVoetCss(jottem.organisatieKleurPrimair, jottem.organisatieKleurSecundair);
   // wat het deelmenu van het apparaat meekrijgt (zelfde oproep als in de preview)
   const deelUrl = `${SITE_URL}/jottem/${id}`;
-  const deelTekst = `${jottem.titel} - weet jij hier meer van?`;
+  const oproep = deelOproep(jottem);
+  const deelTekst = `${jottem.titel} - ${oproep}`;
 
   return (
     <main className="jottem-pagina"
@@ -146,8 +156,8 @@ export default async function JottemPagina({
       {jottem.status === "goedgekeurd" && (
         <OpenGraph
           type="article"
-          // uitnodigende titel in tijdlijnen: de jottem plus een oproep om mee te weten
-          titel={`${jottem.titel} - weet jij hier meer van?`}
+          // uitnodigende titel in tijdlijnen: de jottem plus een verrijkings-CTA (D-5)
+          titel={deelTekst}
           beschrijving={ogBeschrijving(jottem)}
           pad={`/jottem/${id}`}
           beeld={ogBeeld(jottem)}

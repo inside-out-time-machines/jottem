@@ -20,8 +20,9 @@ const config: NextConfig = {
         // Securityheaders voor de hele site. De OIDC-tokens staan in sessionStorage en de
         // pagina laadt drie externe viewerbundels (OpenSeadragon, Annotorious, MapLibre),
         // dus een script-injectie zou een geldig token kunnen wegsturen.
-        // alles behalve de jottempagina's: daar geldt de uitzondering hieronder
-        source: "/:pad((?!jottem/).*)",
+        // alles behalve de jottempagina's en de widgets: daar gelden de
+        // uitzonderingen hieronder (widgets moeten juist wél in een iframe kunnen)
+        source: "/:pad((?!jottem/|widget).*)",
         headers: [
           {
             key: "Content-Security-Policy",
@@ -89,6 +90,31 @@ const config: NextConfig = {
         // fonts zijn cross-origin en vereisen dus CORS (publiek, OFL-licentie)
         source: "/fonts/:path*",
         headers: [{ key: "Access-Control-Allow-Origin", value: "*" }],
+      },
+      {
+        // Inbedbare widgets (hoofdstuk Deelbaarheid, D-2): andere sites mogen deze
+        // routes framen (dus géén X-Frame-Options en frame-ancestors *) en widget.js
+        // mag de HTML cross-origin ophalen (ACAO *). De widget bevat geen scripts en
+        // geen ingelogde context; de CSP blijft verder strak. Cache korter dan het
+        // uurverloop van presigned logo-URL's uit de objectopslag.
+        source: "/widget/:pad*",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "default-src 'none'",
+              "style-src 'unsafe-inline'",
+              "img-src 'self' data: https:",
+              "frame-ancestors *",
+              "base-uri 'none'",
+              "form-action 'none'",
+            ].join("; "),
+          },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Access-Control-Allow-Origin", value: "*" },
+          { key: "Cache-Control", value: "public, max-age=900" },
+        ],
       },
     ];
   },
