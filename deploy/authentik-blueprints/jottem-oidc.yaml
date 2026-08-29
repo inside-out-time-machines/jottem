@@ -7,6 +7,49 @@ metadata:
   labels:
     blueprints.goauthentik.io/description: "Jottem webfrontend (OIDC, code + PKCE)"
 entries:
+  # Eigen uitlogflow: Authentik-sessie beëindigen en meteen terug naar de site.
+  # De standaardflows blijven óf de sessie behouden (provider-variant) óf tonen
+  # een kaal "Default Invalidation Flow"-scherm zonder weg terug; authentik
+  # negeert post_logout_redirect_uri, dus de redirect zit in de flow zelf.
+  - model: authentik_stages_user_logout.userlogoutstage
+    identifiers:
+      name: jottem-uitloggen-logout
+    state: present
+    attrs: {}
+
+  - model: authentik_stages_redirect.redirectstage
+    identifiers:
+      name: jottem-uitloggen-terug
+    state: present
+    attrs:
+      mode: static
+      target_static: !Format ["https://%s/", !Env [WEB_HOST, dev.iotm.nl]]
+
+  - model: authentik_flows.flow
+    identifiers:
+      slug: jottem-uitloggen
+    state: present
+    attrs:
+      name: Jottem uitloggen
+      title: Je bent uitgelogd
+      designation: invalidation
+
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !Find [authentik_flows.flow, [slug, jottem-uitloggen]]
+      order: 10
+    state: present
+    attrs:
+      stage: !Find [authentik_stages_user_logout.userlogoutstage, [name, jottem-uitloggen-logout]]
+
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !Find [authentik_flows.flow, [slug, jottem-uitloggen]]
+      order: 20
+    state: present
+    attrs:
+      stage: !Find [authentik_stages_redirect.redirectstage, [name, jottem-uitloggen-terug]]
+
   - model: authentik_providers_oauth2.oauth2provider
     id: jottem-provider
     identifiers:
@@ -17,11 +60,11 @@ entries:
       client_id: jottem-web
       authorization_flow:
         !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
-      # de flow mét user-logout-stage: uitloggen in de webapp beëindigt ook de
-      # Authentik-sessie (bewust; de provider-variant liet die staan, waardoor
-      # opnieuw inloggen stilzwijgend dezelfde gebruiker aanmeldde)
+      # eigen flow mét user-logout-stage en redirect terug naar de site (bewust:
+      # de provider-variant liet de Authentik-sessie staan, waardoor opnieuw
+      # inloggen stilzwijgend dezelfde gebruiker aanmeldde)
       invalidation_flow:
-        !Find [authentik_flows.flow, [slug, default-invalidation-flow]]
+        !Find [authentik_flows.flow, [slug, jottem-uitloggen]]
       signing_key:
         !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
       access_token_validity: hours=1
