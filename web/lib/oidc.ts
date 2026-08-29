@@ -90,9 +90,20 @@ export function ingelogdeNaam(): string | null {
   return sessionStorage.getItem("oidc_naam");
 }
 
-export function uitloggen(): void {
+export async function uitloggen(): Promise<void> {
   sessionStorage.removeItem("oidc_access_token");
   sessionStorage.removeItem("oidc_id_token");
   sessionStorage.removeItem("oidc_naam");
+  // RP-initiated logout: ook de Authentik-sessie beëindigen, anders meldt de
+  // volgende "Inloggen"-klik dezelfde gebruiker stilzwijgend opnieuw aan.
+  try {
+    const disco = await discovery();
+    if (disco.end_session_endpoint) {
+      window.location.href = disco.end_session_endpoint;
+      return;
+    }
+  } catch {
+    // discovery onbereikbaar: de app-sessie is in elk geval al gewist
+  }
   window.location.href = "/";
 }

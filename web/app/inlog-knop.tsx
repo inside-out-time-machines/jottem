@@ -49,7 +49,7 @@ export default function InlogKnop() {
           {foto && <img src={foto} alt="" className="avatar" />}
           {naam ?? "Mijn profiel"}
         </a>
-        <a href="#" onClick={(e) => { e.preventDefault(); uitloggen(); }}>Uitloggen</a>
+        <a href="#" onClick={(e) => { e.preventDefault(); void uitloggen(); }}>Uitloggen</a>
       </span>
     );
   }

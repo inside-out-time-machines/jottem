@@ -17,8 +17,11 @@ entries:
       client_id: jottem-web
       authorization_flow:
         !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      # de flow mét user-logout-stage: uitloggen in de webapp beëindigt ook de
+      # Authentik-sessie (bewust; de provider-variant liet die staan, waardoor
+      # opnieuw inloggen stilzwijgend dezelfde gebruiker aanmeldde)
       invalidation_flow:
-        !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+        !Find [authentik_flows.flow, [slug, default-invalidation-flow]]
       signing_key:
         !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
       access_token_validity: hours=1
