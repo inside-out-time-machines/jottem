@@ -1,0 +1,5 @@
+# Aanvullende Nederlandse vertalingen voor de authentik-BACKEND (Django gettext),
+# voor msgid's die in de meegeleverde /locale/nl/LC_MESSAGES/django.mo ontbreken en
+# daardoor Engels tonen. Formaat: msgid <tab> msgstr. Toegepast door
+# patch-backend-locale.sh; het resultaat wordt read-only over de catalogus gemount.
+Continue to confirm this email address.	Ga verder om dit e-mailadres te bevestigen.

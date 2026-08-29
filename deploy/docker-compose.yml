@@ -290,6 +290,9 @@ services:
       # tutoyeer-patch op de Nederlandse web-UI-vertaling (zie authentik-locale/
       # patch-locale.sh); de chunknaam wisselt per release: script opnieuw draaien
       - ./authentik-locale/chunks/H73SQ3W6.js:/web/dist/src/locales/chunks/H73SQ3W6.js:ro
+      # idem voor de backend-catalogus (Django gettext, zie patch-backend-locale.sh):
+      # vult msgid's aan die upstream nog onvertaald zijn
+      - ./authentik-locale/backend/nl-django.mo:/locale/nl/LC_MESSAGES/django.mo:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -308,6 +311,8 @@ services:
       - ./authentik-blueprints:/blueprints/custom:ro
       - ./authentik-assets/icon_left_brand.png:/web/icons/icon_left_brand.png:ro
       - ./authentik-templates:/templates:ro
+      # zelfde backend-vertaalpatch als op de server (mails renderen hier)
+      - ./authentik-locale/backend/nl-django.mo:/locale/nl/LC_MESSAGES/django.mo:ro
     depends_on:
       postgres:
         condition: service_healthy
