@@ -484,7 +484,7 @@ services:
       - /dev/disk:/dev/disk:ro
 
   postgres-exporter:
-    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.20.1
     restart: unless-stopped
     environment:
       DATA_SOURCE_NAME: postgresql://jottem:${POSTGRES_WACHTWOORD}@postgres:5432/jottem?sslmode=disable
