@@ -186,9 +186,13 @@ button.knop-secundair:hover, button.knop-secundair:focus { color: var(--inkt); }
 
 table.lijst { border-collapse: collapse; width: 100%; margin-top: 1.2rem; font-size: 1rem; }
 table.lijst th, table.lijst td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--kartonrand); vertical-align: top; }
-/* lange URL's (licentie, bron) mogen nooit horizontale scroll veroorzaken */
+/* lange URL's (bron) mogen nooit horizontale scroll veroorzaken */
 table.lijst td { overflow-wrap: anywhere; }
 table.lijst a { word-break: break-all; }
+/* de licentie staat er als korte naam, niet als URL: die mag niet middenin afbreken
+   ("CC BY 4.0" werd anders "CC BY 4." + "0"). Geldt ook voor de tekst in de dialoog. */
+table.lijst .licentie-naam, table.lijst dialog.dialoog a { word-break: normal; }
+table.lijst dialog.dialoog { overflow-wrap: break-word; }
 
 /* beheer- en moderatietabellen (.lijst.stapel): op kleine schermen wordt elke rij
    een kaartje met veldlabels (data-label) boven de waarden */
@@ -302,6 +306,17 @@ dialog.dialoog h2 { font-family: var(--kop); font-size: 1.35rem; margin-bottom: 
     }
 }
 .dialoog-knoppen { display: flex; gap: .7rem; flex-wrap: wrap; margin-top: 1.1rem; }
+
+/* licentie: de (i) achter de korte naam, opent de uitleg - zie de merkgids */
+.licentie-i {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 1.25em; height: 1.25em; margin-left: .3em; vertical-align: -.15em;
+    border: 1.5px solid var(--oranje); border-radius: 50%;
+    background: transparent; color: var(--roest);
+    font-family: var(--kop); font-style: italic; font-weight: 700;
+    font-size: .95em; line-height: 1; cursor: pointer; padding: 0;
+}
+.licentie-i:hover { background: var(--oranje); color: var(--wit); }
 
 /* gevaarlijke acties (verwijderen): rood, alleen op bevestigingspagina's */
 .knop-gevaar {
