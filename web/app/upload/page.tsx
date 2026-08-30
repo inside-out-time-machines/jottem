@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { API_PUBLIEK, authHeaders, isIngelogd } from "@/lib/api";
-import { licentieInfo } from "@/lib/licenties";
 import { startLogin } from "@/lib/oidc";
 import CameraOpname from "./camera-opname";
 import LocatieKiezer from "./locatie-kiezer";
 import Wachtverzachter from "./wachtverzachter";
+import Licentie from "../licentie";
 import { kopVoetCss, projectStijl } from "@/lib/kleuren";
 
 type Project = {
@@ -65,7 +65,6 @@ export default function UploadPagina() {
   const [urlFout, setUrlFout] = useState<string | null>(null);
   const [urlBezig, setUrlBezig] = useState(false);
   const bestandInput = useRef<HTMLInputElement>(null);
-  const licentieDialoog = useRef<HTMLDialogElement>(null);
   const urlDialoog = useRef<HTMLDialogElement>(null);
 
   const [projectParam, setProjectParam] = useState<string | null>(null);
@@ -135,7 +134,6 @@ export default function UploadPagina() {
   const gekozen = projectParam
     ? projecten.find((p) => p.pad === projectParam || p.projectId === projectParam)
     : undefined;
-  const licentie = licentieInfo(gekozen?.datasetLicentie ?? null);
   // per project ingeschakelde uploadwijzen (organisatiebeheerder); de server dwingt
   // ze bij het indienen ook af
   const wijzen = gekozen?.uploadWijzen ?? ["bestand", "camera", "beeldbank", "url"];
@@ -728,28 +726,22 @@ export default function UploadPagina() {
             </button>
           )}
         </div>
-        <label style={{ fontWeight: 400 }}>
-          <input
-            type="checkbox"
-            checked={licentieAkkoord}
-            onChange={(e) => setLicentieAkkoord(e.target.checked)}
-          />{" "}
-          Ik ga akkoord met de licentie van dit project
-          {licentie && (
-            <>
-              :{" "}
-              <a
-                href={gekozen?.datasetLicentie ?? "#"}
-                onClick={(e) => {
-                  e.preventDefault();
-                  licentieDialoog.current?.showModal();
-                }}
-              >
-                {licentie.naam}
-              </a>
-            </>
+        {/* de licentie staat naast het label, niet erin: een klik op de link of de (i)
+            mag het vinkje niet zetten, en de dialoog hoort niet in een <label> */}
+        <div>
+          <label style={{ fontWeight: 400 }}>
+            <input
+              type="checkbox"
+              checked={licentieAkkoord}
+              onChange={(e) => setLicentieAkkoord(e.target.checked)}
+            />{" "}
+            Ik ga akkoord met de licentie van dit project
+            {gekozen?.datasetLicentie ? ":" : ""}
+          </label>
+          {gekozen?.datasetLicentie && (
+            <> <Licentie url={gekozen.datasetLicentie} /></>
           )}
-        </label>
+        </div>
         <button className="knop knop-primair" type="submit" disabled={bezig}>
           {bezig ? "Bezig..." : "Verstuur je jottem"}
         </button>
@@ -757,28 +749,6 @@ export default function UploadPagina() {
       )}
       </form>
       {melding && <p className="memo" style={{ marginTop: "1.2rem" }}>{melding}</p>}
-
-      {licentie && (
-        <dialog ref={licentieDialoog} className="dialoog">
-          <h2>Wat betekent {licentie.naam}?</h2>
-          <p>{licentie.uitleg}</p>
-          <p style={{ marginTop: ".8rem", fontSize: ".95rem" }}>
-            De volledige regels lees je in{" "}
-            <a href={gekozen?.datasetLicentie ?? "#"} target="_blank" rel="noreferrer">
-              de licentietekst ({licentie.naam})
-            </a>.
-          </p>
-          <div className="dialoog-knoppen">
-            <button
-              type="button"
-              className="knop knop-primair"
-              onClick={() => licentieDialoog.current?.close()}
-            >
-              Duidelijk
-            </button>
-          </div>
-        </dialog>
-      )}
 
       <dialog ref={urlDialoog} className="dialoog">
         <form onSubmit={urlControleren}>

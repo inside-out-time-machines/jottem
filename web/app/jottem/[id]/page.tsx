@@ -4,6 +4,7 @@ import Deelnemer from "../../deelnemer";
 import { kopVoetCss, projectStijl } from "@/lib/kleuren";
 import Interactief, { Detail as InteractiefDetail } from "./interactief";
 import DeelKnop from "./deel-knop";
+import Licentie from "../../licentie";
 import { SITE_URL } from "@/lib/api";
 
 type Detail = InteractiefDetail & {
@@ -216,7 +217,7 @@ export default async function JottemPagina({
               <tr><th>Genre</th><td>{jottem.genre}</td></tr>
             )}
             {jottem.licentie && (
-              <tr><th>Licentie</th><td><a href={jottem.licentie}>{jottem.licentie}</a></td></tr>
+              <tr><th>Licentie</th><td><Licentie url={jottem.licentie} /></td></tr>
             )}
             {jottem.bronUrl && (
               <tr><th>Bron</th><td>

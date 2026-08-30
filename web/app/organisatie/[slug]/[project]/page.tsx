@@ -1,6 +1,7 @@
 import { API_PUBLIEK, DATA_URL, SITE_URL, apiServer } from "@/lib/api";
 import { notFound } from "next/navigation";
 import OpenGraph from "../../../open-graph";
+import Licentie from "../../../licentie";
 import { kopVoetCss, projectStijl } from "@/lib/kleuren";
 
 type JottemTegel = {
@@ -118,13 +119,15 @@ export default async function ProjectPagina({
       {project.beschrijving && (
         <p style={{ maxWidth: "42rem", marginTop: ".6rem" }}>{project.beschrijving}</p>
       )}
-      <p style={{ fontSize: ".9rem", color: "var(--grijs)", marginTop: ".6rem" }}>
+      {/* geen <p>: <Licentie> rendert een <dialog>, en die mag niet in een alinea staan
+          (de browser sluit de <p> dan vroegtijdig, wat de hydratatie breekt) */}
+      <div style={{ fontSize: ".9rem", color: "var(--grijs)", marginTop: ".6rem" }}>
         {project.aantalJottems} gepubliceerde jottems
         {project.periode ? ` · periode ${project.periode}` : ""}
         {project.datasetLicentie ? (
-          <> · licentie <a href={project.datasetLicentie}>{project.datasetLicentie.replace("https://creativecommons.org/licenses/", "CC ").replace("/4.0/", " 4.0").toUpperCase()}</a></>
+          <> · licentie <Licentie url={project.datasetLicentie} /></>
         ) : null}
-      </p>
+      </div>
       <p style={{ marginTop: "1rem" }}>
         <a className="knop knop-primair" href={`/upload?project=${project.organisatieSlug}/${project.slug}`}>
           Doe mee: upload je materiaal

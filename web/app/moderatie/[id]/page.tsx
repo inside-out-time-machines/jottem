@@ -4,6 +4,7 @@ import { use, useCallback, useEffect, useState } from "react";
 import { API_PUBLIEK, authHeaders, isIngelogd } from "@/lib/api";
 import { kopVoetCss, projectStijl } from "@/lib/kleuren";
 import { startLogin } from "@/lib/oidc";
+import Licentie from "../../licentie";
 
 // Wat de moderator ziet is meer dan de publiekspagina toont: die bestaat pas na
 // goedkeuring, en laat de inzender alleen zien als die dat zelf heeft aangezet.
@@ -206,7 +207,7 @@ export default function BeoordeelPagina({ params }: { params: Promise<{ id: stri
           </tr>
           <tr>
             <td data-label="Licentie"><strong>Licentie</strong></td>
-            <td>{detail.licentie ?? "geen"}</td>
+            <td>{detail.licentie ? <Licentie url={detail.licentie} /> : "geen"}</td>
           </tr>
           {detail.gerelateerd.length > 0 && (
             <tr>
