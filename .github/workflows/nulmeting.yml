@@ -11,11 +11,11 @@ jobs:
   contract:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
-      - run: pip install pytest httpx
+      - run: pip install pytest httpx rdflib
       - run: python -m pytest
         env:
           JOTTEM_API_URL: https://api.dev.iotm.nl
