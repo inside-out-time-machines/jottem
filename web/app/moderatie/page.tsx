@@ -18,13 +18,15 @@ type Jottem = {
   gerelateerdAanTitel: string | null;
 };
 
-// De organisatie komt uit de rollen van de ingelogde moderator; hardgecodeerd werkte
-// alleen zolang er één organisatie was.
+// De organisaties komen uit de rollen van de ingelogde moderator. Wie er meer dan één
+// modereert, krijgt een keuzemenu: eerder pakte de pagina simpelweg de eerste rol uit de
+// lijst, waardoor de wachtrij van de andere organisatie onbereikbaar was.
 type Rolregel = { rol: string; organisatieId: number | null; organisatieSlug?: string | null };
 
 // naam en huisstijl van de organisatie waarvoor je modereert: de moderatieomgeving
 // hoort in dezelfde kleuren te staan als het project waar het materiaal in landt
 type Organisatie = { naam: string; kleurPrimair: string | null; kleurSecundair: string | null };
+type Keuze = { slug: string; naam: string };
 
 type MeldingRij = {
   meldingId: number;
@@ -53,20 +55,45 @@ export default function ModeratiePagina() {
   const [melding, setMelding] = useState<string | null>(null);
   const [ingelogd, setIngelogd] = useState<boolean | null>(null);
   const [organisatie, setOrganisatie] = useState<string | null>(null);
+  const [mijnOrganisaties, setMijnOrganisaties] = useState<Keuze[]>([]);
   const [huisstijl, setHuisstijl] = useState<Organisatie | null>(null);
+
+  // de keuze in de URL houden: deelbaar, en terug in de geschiedenis werkt
+  function kiesOrganisatie(slug: string) {
+    setOrganisatie(slug);
+    const url = new URL(window.location.href);
+    url.searchParams.set("organisatie", slug);
+    window.history.replaceState(null, "", url);
+  }
 
   useEffect(() => {
     setIngelogd(isIngelogd());
     if (!isIngelogd()) return;
-    fetch(`${API_PUBLIEK}/mijn/profiel`, { headers: authHeaders() })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((profiel: { rollen?: Rolregel[] } | null) => {
-        const rol = profiel?.rollen?.find((r) => r.rol === "moderator" && r.organisatieSlug)
-          ?? profiel?.rollen?.find((r) => r.organisatieSlug);
-        setOrganisatie(rol?.organisatieSlug ?? null);
+    Promise.all([
+      fetch(`${API_PUBLIEK}/mijn/profiel`, { headers: authHeaders() })
+        .then((r) => (r.ok ? r.json() : null)),
+      fetch(`${API_PUBLIEK}/organisaties`).then((r) => (r.ok ? r.json() : [])),
+    ])
+      .then(([profiel, publiek]: [{ rollen?: Rolregel[] } | null, { slug: string; naam: string }[]]) => {
+        // de naam staat niet in de rollen, dus die halen we uit de publieke lijst;
+        // een organisatie zonder naam daar tonen we op zijn slug
+        const naam = new Map(publiek.map((o) => [o.slug, o.naam]));
+        const slugs = (profiel?.rollen ?? [])
+          .filter((r) => r.rol === "moderator" && r.organisatieSlug)
+          .map((r) => r.organisatieSlug as string);
+        const keuzes = [...new Set(slugs)].map((slug) => ({ slug, naam: naam.get(slug) ?? slug }));
+        keuzes.sort((a, b) => a.naam.localeCompare(b.naam, "nl"));
+        setMijnOrganisaties(keuzes);
+
+        // ?organisatie= wint, zodat een link naar een wachtrij deelbaar is; anders de
+        // eerste op alfabet, en dat is een keuze en geen toeval zoals eerst
+        const gevraagd = new URLSearchParams(window.location.search).get("organisatie");
+        const gekozen = keuzes.find((k) => k.slug === gevraagd) ?? keuzes[0];
+        if (gekozen) kiesOrganisatie(gekozen.slug);
       })
       .catch(() => {});
   }, []);
+
 
   useEffect(() => {
     if (!organisatie) return;
@@ -117,8 +144,12 @@ export default function ModeratiePagina() {
 
   const kleurStijl = projectStijl(huisstijl?.kleurPrimair, huisstijl?.kleurSecundair);
   const kopVoet = kopVoetCss(huisstijl?.kleurPrimair, huisstijl?.kleurSecundair);
+  // Geen href/precedence hier: React hijst zo'n stijl naar de head en dedupliceert op
+  // href, dus bij het wisselen van organisatie blijft het oude :root-blok staan en wint
+  // de laatst ingevoegde. Zonder die attributen is er één blok dat gewoon meebeweegt.
+  // (Op de andere pagina's kan de organisatie niet wisselen; daar is href juist goed.)
   const kopVoetBlok = kopVoet ? (
-    <style href={`organisatiekleuren-${organisatie}`} precedence="high">{kopVoet}</style>
+    <style>{kopVoet}</style>
   ) : null;
 
   if (ingelogd === null) {
@@ -141,11 +172,29 @@ export default function ModeratiePagina() {
     <main style={kleurStijl}>
       {kopVoetBlok}
       <h1>Moderatie</h1>
-      <p style={{ marginTop: ".5rem" }}>
-        Alle jottems van <strong>{huisstijl?.naam ?? "je organisatie"}</strong>.
-      </p>
+      {mijnOrganisaties.length > 1 ? (
+        // alleen tonen als er iets te kiezen valt; bij één organisatie zou het menu
+        // een keuze suggereren die er niet is
+        <p style={{ marginTop: ".5rem", display: "flex", alignItems: "baseline",
+                    gap: ".5rem", flexWrap: "wrap" }}>
+          <label htmlFor="moderatie-organisatie">Organisatie:</label>
+          <select
+            id="moderatie-organisatie"
+            value={organisatie ?? ""}
+            onChange={(e) => kiesOrganisatie(e.target.value)}
+          >
+            {mijnOrganisaties.map((o) => (
+              <option key={o.slug} value={o.slug}>{o.naam}</option>
+            ))}
+          </select>
+        </p>
+      ) : (
+        <p style={{ marginTop: ".5rem" }}>
+          Alle jottems van <strong>{huisstijl?.naam ?? "je organisatie"}</strong>.
+        </p>
+      )}
       {melding && <p className="memo" style={{ marginTop: "1rem" }}>{melding}</p>}
-      <table className="lijst stapel">
+      <table className="lijst stapel" id="wachtrij">
         <thead>
           <tr>
             <th>Titel</th>
