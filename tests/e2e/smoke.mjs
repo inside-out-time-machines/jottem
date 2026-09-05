@@ -48,11 +48,20 @@ async function vindDoelen() {
   return { org, project, jottemId: publiek.jottems[0].mediaId };
 }
 
+// Puppeteer meldt zich standaard als HeadlessChrome. Externe beeldbanken weren dat:
+// het IIIF-info.json van Memorix geeft dan ERR_FAILED, wat als CORS-fout in de console
+// belandt terwijl een gewone bezoeker de foto probleemloos ziet. Zo'n vals alarm maakt
+// de test onbetrouwbaar, dus doen we ons voor als een gewone Chrome.
+const USER_AGENT = process.env.JOTTEM_USER_AGENT
+  ?? "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
+     + "Chrome/131.0.0.0 Safari/537.36";
+
 async function open(browser, url) {
   const pagina = await browser.newPage();
   const fouten = [];
   pagina.on("console", (m) => { if (m.type() === "error") fouten.push(m.text()); });
   pagina.on("pageerror", (e) => fouten.push(String(e)));
+  await pagina.setUserAgent(USER_AGENT);
   await pagina.setViewport({ width: 1200, height: 900 });
   const antwoord = await pagina.goto(url, { waitUntil: "networkidle2" });
   await new Promise((r) => setTimeout(r, 3500));
