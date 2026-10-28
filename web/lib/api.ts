@@ -34,8 +34,10 @@ export function isIngelogd(): boolean {
   return typeof window !== "undefined" && Boolean(sessionStorage.getItem("oidc_access_token"));
 }
 
-export async function apiServer<T>(pad: string, init?: RequestInit): Promise<T> {
-  const antwoord = await fetch(`${API_INTERN}${pad}`, { cache: "no-store", ...init });
-  if (!antwoord.ok) throw new Error(`API ${pad}: ${antwoord.status}`);
-  return antwoord.json() as Promise<T>;
-}
+// Naam van de cookie waarin de browser het access-token ook zet, zodat server-gerenderde
+// pagina's (project- en jottempagina van een besloten project) weten wie er kijkt; zie
+// lib/api-server.ts en lib/oidc.ts. Alleen voor de web-host, niet voor de API.
+export const TOKEN_COOKIE = "jottem_token";
+
+// apiServer() staat in lib/api-server.ts: die leest de cookie via next/headers en hoort
+// daarom niet in dit bestand, dat ook door client-components wordt geïmporteerd.

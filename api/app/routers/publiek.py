@@ -11,7 +11,8 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .. import accept, anno, frames, iiif, s3
+from .. import accept, anno, frames, iiif, s3, toegang
+from ..auth import Principal, principal_optioneel
 from ..config import settings
 from ..db import get_db
 from ..models import Media, MediaStatus, Organisatie, Project
@@ -72,6 +73,7 @@ def organisatie_publiek(slug: str, db: Session = Depends(get_db)):
             "slug": project.slug,
             "oproep": project.oproep,
             "periode": project.periode,
+            "zichtbaarheid": project.zichtbaarheid,
             "afbeeldingUrl": s3.presigned_get(project.afbeelding, bucket=settings().s3_bucket_thumbs)
             if project.afbeelding else None,
             "aantalJottems": _aantal_gepubliceerd(db, project.projectId),
@@ -109,18 +111,28 @@ def _project(db: Session, org_slug: str, project_slug: str) -> tuple[Organisatie
 def project_publiek(
     org_slug: str, project_slug: str,
     pagina: int = Query(default=1, ge=1),
+    p: Principal | None = Depends(principal_optioneel),
     db: Session = Depends(get_db),
 ):
-    """Projectpagina: info + gepagineerd overzicht van gepubliceerde jottems."""
+    """Projectpagina: info + gepagineerd overzicht van gepubliceerde jottems.
+
+    Bij een besloten project blijft de projectinfo openbaar, maar krijgt alleen wie
+    toegang heeft (lid, beheerder of moderator van de organisatie) de jottems; voor de
+    rest zegt `toegang` of inloggen helpt ("inloggen") of niet ("geen-lid").
+    """
     organisatie, project = _project(db, org_slug, project_slug)
-    totaal = _aantal_gepubliceerd(db, project.projectId)
+    toegang_ = toegang.toegang_label(db, project, p)
+    if toegang_ == "ja":
+        totaal = _aantal_gepubliceerd(db, project.projectId)
+        rijen = db.scalars(
+            select(Media)
+            .where(Media.projectId == project.projectId, Media.status == MediaStatus.goedgekeurd)
+            .order_by(Media.publicatieDatum.desc())
+            .offset((pagina - 1) * PAGINA_GROOTTE).limit(PAGINA_GROOTTE)
+        ).all()
+    else:
+        totaal, rijen = 0, []
     paginas = max(1, math.ceil(totaal / PAGINA_GROOTTE))
-    rijen = db.scalars(
-        select(Media)
-        .where(Media.projectId == project.projectId, Media.status == MediaStatus.goedgekeurd)
-        .order_by(Media.publicatieDatum.desc())
-        .offset((pagina - 1) * PAGINA_GROOTTE).limit(PAGINA_GROOTTE)
-    ).all()
     return ProjectPubliek(
         projectId=project.projectId,
         naam=project.naam,
@@ -147,6 +159,8 @@ def project_publiek(
         ],
         pagina=pagina,
         paginas=paginas,
+        zichtbaarheid=project.zichtbaarheid,
+        toegang=toegang_,
     )
 
 
@@ -159,8 +173,12 @@ def project_widget(
 ):
     """Gegevens voor de inbedbare widgets (hoofdstuk Deelbaarheid, D-1): projectinfo,
     de {aantal} recentste of willekeurige gepubliceerde jottems, en een willekeurige
-    actieve verrijkings-CTA (D-4). De widget-HTML zelf komt uit de webapplicatie."""
+    actieve verrijkings-CTA (D-4). De widget-HTML zelf komt uit de webapplicatie.
+    Een besloten project heeft geen widgets: die zouden de afscherming van de
+    projectpagina op een externe site omzeilen (deelbaarheid, BE-8)."""
     organisatie, project = _project(db, org_slug, project_slug)
+    if toegang.is_besloten(project):
+        raise HTTPException(404, "Besloten project: geen widget")
     orden = func.random() if volgorde == "willekeurig" else Media.publicatieDatum.desc()
     rijen = db.scalars(
         select(Media)

@@ -134,7 +134,7 @@ def organisatie_verwijderen(
     """Verwijder een organisatie zonder jottems: de (lege) projecten en de
     rolkoppelingen gaan mee; het Gebeurtenislog blijft (ontkoppeld) bestaan."""
     from sqlalchemy import func, update
-    from ..models import Gebeurtenislog, Media
+    from ..models import Gebeurtenislog, Media, ProjectLid
 
     organisatie = _organisatie(db, slug)
     aantal_jottems = db.scalar(
@@ -157,6 +157,8 @@ def organisatie_verwijderen(
         db.execute(update(Gebeurtenislog)
                    .where(Gebeurtenislog.projectId == project.projectId)
                    .values(projectId=None))
+        for lid in db.scalars(select(ProjectLid).where(ProjectLid.projectId == project.projectId)):
+            db.delete(lid)
         db.delete(project)
     for gebruikerrol in db.scalars(select(GebruikerRol).where(
             GebruikerRol.organisatieId == organisatie.organisatieId)):

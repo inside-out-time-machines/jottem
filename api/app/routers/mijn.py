@@ -254,6 +254,7 @@ def organisaties(db: Session = Depends(get_db)):
             "projecten": [
                 {"projectId": str(pr.projectId), "naam": pr.naam, "slug": pr.slug,
                  "oproep": pr.oproep, "datasetLicentie": pr.datasetLicentie,
+                 "zichtbaarheid": pr.zichtbaarheid,
                  "uploadWijzen": actieve_upload_wijzen(pr),
                  "aantalJottems": aantallen.get(pr.projectId, 0),
                  "aantalAnnotaties": _aantal_annotaties(db, pr.projectId, verversen=False)}

@@ -55,6 +55,11 @@ class Settings(BaseSettings):
     # leeg = geen bootstrap. Stond eerder hardgecodeerd in seed.py en werd bij elke start
     # opnieuw gezet, waardoor een ingetrokken rol vanzelf terugkwam.
     bootstrap_beheerder: str = ""
+    # Authentik-API voor het aanmaken van accounts bij een projectuitnodiging (OB-8):
+    # service-account-token uit de blueprint jottem-api-serviceaccount; leeg = overslaan
+    # (de uitnodigingsmail gaat dan wel, maar "wachtwoord vergeten" werkt pas na registratie)
+    authentik_api_url: str = "http://authentik-server:9000"
+    authentik_api_token: str = ""
 
     # dev-bypass: alleen actief als dev_auth=1; NOOIT in productie
     dev_auth: bool = False

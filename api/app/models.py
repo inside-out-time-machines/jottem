@@ -96,6 +96,10 @@ class Project(Base):
     afbeelding: Mapped[str | None] = mapped_column(String(400))
     datasetLicentie: Mapped[str | None] = mapped_column(String(200))
     status: Mapped[str] = mapped_column(String(20), default="actief")  # actief | afgerond
+    # openbaar (standaard) of besloten: bij besloten toont de webapplicatie de jottems
+    # alleen aan leden (ProjectLid) en aan beheerders/moderatoren van de organisatie;
+    # de open data blijft openbaar (ontwerp: requirements, OB-7)
+    zichtbaarheid: Mapped[str] = mapped_column(String(20), default="openbaar")
     terminologiebronnen: Mapped[list | None] = mapped_column(JSON, default=list)
     # ingeschakelde verrijkingen (V-1): lijst van sleutels uit app.verrijkingen;
     # None = alle MVP-verrijkingen aan (de standaard)
@@ -138,6 +142,24 @@ class GebruikerRol(Base):
     rol: Mapped[Rol] = mapped_column(Enum(Rol, name="rol"))
 
     __table_args__ = (UniqueConstraint("gebruikersId", "organisatieId", "rol"),)
+
+
+class ProjectLid(Base):
+    """Ledenadministratie van een besloten project (OB-8).
+
+    Geen rol: een lid heeft geen GebruikerRol-rij en hoeft geen sterke factor. De
+    genodigde wordt als Gebruiker klaargezet (sub=None) en gekoppeld bij de eerste login,
+    zoals bij de rolluitnodigingen.
+    """
+    __tablename__ = "project_lid"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    projectId: Mapped[uuid.UUID] = mapped_column(ForeignKey("project.projectId"), index=True)
+    gebruikersId: Mapped[int] = mapped_column(ForeignKey("gebruiker.gebruikersId"), index=True)
+    uitgenodigdDoor: Mapped[int | None] = mapped_column(ForeignKey("gebruiker.gebruikersId"))
+    creatieDatum: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=nu)
+
+    __table_args__ = (UniqueConstraint("projectId", "gebruikersId"),)
 
 
 class Media(Base):

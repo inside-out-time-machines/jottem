@@ -32,6 +32,7 @@ Altijd beschikbaar: `organisatie.naam`, `organisatie.logoUrl`, `organisatie.kleu
 |---|---|
 | `uitnodiging-organisatiebeheerder` | `uitnodigerNaam`, `bevestigingsUrl`, `spelregelsUrl` |
 | `uitnodiging-moderator` | `uitnodigerNaam`, `bevestigingsUrl`, `spelregelsUrl`, `handreikingUrl` |
+| `uitnodiging-projectlid` | `uitnodigerNaam`, `projectNaam`, `projectUrl`, `wachtwoordUrl`, `alBekend` (true = al eens ingelogd: "log in" in plaats van de wachtwoordlink) |
 | `jottem-goedgekeurd` | `jottemTitel`, `jottemUrl`, `projectNaam` |
 | `jottem-afgekeurd` | `jottemTitel`, `afkeurReden`, `herindienUrl` |
 | `moderatie-digest` | `aantalWachtend`, `wachtrij[]` (`titel`, `projectNaam`, `ingediendOp`), `wachtrijUrl` |

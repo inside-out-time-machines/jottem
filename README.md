@@ -76,6 +76,16 @@ Vooraf controleren wat een `.env` oplevert kan zonder iets te starten:
 Secrets staan uitsluitend in `.env` (buiten git); de deploy-configuratie zelf is
 publiek en hoort dus nooit geheimen te bevatten.
 
+**Besloten projecten.** Een organisatiebeheerder zet een project op openbaar (standaard)
+of besloten en nodigt bij een besloten project leden uit (naam, e-mail). De
+uitnodigingsmail linkt naar de wachtwoord-vergeten-flow, dus de API maakt bij uitnodigen
+het Authentik-account aan via een service-account (blueprint
+`jottem-api-serviceaccount`, token `JOTTEM_AUTHENTIK_TOKEN` in `.env`; de blueprint zet
+dat token in Authentik, de API gebruikt het). Zonder token gaat de mail wel, maar moet de
+genodigde zich eerst registreren. De afscherming geldt voor de webapplicatie
+(projectpagina, jottem-pagina's, widgets, oEmbed); de open data van een besloten project
+blijft openbaar.
+
 Lokale smoke-test zonder Traefik (alles op 127.0.0.1:81xx):
 
 ```sh

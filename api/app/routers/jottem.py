@@ -6,12 +6,12 @@ geeft een 303 naar de publiekspagina). Gedepubliceerd = 410 tombstone.
 """
 import uuid
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
-from .. import accept, anno, frames, iiif, relaties, s3
-from ..auth import Principal, principal
+from .. import accept, anno, frames, iiif, relaties, s3, toegang
+from ..auth import Principal, principal_optioneel
 from ..config import settings
 from ..db import get_db
 from ..models import Gebruiker, Media, MediaStatus, Organisatie, Project, Rol
@@ -74,7 +74,7 @@ def _metadata_plat(media: Media) -> dict[str, str]:
     return {veld: ", ".join(waarden) for veld, waarden in per_veld.items()}
 
 
-def bouw_detail(db: Session, media: Media) -> JottemDetail:
+def bouw_detail(db: Session, media: Media, kijker: Principal | None = None) -> JottemDetail:
     organisatie = db.get(Organisatie, media.organisatieId)
     project = db.get(Project, media.projectId)
     uploader = db.get(Gebruiker, media.uploaderId)
@@ -124,11 +124,14 @@ def bouw_detail(db: Session, media: Media) -> JottemDetail:
             for v in actieve_verrijkingen(project)
         ] if gepubliceerd else [],
         # jottems die hetzelfde object tonen (V-9); beide richtingen, alleen gepubliceerde
+        # en alleen uit projecten die de kijker mag zien (een besloten project lekt niet
+        # via een openbare buur)
         gerelateerd=[
-            GerelateerdeJottem(mediaId=p.mediaId, titel=p.titel,
-                               thumbnailUrl=thumbnail_url(p),
-                               url=f"{settings().publieke_basis_url}/jottem/{p.mediaId}")
-            for p in relaties.gepubliceerde_partners(db, media.mediaId)
+            GerelateerdeJottem(mediaId=partner.mediaId, titel=partner.titel,
+                               thumbnailUrl=thumbnail_url(partner),
+                               url=f"{settings().publieke_basis_url}/jottem/{partner.mediaId}")
+            for partner in relaties.gepubliceerde_partners(db, media.mediaId)
+            if toegang.mag_project_zien(db, db.get(Project, partner.projectId), kijker)
         ] if gepubliceerd else [],
     )
 
@@ -262,16 +265,17 @@ def jottem_annotaties(media_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.get("/jottem/{media_id}/detail", response_model=JottemDetail)
-async def jottem_detail(
+def jottem_detail(
     media_id: uuid.UUID,
-    request: Request,
+    p: Principal | None = Depends(principal_optioneel),
     db: Session = Depends(get_db),
-    authorization: str | None = Header(default=None),
-    x_dev_sub: str | None = Header(default=None),
 ):
     """Detailweergave voor de frontend.
 
     Gepubliceerd materiaal is publiek: de publiekspagina rendert hiermee zonder login.
+    Uitzondering: hoort de jottem bij een besloten project, dan is een login vereist
+    (401) van een lid, beheerder of moderator van de organisatie (anders 403); de
+    open-data-representaties van dezelfde jottem blijven openbaar (BE-8).
     Alles daarbuiten (nieuw, afgekeurd) is alleen voor de inzender, een moderator van de
     eigen organisatie of een platformbeheerder - anders zou deze route presigned
     originelen van ongemodereerd materiaal weggeven. Gedepubliceerd is voor iedereen weg
@@ -284,11 +288,11 @@ async def jottem_detail(
     if media.status == MediaStatus.gedepubliceerd:
         raise HTTPException(410, "Deze jottem is verwijderd")
     if media.status == MediaStatus.goedgekeurd:
-        return bouw_detail(db, media)
+        toegang.eis_project_toegang(db, db.get(Project, media.projectId), p)
+        return bouw_detail(db, media, p)
 
-    if not authorization and not x_dev_sub:
+    if p is None:
         raise HTTPException(401, "Niet ingelogd")
-    p: Principal = await principal(request, db, authorization, x_dev_sub, None, None)
     eigen = media.uploaderId == p.gebruiker.gebruikersId
     mag = (eigen
            or p.heeft_rol(Rol.moderator, media.organisatieId)
@@ -296,4 +300,4 @@ async def jottem_detail(
            or p.heeft_rol(Rol.platformbeheerder))
     if not mag:
         raise HTTPException(403, "Geen toegang tot deze jottem")
-    return bouw_detail(db, media)
+    return bouw_detail(db, media, p)

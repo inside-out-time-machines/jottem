@@ -10,7 +10,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from .. import bronnen, herkenbaar, relaties, s3, suggesties
+from .. import bronnen, herkenbaar, relaties, s3, suggesties, toegang
 from ..auth import Principal, principal
 from ..db import get_db
 from ..models import (Media, MediaMetadata, MediaRelatie, MediaStatus, Project,
@@ -142,6 +142,8 @@ def jottem_indienen(
         raise HTTPException(404, "Project onbekend; de projectkeuze is verplicht")
     if not vraag.licentieBevestigd:
         raise HTTPException(422, "Bevestig de licentie van het project")
+    # besloten project: alleen leden, beheerders en moderatoren dragen bij (GE-5)
+    toegang.eis_project_toegang(db, project, p)
 
     # de organisatiebeheerder bepaalt per project welke uploadwijzen aan staan; een
     # cameraopname komt als gewoon bestand binnen, dus bestand en camera tellen hier

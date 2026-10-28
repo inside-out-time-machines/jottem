@@ -274,6 +274,7 @@ services:
       AUTHENTIK_EMAIL__PORT: ${SMTP_PORT:-1025}
       AUTHENTIK_EMAIL__FROM: ${MAIL_AFZENDER:-noreply@iotm.nl}
       GRAFANA_OIDC_SECRET: ${GRAFANA_OIDC_SECRET}
+      JOTTEM_AUTHENTIK_TOKEN: ${JOTTEM_AUTHENTIK_TOKEN:-}
       # social login (client-ids/secrets uit .env; gebruikt door jottem-social-login.yaml)
       SOCIAL_GOOGLE_CLIENT_ID: ${SOCIAL_GOOGLE_CLIENT_ID:-}
       SOCIAL_GOOGLE_CLIENT_SECRET: ${SOCIAL_GOOGLE_CLIENT_SECRET:-}
@@ -335,6 +336,8 @@ services:
       JOTTEM_DEV_AUTH: ${DEV_AUTH:-0}
       # bij een lege database wordt dit adres platformbeheerder (uitnodigingspatroon)
       JOTTEM_BOOTSTRAP_BEHEERDER: ${BOOTSTRAP_BEHEERDER:-}
+      JOTTEM_AUTHENTIK_API_URL: http://authentik-server:9000
+      JOTTEM_AUTHENTIK_API_TOKEN: ${JOTTEM_AUTHENTIK_TOKEN:-}
       JOTTEM_AMR_VERPLICHT: ${AMR_VERPLICHT:-1}
       JOTTEM_IIIF_BASIS_URL: ${IIIF_PUBLIEK:-https://iiif.${BASISDOMEIN}}
       JOTTEM_VARNISH_URL: http://varnish

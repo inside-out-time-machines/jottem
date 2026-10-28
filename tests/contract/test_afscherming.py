@@ -34,6 +34,16 @@ def test_organisatiebeheer_zonder_token(api: httpx.Client, organisatie: dict):
     assert api.get(f"/organisatie/{slug}/gebruikers").status_code == 401
 
 
+def test_ledenbeheer_zonder_token(api: httpx.Client, project: dict):
+    """De ledenadministratie van een project (OB-8) is beheerwerk: 401 zonder token,
+    ook voor het intrekken."""
+    project_id = project["projectId"]
+    assert api.get(f"/project/{project_id}/leden").status_code == 401
+    assert api.post(f"/project/{project_id}/leden",
+                    json={"naam": "Test", "email": "test@example.org"}).status_code == 401
+    assert api.delete(f"/project/{project_id}/lid/1").status_code == 401
+
+
 def test_beoordeelweergave_zonder_token(api: httpx.Client, jottem_id: str):
     """De beoordeelweergave toont wie iets inzond en wat de Herkenbaar API meldde;
     die gegevens horen achter een moderatorrol te blijven."""

@@ -5,19 +5,22 @@ project; verwijderen kan daarom alleen bij een leeg project dat niet het laatste
 (anders 409). Terminologiebronnen per project sturen straks de upload- en
 annotatieschermen (Termennetwerk).
 """
+import re
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from .. import s3
+from .. import authentik, s3
 from ..auth import Principal, eis_sterke_factor, principal
 from ..config import settings
 from ..db import get_db
-from ..models import Media, Organisatie, Project, Rol
+from ..models import Gebruiker, Media, Organisatie, Project, ProjectLid, Rol
 from ..outbox import log
-from ..schemas import AfbeeldingUploadVraag, ProjectIn, ProjectUit
+from ..schemas import (
+    AfbeeldingUploadVraag, ProjectIn, ProjectLidIn, ProjectLidUit, ProjectUit,
+)
 
 router = APIRouter(tags=["Projecten"])
 
@@ -49,6 +52,7 @@ def _uit(db: Session, project: Project, organisatie_slug: str) -> ProjectUit:
         afbeeldingUrl=s3.presigned_get(project.afbeelding, bucket=settings().s3_bucket_thumbs) if project.afbeelding else None,
         datasetLicentie=project.datasetLicentie,
         status=project.status,
+        zichtbaarheid=project.zichtbaarheid,
         terminologiebronnen=project.terminologiebronnen or [],
         verrijkingen=project.verrijkingen,
         uploadWijzen=project.uploadWijzen,
@@ -140,11 +144,104 @@ def project_verwijderen(
     # het Gebeurtenislog overleeft mutaties: regels ontkoppelen in plaats van blokkeren
     from ..models import Gebeurtenislog
     db.execute(update(Gebeurtenislog).where(Gebeurtenislog.projectId == project.projectId).values(projectId=None))
+    for lid in db.scalars(select(ProjectLid).where(ProjectLid.projectId == project.projectId)):
+        db.delete(lid)
     db.delete(project)
     log(db, "project.verwijderd", organisatie_id=organisatie.organisatieId,
         gebruikers_id=p.gebruiker.gebruikersId, payload={"slug": project.slug})
     db.commit()
     return {"status": "verwijderd"}
+
+
+# ---------- ledenadministratie van besloten projecten (OB-8) ----------
+
+def _lid_uit(lid: ProjectLid, gebruiker: Gebruiker) -> ProjectLidUit:
+    return ProjectLidUit(
+        gebruikersId=gebruiker.gebruikersId, naam=gebruiker.naam, email=gebruiker.email,
+        gekoppeld=gebruiker.sub is not None, creatieDatum=lid.creatieDatum,
+    )
+
+
+@router.get("/project/{project_id}/leden", response_model=list[ProjectLidUit])
+def leden(
+    project_id: uuid.UUID,
+    p: Principal = Depends(principal),
+    db: Session = Depends(get_db),
+):
+    project, _ = project_met_rechten(db, project_id, p)
+    rijen = db.execute(
+        select(ProjectLid, Gebruiker).join(Gebruiker, Gebruiker.gebruikersId == ProjectLid.gebruikersId)
+        .where(ProjectLid.projectId == project.projectId)
+        .order_by(Gebruiker.naam)
+    )
+    return [_lid_uit(lid, gebruiker) for lid, gebruiker in rijen]
+
+
+@router.post("/project/{project_id}/leden", status_code=201)
+def lid_uitnodigen(
+    project_id: uuid.UUID,
+    vraag: ProjectLidIn,
+    p: Principal = Depends(principal),
+    db: Session = Depends(get_db),
+):
+    """Klaarzetpatroon zoals bij de rollen (organisatiebeheer.uitnodigen), maar zonder rol
+    en zonder sterke factor voor het lid. Omdat de mail naar de wachtwoord-vergeten-flow
+    linkt, krijgt een nieuwe genodigde meteen een account in Authentik."""
+    project, organisatie = project_met_rechten(db, project_id, p)
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", vraag.email):
+        raise HTTPException(422, "Geen geldig e-mailadres")
+
+    gebruiker = db.scalar(select(Gebruiker).where(Gebruiker.email == vraag.email))
+    if not gebruiker:
+        gebruiker = Gebruiker(sub=None, naam=vraag.naam, email=vraag.email)
+        db.add(gebruiker)
+        db.flush()
+    if db.scalar(select(ProjectLid).where(ProjectLid.projectId == project.projectId,
+                                          ProjectLid.gebruikersId == gebruiker.gebruikersId)):
+        raise HTTPException(409, "Deze gebruiker is al lid van het project")
+    lid = ProjectLid(projectId=project.projectId, gebruikersId=gebruiker.gebruikersId,
+                     uitgenodigdDoor=p.gebruiker.gebruikersId)
+    db.add(lid)
+
+    # al eens ingelogd (sub bekend): dan bestaat het account al en volstaat "log in"
+    al_bekend = gebruiker.sub is not None
+    account = "bestond" if al_bekend else authentik.zorg_voor_account(gebruiker.email, gebruiker.naam)
+
+    cfg = settings()
+    log(db, "project.lid_uitgenodigd",
+        organisatie_id=organisatie.organisatieId, project_id=project.projectId,
+        gebruikers_id=p.gebruiker.gebruikersId,
+        payload={"genodigde": gebruiker.gebruikersId, "account": account,
+                 "mail": {"template": "uitnodiging-projectlid", "aan": gebruiker.email,
+                          "context": {
+                              "ontvangerNaam": gebruiker.naam,
+                              "uitnodigerNaam": p.gebruiker.naam,
+                              "projectNaam": project.naam,
+                              "projectUrl": f"{cfg.publieke_basis_url}/organisatie/{organisatie.slug}/{project.slug}",
+                              "wachtwoordUrl": f"{cfg.oidc_issuer.split('/application/')[0]}/if/flow/jottem-wachtwoord-herstel/",
+                              "alBekend": al_bekend,
+                          }}})
+    db.commit()
+    return {"gebruikersId": gebruiker.gebruikersId, "account": account, "status": "uitgenodigd"}
+
+
+@router.delete("/project/{project_id}/lid/{gebruikers_id}", status_code=204)
+def lid_intrekken(
+    project_id: uuid.UUID,
+    gebruikers_id: int,
+    p: Principal = Depends(principal),
+    db: Session = Depends(get_db),
+):
+    project, organisatie = project_met_rechten(db, project_id, p)
+    lid = db.scalar(select(ProjectLid).where(ProjectLid.projectId == project.projectId,
+                                             ProjectLid.gebruikersId == gebruikers_id))
+    if not lid:
+        raise HTTPException(404, "Deze gebruiker is geen lid van het project")
+    db.delete(lid)
+    log(db, "project.lid_ingetrokken",
+        organisatie_id=organisatie.organisatieId, project_id=project.projectId,
+        gebruikers_id=p.gebruiker.gebruikersId, payload={"gebruiker": gebruikers_id})
+    db.commit()
 
 
 @router.post("/project/{project_id}/afbeelding-upload")
