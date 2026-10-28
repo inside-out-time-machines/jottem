@@ -118,6 +118,10 @@ export function Veld({
   );
 }
 
+// leesbaarder opschrift voor een statuswaarde; de rest toont de waarde zelf
+const STATUS_OPSCHRIFT: Record<string, string> = { goedgekeurd: "goed-gekeurd" };
+
 export function StatusPil({ soort, children }: { soort: string; children: ReactNode }) {
-  return <span className={`status-pil status-${soort}`}>{children}</span>;
+  const opschrift = typeof children === "string" ? (STATUS_OPSCHRIFT[children] ?? children) : children;
+  return <span className={`status-pil status-${soort}`}>{opschrift}</span>;
 }
