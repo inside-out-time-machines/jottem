@@ -203,7 +203,7 @@ button.knop-secundair:hover, button.knop-secundair:focus { color: var(--inkt); }
 }
 
 .status-pil {
-    display: inline-block; font-size: .6em; font-weight: 700; letter-spacing: .06em;
+    display: inline-block; font-size: .5em; font-weight: 700; letter-spacing: .06em;
     text-transform: uppercase; padding: .15rem .6rem; border-radius: 999px;
     text-align: center;
 }
