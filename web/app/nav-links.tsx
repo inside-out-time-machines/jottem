@@ -31,7 +31,7 @@ export default function NavLinks() {
   return (
     <>
       {isModerator && <a href="/moderatie">Moderatie</a>}
-      {isOrganisatiebeheerder && <a href="/organisatiebeheer">Organisatie</a>}
+      {isOrganisatiebeheerder && <a href="/organisatiebeheer">Organisatiebeheer</a>}
       {isPlatformbeheerder && <a href="/beheer">Platformbeheer</a>}
     </>
   );
