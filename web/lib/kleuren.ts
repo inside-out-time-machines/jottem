@@ -102,6 +102,9 @@ export function kopVoetCss(
     // het woordmerk in de header is wit; op een licht vlak maakt invert het zwart
     if (kopTekst === INKT) regels.push("--kop-logo-filter:invert(1)");
   }
+  // de actieve-paginamarkering in het menu: de secundaire kleur van de organisatie
+  // (zonder organisatie het Jottem-oranje, zie .topbar nav a[aria-current] in globals.css)
+  if (secundair) regels.push(`--kop-accent:${secundair}`);
   const voetTekst = tekstOp(secundair);
   if (secundair && voetTekst) {
     regels.push(`--voet-vlak:${secundair}`, `--voet-tekst:${voetTekst}`);

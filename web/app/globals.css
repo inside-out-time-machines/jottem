@@ -65,9 +65,10 @@ a:hover { color: var(--oranje); }
 .topbar a { color: var(--kop-tekst, var(--papier)); text-decoration: none; font-weight: 600; }
 .topbar nav { margin-left: auto; display: flex; gap: 1.1rem; font-size: .95rem; }
 /* actieve pagina in het menu (aria-current uit nav-links.tsx / inlog-knop.tsx):
-   oranje onderstreping, het accent uit de merkgids */
+   onderstreping in de secundaire organisatiekleur (--kop-accent uit lib/kleuren.ts),
+   zonder organisatie het Jottem-oranje uit de merkgids */
 .topbar nav a[aria-current="page"] {
-    text-decoration: underline; text-decoration-color: var(--oranje);
+    text-decoration: underline; text-decoration-color: var(--kop-accent, var(--oranje));
     text-decoration-thickness: 2px; text-underline-offset: .35em;
 }
 .topbar .proto { font-size: .7rem; letter-spacing: .1em; text-transform: uppercase;
@@ -111,7 +112,7 @@ a:hover { color: var(--oranje); }
     .topbar nav.menu-open > span { flex-direction: column; gap: .5rem; padding: .4rem 0; }
     /* in het uitgeklapte menu: geen onderstreping maar een linkerbies en een licht vlak */
     .topbar nav.menu-open a[aria-current="page"] {
-        text-decoration: none; border-left: 4px solid var(--oranje);
+        text-decoration: none; border-left: 4px solid var(--kop-accent, var(--oranje));
         background: color-mix(in srgb, currentColor 12%, transparent);
     }
 }
