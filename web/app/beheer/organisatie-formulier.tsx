@@ -177,7 +177,9 @@ export default function OrganisatieFormulier({
           ))}
         </div>
         {bewerkSlug ? (
-          <div className="veld-rij">
+          // onder elkaar, niet naast elkaar: een breed logo plus de bestandskiezer
+          // past niet in een halve kolom
+          <div className="kaart-inhoud" style={{ marginTop: 0 }}>
             {(["logo", "favicon"] as const).map((soort) => {
               const huidig = soort === "logo" ? logoUrl : faviconUrl;
               return (

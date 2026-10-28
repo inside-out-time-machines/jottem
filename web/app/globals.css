@@ -537,6 +537,8 @@ dl.samenvatting dd { font-weight: 600; overflow-wrap: anywhere; }
     border: 1px solid var(--kartonrand); border-radius: .35rem; background: var(--wit);
 }
 .kleurstaal { display: flex; align-items: center; gap: .6rem; font-size: .9rem; color: var(--grijs); }
+.kleurstaal input[type="file"] { flex: 1 1 12rem; min-width: 0; }
+.kleurstaal .bestand-voorbeeld { flex: none; max-width: 14rem; object-fit: contain; }
 .bestand-voorbeeld { height: 3rem; width: auto; border: 1px solid var(--kartonrand); border-radius: .3rem; background: var(--papier); }
 
 /* keuzelijsten (checkboxes/radio's): meerdere kolommen, in een papieren kader */
