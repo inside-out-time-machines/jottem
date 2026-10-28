@@ -2,17 +2,26 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { API_PUBLIEK, authHeaders, isIngelogd } from "@/lib/api";
-import { startLogin } from "@/lib/oidc";
-import OrganisatieFormulier, { OrganisatieVorm } from "../organisatie-formulier";
+import { API_PUBLIEK, SITE_URL, authHeaders, isIngelogd } from "@/lib/api";
+import BeheerInlog from "../../beheer-inlog";
+import { Actiebalk, BeheerPagina, KaartSectie, Veld } from "../../beheer-ui";
+import OrganisatieFormulier, { ORGANISATIE_FORMULIER_ID, OrganisatieVorm } from "../organisatie-formulier";
 
 type Lid = { gebruikersId: number; naam: string; email: string; rol: string; gekoppeld: boolean };
+type OrganisatieUit = {
+  naam: string; slug: string; beschrijving: string | null; website: string | null;
+  email: string | null; identifier: string | null; spatialUri: string | null; spatialNaam: string | null;
+  kleurPrimair: string | null; kleurSecundair: string | null; kleurAchtergrond: string | null;
+  logo: string | null; favicon: string | null; logoUrl: string | null; faviconUrl: string | null;
+};
 
-// Bewerkpagina van een organisatie: velden + huisstijl-uploads + organisatiebeheerders.
+// Bewerkpagina van een organisatie: het formulier in kaarten (Basis, Publisher,
+// Huisstijl) plus de organisatiebeheerders; rechts de actiebalk.
 export default function OrganisatieBewerkPagina() {
   const router = useRouter();
   const { slug } = useParams<{ slug: string }>();
   const [ingelogd, setIngelogd] = useState<boolean | null>(null);
+  const [organisatie, setOrganisatie] = useState<OrganisatieUit | null>(null);
   const [begin, setBegin] = useState<OrganisatieVorm | null>(null);
   const [leden, setLeden] = useState<Lid[]>([]);
   const [melding, setMelding] = useState<string | null>(null);
@@ -22,20 +31,21 @@ export default function OrganisatieBewerkPagina() {
   const laden = useCallback(async () => {
     const r = await fetch(`${API_PUBLIEK}/organisatie`, { headers });
     if (!r.ok) { setMelding("Laden mislukt (heb je de rol platformbeheerder?)"); return; }
-    const lijst = await r.json();
-    const organisatie = lijst.find((o: { slug: string }) => o.slug === slug);
-    if (!organisatie) { setMelding("Organisatie niet gevonden."); return; }
+    const lijst: OrganisatieUit[] = await r.json();
+    const gevonden = lijst.find((o) => o.slug === slug);
+    if (!gevonden) { setMelding("Organisatie niet gevonden."); return; }
+    setOrganisatie(gevonden);
     setBegin({
-      naam: organisatie.naam, slug: organisatie.slug,
-      beschrijving: organisatie.beschrijving ?? "", website: organisatie.website ?? "",
-      email: organisatie.email ?? "",
-      identifier: organisatie.identifier ?? "",
-      spatialUri: organisatie.spatialUri ?? "",
-      spatialNaam: organisatie.spatialNaam ?? "",
-      kleurPrimair: organisatie.kleurPrimair ?? "#d85a30",
-      kleurSecundair: organisatie.kleurSecundair ?? "#a2401f",
-      kleurAchtergrond: organisatie.kleurAchtergrond ?? "#faf6f1",
-      logo: organisatie.logo, favicon: organisatie.favicon,
+      naam: gevonden.naam, slug: gevonden.slug,
+      beschrijving: gevonden.beschrijving ?? "", website: gevonden.website ?? "",
+      email: gevonden.email ?? "",
+      identifier: gevonden.identifier ?? "",
+      spatialUri: gevonden.spatialUri ?? "",
+      spatialNaam: gevonden.spatialNaam ?? "",
+      kleurPrimair: gevonden.kleurPrimair ?? "#d85a30",
+      kleurSecundair: gevonden.kleurSecundair ?? "#a2401f",
+      kleurAchtergrond: gevonden.kleurAchtergrond ?? "#faf6f1",
+      logo: gevonden.logo, favicon: gevonden.favicon,
     });
     ledenLaden();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -53,7 +63,8 @@ export default function OrganisatieBewerkPagina() {
 
   async function nodigUit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const data = new FormData(e.currentTarget);
+    const formulier = e.currentTarget;
+    const data = new FormData(formulier);
     const r = await fetch(`${API_PUBLIEK}/organisatie/${slug}/gebruikers`, {
       method: "POST", headers,
       body: JSON.stringify({ naam: data.get("naam"), email: data.get("email"), rol: "organisatiebeheerder" }),
@@ -61,7 +72,7 @@ export default function OrganisatieBewerkPagina() {
     setMelding(r.ok
       ? "Uitnodiging verstuurd; de rol staat klaar voor de eerste login."
       : `Uitnodigen mislukt: ${(await r.json()).detail ?? r.statusText}`);
-    if (r.ok) (e.target as HTMLFormElement).reset();
+    if (r.ok) formulier.reset();
     ledenLaden();
   }
 
@@ -74,56 +85,67 @@ export default function OrganisatieBewerkPagina() {
     ledenLaden();
   }
 
-  if (ingelogd === null) return <main><h1>Organisatie bewerken</h1></main>;
   if (!ingelogd) {
-    return (
-      <main>
-        <h1>Organisatie bewerken</h1>
-        <p style={{ marginTop: "1.2rem" }}>
-          <button className="knop knop-primair" onClick={() => void startLogin(`/beheer/${slug}`)}>
-            Log in als platformbeheerder
-          </button>
-        </p>
-      </main>
-    );
+    return <BeheerInlog titel="Organisatie bewerken" terugNaar={`/beheer/${slug}`}
+                        rol="platformbeheerder" bekend={ingelogd === false} />;
   }
 
+  const publiekeUrl = `/organisatie/${slug}`;
+
   return (
-    <main>
-      <p style={{ fontSize: ".95rem" }}><a href="/beheer">Platformbeheer</a></p>
-      <h1 style={{ marginTop: ".3rem" }}>Bewerk: {begin?.naam ?? slug}</h1>
-      {melding && <p className="memo" style={{ marginTop: "1rem" }}>{melding}</p>}
+    <BeheerPagina
+      kruimels={<a href="/beheer">Platformbeheer</a>}
+      titel={<>Bewerk: {organisatie?.naam ?? slug}</>}
+      zijbalk={
+        <Actiebalk
+          samenvatting={[
+            { label: "Slug", waarde: slug },
+            { label: "Beheerders", waarde: leden.length },
+            { label: "Huisstijl", waarde: organisatie?.logo ? "logo geüpload" : "nog geen logo" },
+          ]}
+          voet={<>Publiekspagina: <a href={publiekeUrl} target="_blank" rel="noopener noreferrer">{SITE_URL.replace(/^https?:\/\//, "")}{publiekeUrl}</a></>}
+        >
+          <button className="knop knop-primair" type="submit" form={ORGANISATIE_FORMULIER_ID}>Opslaan</button>
+          <a className="knop knop-secundair" href="/beheer">Annuleren</a>
+          <a className="knop knop-secundair" href={`/beheer/${slug}/verwijderen`}>Verwijderen...</a>
+        </Actiebalk>
+      }
+    >
+      {melding && <p className="memo memo-blok">{melding}</p>}
 
       {begin && (
-        <section style={{ marginTop: "1.5rem" }}>
-          <OrganisatieFormulier
-            begin={begin}
-            bewerkSlug={slug}
-            headers={headers}
-            opslaanTekst="Opslaan"
-            onKlaar={(m) => router.push(`/beheer?melding=${encodeURIComponent(m)}`)}
-          />
-        </section>
+        <OrganisatieFormulier
+          begin={begin}
+          bewerkSlug={slug}
+          headers={headers}
+          logoUrl={organisatie?.logoUrl}
+          faviconUrl={organisatie?.faviconUrl}
+          onMelding={setMelding}
+          onKlaar={(m) => router.push(`/beheer?melding=${encodeURIComponent(m)}`)}
+        />
       )}
 
-      <section style={{ marginTop: "2.5rem", maxWidth: "34rem" }}>
-        <h2>Organisatiebeheerders</h2>
-        {leden.map((lid) => (
-          <p key={lid.gebruikersId} style={{ display: "flex", gap: ".6rem", alignItems: "center", fontSize: ".95rem" }}>
-            <span>
-              {lid.naam} ({lid.email})
-              {!lid.gekoppeld && <em style={{ color: "var(--grijs)" }}> · wacht op eerste login</em>}
-            </span>
-            <a href="#" onClick={(e) => { e.preventDefault(); trekIn(lid); }}>intrekken</a>
-          </p>
-        ))}
-        {leden.length === 0 && <p style={{ color: "var(--grijs)" }}>Nog geen organisatiebeheerders benoemd.</p>}
-        <form onSubmit={nodigUit} style={{ display: "flex", gap: ".5rem", flexWrap: "wrap", marginTop: ".8rem" }}>
-          <input name="naam" type="text" placeholder="Naam" required style={{ font: "inherit", padding: ".45rem .6rem", border: "1px solid var(--kartonrand)", borderRadius: ".3rem", flex: "1 1 8rem" }} />
-          <input name="email" type="email" placeholder="E-mailadres" required style={{ font: "inherit", padding: ".45rem .6rem", border: "1px solid var(--kartonrand)", borderRadius: ".3rem", flex: "2 1 12rem" }} />
-          <button className="knop knop-primair" type="submit">Benoem organisatiebeheerder</button>
+      <KaartSectie
+        titel="Organisatiebeheerders"
+        intro="Beheerders richten projecten in en nodigen moderatoren uit. Een benoemde beheerder ontvangt een uitnodigingsmail; de rol staat klaar voor de eerste login."
+      >
+        <div className="lijst-leden">
+          {leden.map((lid) => (
+            <div key={lid.gebruikersId}>
+              <span className="naam">{lid.naam}</span>
+              <span className="email">{lid.email}</span>
+              {!lid.gekoppeld && <span className="etiket">wacht op eerste login</span>}
+              <a className="actie" href="#" onClick={(e) => { e.preventDefault(); trekIn(lid); }}>intrekken</a>
+            </div>
+          ))}
+          {leden.length === 0 && <p className="beheer-leeg">Nog geen organisatiebeheerders benoemd.</p>}
+        </div>
+        <form className="rij-invoer" onSubmit={nodigUit}>
+          <Veld label="Naam" htmlFor="beheerder-naam"><input id="beheerder-naam" name="naam" type="text" required /></Veld>
+          <Veld label="E-mailadres" htmlFor="beheerder-email"><input id="beheerder-email" name="email" type="email" required /></Veld>
+          <button className="knop knop-primair" type="submit">Benoem beheerder</button>
         </form>
-      </section>
-    </main>
+      </KaartSectie>
+    </BeheerPagina>
   );
 }
