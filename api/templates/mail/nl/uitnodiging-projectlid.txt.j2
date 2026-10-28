@@ -1,0 +1,23 @@
+Beste {{ ontvangerNaam }},
+
+{{ uitnodigerNaam }} nodigt je uit voor het project "{{ projectNaam }}" van
+{{ organisatie.naam }} op Jottem. Dit is een besloten project: alleen wie is
+uitgenodigd kan de verzamelde foto's en documenten bekijken, zelf materiaal toevoegen
+en herinneringen of aanvullingen delen.
+
+Projectpagina: {{ projectUrl }}
+
+{% if alBekend -%}
+Je hebt al een account op Jottem. Log in op de projectpagina met je bestaande
+gegevens en je hebt direct toegang.
+{%- else -%}
+Er staat een account voor je klaar op dit e-mailadres. Stel eerst een wachtwoord in
+via "wachtwoord vergeten"; je ontvangt dan een e-mail met een link om je wachtwoord
+te kiezen:
+{{ wachtwoordUrl }}
+
+Log daarna in op de projectpagina en je hebt direct toegang.
+{%- endif %}
+
+--
+Je ontvangt dit bericht van {{ organisatie.naam }} via Jottem ({{ platformUrl }}).

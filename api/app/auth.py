@@ -153,6 +153,22 @@ async def principal(
     return Principal(gebruiker=gebruiker, rollen=rollen_van(db, gebruiker), amr=claims.get("amr", []))
 
 
+async def principal_optioneel(
+    request: Request,
+    db: Session = Depends(get_db),
+    authorization: str | None = Header(default=None),
+    x_dev_sub: str | None = Header(default=None),
+    x_dev_naam: str | None = Header(default=None),
+    x_dev_email: str | None = Header(default=None),
+) -> Principal | None:
+    """Voor publieke endpoints die méér tonen aan wie is ingelogd (besloten projecten):
+    None zonder inloggegevens, anders dezelfde validatie als `principal` (een ongeldig
+    token blijft dus 401, het wordt niet stilzwijgend als anoniem behandeld)."""
+    if not authorization and not (settings().dev_auth and x_dev_sub):
+        return None
+    return await principal(request, db, authorization, x_dev_sub, x_dev_naam, x_dev_email)
+
+
 def eis_sterke_factor(p: Principal) -> None:
     """Beheer- en moderatieacties vragen om TOTP of een passkey (design: amr-controle).
 

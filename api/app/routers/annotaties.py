@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .. import anno
+from .. import anno, toegang
 from ..auth import Principal, eis_rol, principal
 from ..config import settings
 from ..db import get_db
@@ -244,6 +244,7 @@ def maak_annotatie(
     db: Session = Depends(get_db),
 ):
     media, project = _media_gepubliceerd(db, media_id)
+    toegang.eis_project_toegang(db, project, p)
     annotatie = _bouw_annotatie(media, project, p.gebruiker, invoer)
     opgeslagen = anno.maak_annotatie(str(media.mediaId), f"Annotaties bij {media.titel}", annotatie)
 
@@ -278,6 +279,7 @@ def wijzig_annotatie(
     db: Session = Depends(get_db),
 ):
     media, project = _media_gepubliceerd(db, media_id)
+    toegang.eis_project_toegang(db, project, p)
     iri = anno.annotatie_iri(str(media_id), naam)
     bestaand = anno.haal_annotatie(iri)
     _eis_maker(bestaand, p)
@@ -297,7 +299,8 @@ def verwijder_annotatie(
     p: Principal = Depends(principal),
     db: Session = Depends(get_db),
 ):
-    media, _ = _media_gepubliceerd(db, media_id)
+    media, project = _media_gepubliceerd(db, media_id)
+    toegang.eis_project_toegang(db, project, p)
     iri = anno.annotatie_iri(str(media_id), naam)
     bestaand = anno.haal_annotatie(iri)
     _eis_maker(bestaand, p)

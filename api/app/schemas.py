@@ -98,6 +98,8 @@ class ProjectIn(BaseModel):
     afbeelding: str | None = None          # S3-sleutel in de thumbs-bucket
     datasetLicentie: str | None = Field(default=None, max_length=200, pattern=HTTP_URL)
     status: str = Field(default="actief", pattern="^(actief|afgerond)$")
+    # openbaar (standaard) of besloten (alleen leden, beheerders en moderatoren zien jottems)
+    zichtbaarheid: str = Field(default="openbaar", pattern="^(openbaar|besloten)$")
     terminologiebronnen: list[str] = []
     # ingeschakelde verrijkingen (V-1); None = alle MVP-verrijkingen aan
     verrijkingen: list[str] | None = None
@@ -173,6 +175,20 @@ class GebruikerRolUit(BaseModel):
     email: str
     rol: str
     gekoppeld: bool              # False zolang de uitgenodigde nog niet heeft ingelogd
+
+
+class ProjectLidIn(BaseModel):
+    """Uitnodiging van een lid voor een (besloten) project (OB-8)."""
+    naam: str = Field(min_length=1, max_length=200)
+    email: str = Field(max_length=320)
+
+
+class ProjectLidUit(BaseModel):
+    gebruikersId: int
+    naam: str
+    email: str
+    gekoppeld: bool              # False zolang het lid nog niet voor het eerst heeft ingelogd
+    creatieDatum: datetime | None = None
 
 
 class BeeldVraag(BaseModel):
@@ -343,6 +359,9 @@ class ProjectPubliek(BaseModel):
     jottems: list[JottemTegel]
     pagina: int
     paginas: int
+    # besloten projecten: toegang "ja" | "inloggen" (geen token) | "geen-lid" (wel ingelogd)
+    zichtbaarheid: str = "openbaar"
+    toegang: str = "ja"
 
 
 class OrganisatiePubliek(BaseModel):

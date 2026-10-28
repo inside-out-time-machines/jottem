@@ -1,0 +1,32 @@
+<mjml>
+  <mj-body background-color="#f4f4f2">
+    <mj-include path="../partials/header.mjml" />
+    <mj-section background-color="#ffffff" padding="16px 24px 8px">
+      <mj-column>
+        <mj-text font-size="15px" line-height="1.6">
+          <p>Beste {{ ontvangerNaam }},</p>
+          <p>{{ uitnodigerNaam }} nodigt je uit voor het project
+          <strong>{{ projectNaam }}</strong> van {{ organisatie.naam }} op Jottem. Dit is een
+          <strong>besloten project</strong>: alleen wie is uitgenodigd kan de verzamelde foto's
+          en documenten bekijken, zelf materiaal toevoegen en herinneringen of aanvullingen delen.</p>
+          {% if alBekend %}
+          <p>Je hebt al een account op Jottem. Log in op de projectpagina met je bestaande
+          gegevens en je hebt direct toegang.</p>
+          {% else %}
+          <p>Er staat een account voor je klaar op dit e-mailadres. Stel eerst een wachtwoord in
+          via <a href="{{ wachtwoordUrl }}">wachtwoord vergeten</a>; je ontvangt dan een e-mail
+          met een link om je wachtwoord te kiezen. Log daarna in op de projectpagina en je hebt
+          direct toegang.</p>
+          {% endif %}
+        </mj-text>
+        {% if alBekend %}
+        <mj-button href="{{ projectUrl }}" background-color="{{ organisatie.kleurPrimair }}" font-size="15px">Naar het project</mj-button>
+        {% else %}
+        <mj-button href="{{ wachtwoordUrl }}" background-color="{{ organisatie.kleurPrimair }}" font-size="15px">Wachtwoord instellen</mj-button>
+        <mj-text font-size="13px" color="#777777">Projectpagina: <a href="{{ projectUrl }}">{{ projectUrl }}</a></mj-text>
+        {% endif %}
+      </mj-column>
+    </mj-section>
+    <mj-include path="../partials/footer.mjml" />
+  </mj-body>
+</mjml>

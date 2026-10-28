@@ -26,6 +26,9 @@ Beide draaien standaard tegen dev. Andere omgeving:
 - `test_opendata.py` - IIIF-manifest en -collections, CORS voor externe viewers, content
   negotiation (JSON-LD, Turtle, RDF/XML), W3C-annotatiecollecties, RSS, Change Discovery,
   datacatalogus, datasetbeschrijving en de gzip-datadump, Termennetwerk-proxy.
+- `test_besloten.py` - besloten projecten: projectweergave zonder jottems, geen widget,
+  jottem-detail vraagt login, open data van hetzelfde project blijft 200. Slaat over als
+  de omgeving geen besloten project heeft.
 - `test_afscherming.py` - elke beheerroute geeft 401 zonder token, en de dev-bypass
   (`X-Dev-Sub`) werkt niet. Deze tests vallen om zodra `DEV_AUTH=1` blijft staan na een
   handmatige test: dat is opzet.
