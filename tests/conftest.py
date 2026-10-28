@@ -48,18 +48,24 @@ def organisaties(api: httpx.Client) -> list[dict]:
     return lijst
 
 
+def _openbaar_met_jottems(project: dict) -> bool:
+    # een besloten project toont zonder login geen jottems (test_besloten.py dekt dat);
+    # de publieke fixtures hebben een openbaar project nodig
+    return project["aantalJottems"] > 0 and project.get("zichtbaarheid") != "besloten"
+
+
 @pytest.fixture(scope="session")
 def organisatie(organisaties: list[dict]) -> dict:
-    """De eerste organisatie met een actief project en minstens één jottem."""
+    """De eerste organisatie met een openbaar project en minstens één jottem."""
     for org in organisaties:
-        if any(p["aantalJottems"] > 0 for p in org["projecten"]):
+        if any(_openbaar_met_jottems(p) for p in org["projecten"]):
             return org
-    pytest.skip("geen organisatie met gepubliceerde jottems")
+    pytest.skip("geen organisatie met gepubliceerde jottems in een openbaar project")
 
 
 @pytest.fixture(scope="session")
 def project(organisatie: dict) -> dict:
-    return next(p for p in organisatie["projecten"] if p["aantalJottems"] > 0)
+    return next(p for p in organisatie["projecten"] if _openbaar_met_jottems(p))
 
 
 @pytest.fixture(scope="session")
