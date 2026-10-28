@@ -458,4 +458,119 @@ footer strong { color: var(--voet-tekst, var(--papier)); }
 footer a { color: var(--voet-tekst, var(--papier));
     text-decoration-color: color-mix(in srgb, currentColor 60%, transparent); }
 
+/* ===== beheerpagina's: kaarten + actiebalk (merkgids: "Kaart met topline") =====
+   Twee kolommen op desktop: links de inhoud in kaarten, rechts een plakkende
+   actiebalk met samenvatting en knoppen. Onder 900px één kolom en de actiebalk
+   onderaan het scherm. Bouwstenen: app/beheer-ui.tsx. */
+main.beheer {
+    display: grid; grid-template-columns: minmax(0, 1fr) 17rem;
+    gap: 1.4rem 2.2rem; align-items: start;
+}
+.beheer-kop { grid-column: 1 / -1; }
+.kruimels { font-size: .9rem; color: var(--grijs); }
+.beheer-kop h1 { margin-top: .2rem; font-size: clamp(1.8rem, 4vw, 2.5rem); }
+.beheer-intro { margin-top: .5rem; max-width: 42rem; color: var(--grijs); font-size: 1rem; }
+.beheer-inhoud, .beheer-formulier { display: grid; gap: 1.3rem; min-width: 0; }
+.beheer-formulier { margin: 0; }
+
+.kaart-sectie {
+    background: var(--wit); border: 1px solid var(--kartonrand);
+    border-top: 4px solid var(--knop-vlak); border-radius: .45rem;
+    box-shadow: var(--schaduw); padding: 1.2rem 1.4rem 1.4rem;
+    animation: kaart-in .45s ease-out both;
+}
+.kaart-sectie:nth-child(2) { animation-delay: .06s; }
+.kaart-sectie:nth-child(3) { animation-delay: .12s; }
+.kaart-sectie:nth-child(4) { animation-delay: .18s; }
+.kaart-sectie:nth-child(n+5) { animation-delay: .24s; }
+@keyframes kaart-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.kaart-sectie > h2 { font-size: 1.35rem; }
+.kaart-sectie > h3 { font-size: 1.05rem; margin-top: 1.1rem; }
+.kaart-intro { margin-top: .25rem; font-size: .95rem; color: var(--grijs); max-width: 42rem; }
+.kaart-inhoud { margin-top: 1rem; display: grid; gap: .9rem; }
+.kaart-sectie details > summary { cursor: pointer; font-weight: 600; font-size: .95rem; }
+.kaart-sectie details[open] > summary { margin-bottom: .6rem; }
+
+.actiebalk {
+    position: sticky; top: 1.2rem;
+    background: var(--wit); border: 1px solid var(--kartonrand); border-radius: .45rem;
+    box-shadow: var(--schaduw); padding: 1.1rem 1.2rem; display: grid; gap: 1rem;
+}
+dl.samenvatting { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .3rem .8rem; font-size: .92rem; }
+dl.samenvatting dt { color: var(--grijs); }
+dl.samenvatting dd { font-weight: 600; overflow-wrap: anywhere; }
+.actiebalk-knoppen { display: grid; gap: .5rem; }
+.actiebalk-knoppen .knop { text-align: center; }
+.actiebalk-voet { font-size: .85rem; color: var(--grijs); }
+.actiebalk-voet a { word-break: break-all; }
+@media (max-width: 900px) {
+    main.beheer { grid-template-columns: 1fr; padding-bottom: 6.5rem; }
+    .actiebalk {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; top: auto;
+        border-radius: .6rem .6rem 0 0; border-bottom: none;
+        box-shadow: 0 -4px 16px rgba(31, 30, 28, .18); padding: .7rem 1rem;
+    }
+    .actiebalk dl.samenvatting, .actiebalk .actiebalk-voet { display: none; }
+    .actiebalk-knoppen { grid-auto-flow: column; justify-content: start; }
+}
+
+/* velden: label boven, hint eronder; uitleg hoort in de hint, niet in het label */
+.veld label, .veld > .veld-label { font-weight: 600; font-size: .95rem; }
+.veld .hint { font-size: .85rem; color: var(--grijs); line-height: 1.4; }
+.veld input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="color"]),
+.veld textarea, .veld select {
+    font: inherit; padding: .55rem .7rem; border: 1px solid var(--kartonrand);
+    border-radius: .35rem; background: var(--wit); width: 100%;
+}
+.veld input:focus, .veld textarea:focus, .veld select:focus { border-color: var(--knop-vlak); }
+.veld-rij { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: .9rem; }
+.veld input[type="file"] { font-size: .92rem; color: var(--grijs); }
+.veld input[type="file"]::file-selector-button {
+    font: inherit; font-size: .92rem; font-weight: 600; cursor: pointer; margin-right: .7rem;
+    padding: .4rem .9rem; border-radius: .4rem; background: transparent;
+    color: var(--knop-tekst); border: 2px solid var(--knop-vlak);
+}
+.veld input[type="color"] {
+    width: 3.4rem; height: 2.4rem; padding: .15rem; cursor: pointer;
+    border: 1px solid var(--kartonrand); border-radius: .35rem; background: var(--wit);
+}
+.kleurstaal { display: flex; align-items: center; gap: .6rem; font-size: .9rem; color: var(--grijs); }
+.bestand-voorbeeld { height: 3rem; width: auto; border: 1px solid var(--kartonrand); border-radius: .3rem; background: var(--papier); }
+
+/* keuzelijsten (checkboxes/radio's): meerdere kolommen, in een papieren kader */
+.keuzes-kader { border: 1px solid var(--kartonrand); border-radius: .35rem; padding: .7rem .9rem; background: var(--papier); }
+.keuzes-scroll { max-height: 14rem; overflow-y: auto; }
+.keuzes { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: .3rem 1rem; }
+.keuzes-een { grid-template-columns: 1fr; }
+.keuzes label { font-weight: 400; font-size: .95rem; display: flex; gap: .5rem; align-items: baseline; line-height: 1.45; }
+.keuzes label input { flex: none; }
+.keuzes .keuze-uitleg { color: var(--grijs); font-size: .88rem; }
+.zoekveld { margin-bottom: .6rem; }
+
+/* ledenlijsten (organisatiebeheerders, moderatoren, projectleden) */
+.lijst-leden { display: grid; gap: .4rem; }
+.lijst-leden > div {
+    display: flex; flex-wrap: wrap; gap: .25rem .8rem; align-items: center;
+    padding: .5rem .8rem; border: 1px solid var(--kartonrand); border-radius: .35rem;
+    background: var(--papier); font-size: .95rem;
+}
+.lijst-leden .naam { font-weight: 600; }
+.lijst-leden .email { color: var(--grijs); overflow-wrap: anywhere; }
+.lijst-leden .actie { margin-left: auto; font-size: .9rem; }
+.lijst-leden .etiket { margin-left: 0; font-size: .75rem; }
+.rij-invoer { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: .6rem; align-items: end; }
+.rij-invoer .knop { white-space: nowrap; }
+.knoppenrij { display: flex; gap: .6rem; flex-wrap: wrap; }
+.beheer-leeg { color: var(--grijs); font-size: .95rem; }
+.codeblok {
+    background: var(--papier); border: 1px solid var(--kartonrand); border-radius: .3rem;
+    padding: .6rem .8rem; overflow-x: auto; font-size: .82rem; margin-top: .4rem;
+}
+.status-actief { background: #e3efe6; border: 1px solid #9dc3a8; color: #2c5e3c; }
+.status-afgerond { background: var(--karton); border: 1px solid var(--kartonrand); color: var(--grijs); }
+.status-openbaar { background: #e3efe6; border: 1px solid #9dc3a8; color: #2c5e3c; }
+.status-besloten { background: var(--geel); border: 1px solid var(--geelrand); color: var(--roest); }
+/* een "memo" dat als blok in de kolom staat (niet inline/gedraaid) */
+.memo-blok { display: block; transform: none; max-width: none; }
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
