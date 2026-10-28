@@ -1,13 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { accessToken, ingelogdeNaam, startLogin, uitloggen } from "@/lib/oidc";
 import { API_PUBLIEK, DEV_AUTH } from "@/lib/api";
+import { isActief } from "@/lib/actief";
 
 export default function InlogKnop() {
   const [naam, setNaam] = useState<string | null>(null);
   const [foto, setFoto] = useState<string | null>(null);
   const [ingelogd, setIngelogd] = useState(false);
+  const pad = usePathname();
+  const opProfiel = isActief(pad, "/profiel") ? "page" : undefined;
 
   useEffect(() => {
     const token = accessToken();
@@ -41,11 +45,11 @@ export default function InlogKnop() {
     }
   }, []);
 
-  if (DEV_AUTH) return <a href="/profiel" style={{ opacity: 0.7 }}>dev-login</a>;
+  if (DEV_AUTH) return <a href="/profiel" aria-current={opProfiel} style={{ opacity: 0.7 }}>dev-login</a>;
   if (ingelogd) {
     return (
       <span style={{ display: "inline-flex", gap: ".6rem", alignItems: "center" }}>
-        <a href="/profiel" style={{ display: "inline-flex", gap: ".45rem", alignItems: "center" }}>
+        <a href="/profiel" aria-current={opProfiel} style={{ display: "inline-flex", gap: ".45rem", alignItems: "center" }}>
           {foto && <img src={foto} alt="" className="avatar" />}
           {naam ?? "Mijn profiel"}
         </a>

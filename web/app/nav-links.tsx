@@ -1,12 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { API_PUBLIEK, DEV_AUTH, authHeaders, isIngelogd } from "@/lib/api";
+import { isActief } from "@/lib/actief";
 
 // Rolbewuste menu-items: beheer- en moderatielinks alleen voor wie de rol heeft.
 // In de dev-bypass tonen we alles (daar wissel je toch per verzoek van identiteit).
 export default function NavLinks() {
   const [rollen, setRollen] = useState<string[]>([]);
+  const pad = usePathname();
+  // aria-current markeert de actieve pagina (toegankelijk; de topbar-CSS haakt erop in)
+  const huidig = (href: string) => (isActief(pad, href) ? "page" : undefined);
 
   useEffect(() => {
     if (DEV_AUTH) {
@@ -30,9 +35,9 @@ export default function NavLinks() {
   // (de knoppen op de startpagina en de projectpagina's)
   return (
     <>
-      {isModerator && <a href="/moderatie">Moderatie</a>}
-      {isOrganisatiebeheerder && <a href="/organisatiebeheer">Organisatiebeheer</a>}
-      {isPlatformbeheerder && <a href="/beheer">Platformbeheer</a>}
+      {isModerator && <a href="/moderatie" aria-current={huidig("/moderatie")}>Moderatie</a>}
+      {isOrganisatiebeheerder && <a href="/organisatiebeheer" aria-current={huidig("/organisatiebeheer")}>Organisatiebeheer</a>}
+      {isPlatformbeheerder && <a href="/beheer" aria-current={huidig("/beheer")}>Platformbeheer</a>}
     </>
   );
 }
