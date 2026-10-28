@@ -1,4 +1,5 @@
-import { API_PUBLIEK, apiServer } from "@/lib/api";
+import { API_PUBLIEK } from "@/lib/api";
+import { apiServer } from "@/lib/api-server";
 import { notFound } from "next/navigation";
 import OpenGraph from "../../open-graph";
 import { kopVoetCss, projectStijl } from "@/lib/kleuren";
@@ -19,6 +20,7 @@ type OrganisatiePubliek = {
     periode: string | null;
     afbeeldingUrl: string | null;
     aantalJottems: number;
+    zichtbaarheid?: "openbaar" | "besloten";
   }[];
 };
 
@@ -102,7 +104,12 @@ export default async function OrganisatiePagina({
             {project.afbeeldingUrl && (
               <img src={project.afbeeldingUrl} alt="" style={{ maxHeight: "6rem", borderRadius: ".3rem", marginBottom: ".5rem" }} />
             )}
-            <h3>{project.naam}</h3>
+            <h3>
+              {project.naam}
+              {project.zichtbaarheid === "besloten" && (
+                <span className="etiket" title="Besloten project: toegang op uitnodiging">op uitnodiging</span>
+              )}
+            </h3>
             {project.oproep && <p style={{ fontSize: "1rem" }}>{project.oproep}</p>}
             <p style={{ fontSize: ".9rem", color: "var(--grijs)", marginTop: ".4rem" }}>
               {project.aantalJottems} jottems{project.periode ? ` · ${project.periode}` : ""}

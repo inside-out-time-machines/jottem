@@ -93,6 +93,7 @@ export default function ProjectBewerkPagina() {
               status: project.status, terminologiebronnen: project.terminologiebronnen,
               afbeelding: project.afbeelding, verrijkingen: project.verrijkingen,
               uploadWijzen: project.uploadWijzen,
+              zichtbaarheid: project.zichtbaarheid ?? "openbaar",
             }}
             organisatieSlug={org}
             bewerkProjectId={project.projectId}
@@ -125,8 +126,81 @@ export default function ProjectBewerkPagina() {
         </section>
       )}
 
-      {project && <WidgetSectie org={org} projectSlug={projectSlug} />}
+      {project && (
+        <LedenSectie projectId={project.projectId} besloten={project.zichtbaarheid === "besloten"} headers={headers} />
+      )}
+
+      {project && project.zichtbaarheid !== "besloten" && <WidgetSectie org={org} projectSlug={projectSlug} />}
     </main>
+  );
+}
+
+type ProjectLid = { gebruikersId: number; naam: string; email: string; gekoppeld: boolean; creatieDatum: string | null };
+
+// Ledenadministratie van een besloten project (OB-8): uitnodigen (naam, e-mail) en
+// intrekken; het patroon volgt het moderatorenbeheer in organisatiebeheer/page.tsx.
+function LedenSectie({ projectId, besloten, headers }: { projectId: string; besloten: boolean; headers: Record<string, string> }) {
+  const [leden, setLeden] = useState<ProjectLid[] | null>(null);
+  const [melding, setMelding] = useState<string | null>(null);
+
+  const laden = useCallback(async () => {
+    const r = await fetch(`${API_PUBLIEK}/project/${projectId}/leden`, { headers });
+    setLeden(r.ok ? await r.json() : []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
+
+  useEffect(() => { laden(); }, [laden]);
+
+  async function uitnodigen(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formulier = e.currentTarget;
+    const data = new FormData(formulier);
+    const r = await fetch(`${API_PUBLIEK}/project/${projectId}/leden`, {
+      method: "POST", headers,
+      body: JSON.stringify({ naam: data.get("naam"), email: data.get("email") }),
+    });
+    if (r.ok) {
+      setMelding("Lid uitgenodigd; de uitnodigingsmail is onderweg.");
+      formulier.reset();
+    } else {
+      setMelding(`Uitnodigen mislukt: ${(await r.json().catch(() => ({}))).detail ?? r.statusText}`);
+    }
+    laden();
+  }
+
+  async function intrekken(lid: ProjectLid) {
+    if (!window.confirm(`Lidmaatschap intrekken voor ${lid.naam}? Het account blijft bestaan.`)) return;
+    const r = await fetch(`${API_PUBLIEK}/project/${projectId}/lid/${lid.gebruikersId}`, { method: "DELETE", headers });
+    setMelding(r.ok ? "Lidmaatschap ingetrokken." : "Intrekken mislukt.");
+    laden();
+  }
+
+  return (
+    <section style={{ marginTop: "2.5rem", maxWidth: "42rem" }}>
+      <h2>Leden</h2>
+      <p style={{ marginTop: ".4rem", fontSize: ".95rem", color: "var(--grijs)" }}>
+        {besloten
+          ? "Dit project is besloten: alleen de leden hieronder (en de beheerders en moderatoren van je organisatie) zien de jottems. Een uitgenodigd lid ontvangt een e-mail met uitleg en een link om een wachtwoord in te stellen."
+          : "Dit project is openbaar; de ledenlijst doet pas iets zodra je de openbaarheid hierboven op besloten zet. Je kunt alvast leden uitnodigen."}
+      </p>
+      {melding && <p className="memo" style={{ marginTop: ".8rem" }}>{melding}</p>}
+      <div style={{ marginTop: ".8rem" }}>
+        {(leden ?? []).map((lid) => (
+          <p key={lid.gebruikersId} style={{ display: "flex", gap: ".6rem", alignItems: "center", fontSize: ".95rem" }}>
+            <span>{lid.naam}</span>
+            <span style={{ color: "var(--grijs)" }}>{lid.email}</span>
+            {!lid.gekoppeld && <span style={{ color: "var(--grijs)", fontSize: ".85rem" }}>wacht op eerste login</span>}
+            <a href="#" onClick={(e) => { e.preventDefault(); intrekken(lid); }}>intrekken</a>
+          </p>
+        ))}
+        {leden !== null && leden.length === 0 && <p style={{ color: "var(--grijs)" }}>Nog geen leden.</p>}
+      </div>
+      <form className="formulier" onSubmit={uitnodigen} style={{ marginTop: "1rem" }}>
+        <div className="veld"><label>Naam</label><input type="text" name="naam" required /></div>
+        <div className="veld"><label>E-mailadres</label><input type="email" name="email" required /></div>
+        <button className="knop knop-primair" type="submit">Nodig lid uit</button>
+      </form>
+    </section>
   );
 }
 

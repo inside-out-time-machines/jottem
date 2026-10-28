@@ -5,6 +5,20 @@
 const ISSUER =
   process.env.NEXT_PUBLIC_OIDC_ISSUER ?? "https://auth.dev.iotm.nl/application/o/jottem/";
 const CLIENT_ID = process.env.NEXT_PUBLIC_OIDC_CLIENT_ID ?? "jottem-web";
+const TOKEN_COOKIE = "jottem_token"; // zelfde naam als in lib/api.ts (geen import: dit bestand is client-only)
+
+// Het access-token gaat behalve in sessionStorage ook in een cookie voor de web-host,
+// zodat de server-gerenderde pagina's het aan de API kunnen doorgeven (besloten
+// projecten). De cookie leeft even lang als het token; JS kon het token al lezen, dus
+// dit voegt geen nieuw risico toe. Secure alleen op https (lokale smoke-test draait op http).
+function zetTokenCookie(token: string, geldigSeconden: number): void {
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${TOKEN_COOKIE}=${encodeURIComponent(token)}; Path=/; Max-Age=${Math.max(60, geldigSeconden)}; SameSite=Lax${secure}`;
+}
+
+function wisTokenCookie(): void {
+  document.cookie = `${TOKEN_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+}
 
 function base64url(bytes: Uint8Array): string {
   return btoa(String.fromCharCode(...bytes))
@@ -64,6 +78,7 @@ export async function verwerkCallback(): Promise<string> {
   if (!antwoord.ok) throw new Error(`Token ophalen mislukt (${antwoord.status})`);
   const tokens = await antwoord.json();
   sessionStorage.setItem("oidc_access_token", tokens.access_token);
+  zetTokenCookie(tokens.access_token, Number(tokens.expires_in) || 3600);
   if (tokens.id_token) {
     sessionStorage.setItem("oidc_id_token", tokens.id_token);
     try {
@@ -94,6 +109,7 @@ export async function uitloggen(): Promise<void> {
   sessionStorage.removeItem("oidc_access_token");
   sessionStorage.removeItem("oidc_id_token");
   sessionStorage.removeItem("oidc_naam");
+  wisTokenCookie();
   // RP-initiated logout: ook de Authentik-sessie beëindigen, anders meldt de
   // volgende "Inloggen"-klik dezelfde gebruiker stilzwijgend opnieuw aan.
   try {

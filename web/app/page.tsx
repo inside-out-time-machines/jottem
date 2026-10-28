@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { apiServer } from "@/lib/api";
+import { apiServer } from "@/lib/api-server";
 import { projectStijl } from "@/lib/kleuren";
 import OpenGraph from "./open-graph";
 
@@ -17,6 +17,7 @@ type Project = {
   slug: string;
   oproep: string | null;
   datasetLicentie: string | null;
+  zichtbaarheid?: "openbaar" | "besloten";
 };
 type Organisatie = {
   slug: string;
@@ -84,15 +85,20 @@ export default async function Home() {
                   <a href={`/organisatie/${organisatie.slug}/${project.slug}`} style={{ textDecoration: "none", color: "inherit" }}>
                     {project.naam}
                   </a>
+                  {project.zichtbaarheid === "besloten" && (
+                    <span className="etiket" title="Besloten project: toegang op uitnodiging">op uitnodiging</span>
+                  )}
                 </h3>
                 {project.oproep && <p style={{ fontSize: "1rem" }}>{project.oproep}</p>}
                 <p style={{ marginTop: ".9rem", display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
                   <a className="knop knop-secundair" href={`/organisatie/${organisatie.slug}/${project.slug}`}>
-                    Bekijk de jottems
+                    {project.zichtbaarheid === "besloten" ? "Naar het project" : "Bekijk de jottems"}
                   </a>
-                  <a className="knop knop-primair" href={`/upload?project=${organisatie.slug}/${project.slug}`}>
-                    Doe mee: upload je materiaal
-                  </a>
+                  {project.zichtbaarheid !== "besloten" && (
+                    <a className="knop knop-primair" href={`/upload?project=${organisatie.slug}/${project.slug}`}>
+                      Doe mee: upload je materiaal
+                    </a>
+                  )}
                 </p>
               </article>
             ))}

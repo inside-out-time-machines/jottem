@@ -1,7 +1,9 @@
-import { API_PUBLIEK, DATA_URL, SITE_URL, apiServer } from "@/lib/api";
+import { API_PUBLIEK, DATA_URL, SITE_URL } from "@/lib/api";
+import { apiServer } from "@/lib/api-server";
 import { notFound } from "next/navigation";
 import OpenGraph from "../../../open-graph";
 import Licentie from "../../../licentie";
+import ToegangBesloten from "../../../toegang-besloten";
 import { kopVoetCss, projectStijl } from "@/lib/kleuren";
 
 type JottemTegel = {
@@ -28,6 +30,8 @@ type ProjectPubliek = {
   jottems: JottemTegel[];
   pagina: number;
   paginas: number;
+  zichtbaarheid: "openbaar" | "besloten";
+  toegang: "ja" | "inloggen" | "geen-lid";
 };
 
 export async function generateMetadata({
@@ -112,7 +116,12 @@ export default async function ProjectPagina({
       <p style={{ fontSize: ".95rem" }}>
         <a href={`/organisatie/${project.organisatieSlug}`}>{project.organisatieNaam}</a>
       </p>
-      <h1 style={{ color: kleur, marginTop: ".3rem" }}>{project.naam}</h1>
+      <h1 style={{ color: kleur, marginTop: ".3rem" }}>
+        {project.naam}
+        {project.zichtbaarheid === "besloten" && (
+          <span className="etiket" title="Besloten project: toegang op uitnodiging">op uitnodiging</span>
+        )}
+      </h1>
       {project.oproep && (
         <p style={{ maxWidth: "42rem", marginTop: ".8rem", fontSize: "1.1rem" }}>{project.oproep}</p>
       )}
@@ -122,19 +131,27 @@ export default async function ProjectPagina({
       {/* geen <p>: <Licentie> rendert een <dialog>, en die mag niet in een alinea staan
           (de browser sluit de <p> dan vroegtijdig, wat de hydratatie breekt) */}
       <div style={{ fontSize: ".9rem", color: "var(--grijs)", marginTop: ".6rem" }}>
-        {project.aantalJottems} gepubliceerde jottems
+        {project.toegang === "ja" ? `${project.aantalJottems} gepubliceerde jottems` : "besloten project"}
         {project.periode ? ` · periode ${project.periode}` : ""}
         {project.datasetLicentie ? (
           <> · licentie <Licentie url={project.datasetLicentie} /></>
         ) : null}
       </div>
-      <p style={{ marginTop: "1rem" }}>
-        <a className="knop knop-primair" href={`/upload?project=${project.organisatieSlug}/${project.slug}`}>
-          Doe mee: upload je materiaal
-        </a>
-      </p>
+      {project.toegang === "ja" && (
+        <p style={{ marginTop: "1rem" }}>
+          <a className="knop knop-primair" href={`/upload?project=${project.organisatieSlug}/${project.slug}`}>
+            Doe mee: upload je materiaal
+          </a>
+        </p>
+      )}
 
-      {project.jottems.length === 0 ? (
+      {project.toegang !== "ja" ? (
+        <ToegangBesloten
+          toegang={project.toegang}
+          organisatieNaam={project.organisatieNaam}
+          terugNaar={`/organisatie/${slug}/${projectSlug}`}
+        />
+      ) : project.jottems.length === 0 ? (
         <p className="memo" style={{ marginTop: "2rem" }}>
           Nog geen gepubliceerde jottems; wees de eerste en deel je materiaal!
         </p>

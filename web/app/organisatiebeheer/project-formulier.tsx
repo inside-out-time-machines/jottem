@@ -8,13 +8,14 @@ export type ProjectVorm = {
   datasetLicentie: string; status: string; terminologiebronnen: string[];
   afbeelding: string | null; verrijkingen: string[] | null;
   uploadWijzen: string[] | null;
+  zichtbaarheid: "openbaar" | "besloten";
 };
 
 export const LEEG_PROJECT: ProjectVorm = {
   naam: "", slug: "", beschrijving: "", oproep: "", periode: "",
   datasetLicentie: "https://creativecommons.org/licenses/by/4.0/",
   status: "actief", terminologiebronnen: [], afbeelding: null, verrijkingen: null,
-  uploadWijzen: null,
+  uploadWijzen: null, zichtbaarheid: "openbaar",
 };
 
 // de vier manieren om materiaal aan te leveren (zelfde sleutels als de API)
@@ -111,6 +112,24 @@ export default function ProjectFormulier({
           <option value="actief">actief</option>
           <option value="afgerond">afgerond</option>
         </select></div>
+      <div className="veld">
+        <label>Openbaarheid</label>
+        <div style={{ ...veldStijl, maxHeight: undefined }}>
+          <label style={{ display: "block", fontWeight: 400 }}>
+            <input type="radio" name="zichtbaarheid" value="openbaar"
+                   checked={vorm.zichtbaarheid === "openbaar"}
+                   onChange={() => setVorm({ ...vorm, zichtbaarheid: "openbaar" })} />{" "}
+            Openbaar (standaard): iedereen ziet de gepubliceerde jottems
+          </label>
+          <label style={{ display: "block", fontWeight: 400, marginTop: ".3rem" }}>
+            <input type="radio" name="zichtbaarheid" value="besloten"
+                   checked={vorm.zichtbaarheid === "besloten"}
+                   onChange={() => setVorm({ ...vorm, zichtbaarheid: "besloten" })} />{" "}
+            Besloten: alleen uitgenodigde leden (en beheerders en moderatoren van de
+            organisatie) zien de jottems; de projectinformatie en de open data blijven openbaar
+          </label>
+        </div>
+      </div>
       {bewerkProjectId && (
         <div className="veld"><label>Projectafbeelding uploaden (mag)</label>
           <input type="file" accept="image/*" onChange={(e) => {

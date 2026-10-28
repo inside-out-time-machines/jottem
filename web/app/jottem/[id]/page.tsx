@@ -1,4 +1,5 @@
-import { apiServer } from "@/lib/api";
+import { ApiFout, apiServer } from "@/lib/api-server";
+import ToegangBesloten from "../../toegang-besloten";
 import OpenGraph from "../../open-graph";
 import Deelnemer from "../../deelnemer";
 import { kopVoetCss, projectStijl } from "@/lib/kleuren";
@@ -139,7 +140,20 @@ export default async function JottemPagina({
   let jottem: Detail;
   try {
     jottem = await apiServer<Detail>(`/jottem/${id}/detail`);
-  } catch {
+  } catch (fout) {
+    // besloten project (BE-8): 401 = inloggen, 403 = ingelogd maar geen lid
+    if (fout instanceof ApiFout && (fout.status === 401 || fout.status === 403)) {
+      return (
+        <main>
+          <h1>Besloten project</h1>
+          <ToegangBesloten
+            toegang={fout.status === 401 ? "inloggen" : "geen-lid"}
+            organisatieNaam="de organisatie"
+            terugNaar={`/jottem/${id}`}
+          />
+        </main>
+      );
+    }
     return (
       <main>
         <h1>Jottem niet gevonden</h1>
