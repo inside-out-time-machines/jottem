@@ -58,8 +58,10 @@ a:hover { color: var(--oranje); }
     max-width: 68rem; margin: 0 auto; padding: .6rem 1.5rem;
     display: flex; align-items: center; gap: .7rem;
 }
-/* het woordmerk is wit; op een lichte headerkleur zet de pagina invert(1) */
-.topbar img { height: 1.6rem; width: auto; filter: var(--kop-logo-filter, none); }
+.topbar img { height: 1.6rem; width: auto; }
+/* het woordmerk is wit; op een lichte headerkleur zet de pagina invert(1). Alleen op
+   het woordmerk: de profielfoto in dezelfde balk mag nooit mee-inverteren */
+.topbar .woordmerk { filter: var(--kop-logo-filter, none); }
 .topbar a { color: var(--kop-tekst, var(--papier)); text-decoration: none; font-weight: 600; }
 .topbar nav { margin-left: auto; display: flex; gap: 1.1rem; font-size: .95rem; }
 /* actieve pagina in het menu (aria-current uit nav-links.tsx / inlog-knop.tsx):
@@ -296,7 +298,7 @@ table.lijst th { font-size: .82rem; letter-spacing: .1em; text-transform: upperc
 /* profielfoto's */
 .avatar {
     width: 1.6rem; height: 1.6rem; border-radius: 50%; object-fit: cover;
-    border: 1px solid rgba(250, 246, 241, .5); vertical-align: middle;
+    border: 1px solid color-mix(in srgb, currentColor 40%, transparent); vertical-align: middle;
 }
 .avatar-groot {
     width: 4.5rem; height: 4.5rem; border-color: var(--kartonrand);

@@ -25,7 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <header className="topbar">
           <div className="topbar-binnen">
             <a href="/">
-              <img src="/logo/jottem-o-wit.svg" alt="Jottem" />
+              <img src="/logo/jottem-o-wit.svg" alt="Jottem" className="woordmerk" />
             </a>
             <a href="/">Jottem</a>
             {OMGEVING !== "productie" && <span className="proto">{OMGEVING}</span>}
