@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { API_PUBLIEK, authHeaders, isIngelogd } from "@/lib/api";
-import { startLogin } from "@/lib/oidc";
+import BeheerInlog from "../../../beheer-inlog";
+import { Actiebalk, BeheerPagina, KaartSectie, Veld } from "../../../beheer-ui";
 
 // Bevestigingspagina: consequenties uitleggen en de slug laten natypen voordat de
 // verwijderknop actief wordt.
@@ -31,26 +32,25 @@ export default function OrganisatieVerwijderPagina() {
     router.push(`/beheer?melding=${encodeURIComponent(`Organisatie "${slug}" is verwijderd.`)}`);
   }
 
-  if (ingelogd === null) return <main><h1>Organisatie verwijderen</h1></main>;
   if (!ingelogd) {
-    return (
-      <main>
-        <h1>Organisatie verwijderen</h1>
-        <p style={{ marginTop: "1.2rem" }}>
-          <button className="knop knop-primair" onClick={() => void startLogin(`/beheer/${slug}/verwijderen`)}>
-            Log in als platformbeheerder
-          </button>
-        </p>
-      </main>
-    );
+    return <BeheerInlog titel="Organisatie verwijderen" terugNaar={`/beheer/${slug}/verwijderen`}
+                        rol="platformbeheerder" bekend={ingelogd === false} />;
   }
 
   return (
-    <main>
-      <p style={{ fontSize: ".95rem" }}><a href="/beheer">Platformbeheer</a></p>
-      <h1 style={{ marginTop: ".3rem" }}>Organisatie &ldquo;{slug}&rdquo; verwijderen</h1>
-
-      <section className="memo" style={{ marginTop: "1.5rem", maxWidth: "42rem" }}>
+    <BeheerPagina
+      kruimels={<><a href="/beheer">Platformbeheer</a> · <a href={`/beheer/${slug}`}>{slug}</a></>}
+      titel={<>Organisatie &ldquo;{slug}&rdquo; verwijderen</>}
+      zijbalk={
+        <Actiebalk samenvatting={[{ label: "Slug", waarde: slug }]} voet="Verwijderen kan niet ongedaan worden gemaakt.">
+          <button className="knop knop-gevaar" disabled={bevestiging !== slug || bezig} onClick={verwijder}>
+            Verwijder definitief
+          </button>
+          <a className="knop knop-secundair" href={`/beheer/${slug}`}>Annuleren</a>
+        </Actiebalk>
+      }
+    >
+      <div className="memo memo-blok">
         <p><strong>Weet je het zeker? Dit kan niet ongedaan worden gemaakt.</strong></p>
         <ul style={{ marginTop: ".6rem", paddingLeft: "1.2rem", lineHeight: 1.7 }}>
           <li>De organisatie verdwijnt van de homepage en de publieke organisatiepagina vervalt.</li>
@@ -62,13 +62,12 @@ export default function OrganisatieVerwijderPagina() {
           Verwijderen kan alleen zolang de organisatie <strong>geen jottems</strong> heeft;
           zijn die er wel, dan moeten ze eerst gedepubliceerd en verwijderd worden.
         </p>
-      </section>
+      </div>
 
-      {melding && <p className="memo" style={{ marginTop: "1rem", maxWidth: "42rem" }}>{melding}</p>}
+      {melding && <p className="memo memo-blok">{melding}</p>}
 
-      <div className="formulier" style={{ marginTop: "1.5rem" }}>
-        <div className="veld">
-          <label htmlFor="bevestiging">Typ de slug <strong>{slug}</strong> om te bevestigen</label>
+      <KaartSectie titel="Bevestiging">
+        <Veld label={<>Typ de slug <strong>{slug}</strong> om te bevestigen</>} htmlFor="bevestiging">
           <input
             id="bevestiging"
             type="text"
@@ -77,18 +76,8 @@ export default function OrganisatieVerwijderPagina() {
             placeholder={slug}
             autoComplete="off"
           />
-        </div>
-        <div style={{ display: "flex", gap: ".7rem" }}>
-          <button
-            className="knop knop-gevaar"
-            disabled={bevestiging !== slug || bezig}
-            onClick={verwijder}
-          >
-            Verwijder deze organisatie definitief
-          </button>
-          <a className="knop knop-secundair" href="/beheer">Annuleren</a>
-        </div>
-      </div>
-    </main>
+        </Veld>
+      </KaartSectie>
+    </BeheerPagina>
   );
 }

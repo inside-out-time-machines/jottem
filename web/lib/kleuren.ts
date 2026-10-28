@@ -28,8 +28,14 @@ export function tekstOp(vlak: string | null | undefined): string | null {
   if (!vlak) return null;
   const l = luminantie(vlak);
   if (l === null) return null;
-  // drempel uit de WCAG-contrastformule: hierboven wint donkere tekst
-  return l > 0.179 ? INKT : WIT;
+  // WCAG-contrast van beide kandidaten; strikt genomen wint de hoogste, maar bij een
+  // bijna gelijke stand (binnen 10%) kiezen we wit: op verzadigde middenkleuren zoals
+  // het SAMH-groen oogt wit beter dan de formule aangeeft (APCA geeft dat ook aan) en
+  // het witte woordmerk hoeft dan niet geïnverteerd te worden. Op echt lichte kleuren
+  // (geel, pastel) blijft inkt ruim winnen.
+  const inkt = (l + 0.05) / (luminantie(INKT)! + 0.05);
+  const wit = 1.05 / (l + 0.05);
+  return inkt > wit * 1.1 ? INKT : WIT;
 }
 
 /** Contrastverhouding (WCAG) tussen twee #rrggbb-kleuren; null bij een onbekend formaat. */
@@ -96,6 +102,9 @@ export function kopVoetCss(
     // het woordmerk in de header is wit; op een licht vlak maakt invert het zwart
     if (kopTekst === INKT) regels.push("--kop-logo-filter:invert(1)");
   }
+  // de actieve-paginamarkering in het menu: de secundaire kleur van de organisatie
+  // (zonder organisatie het Jottem-oranje, zie .topbar nav a[aria-current] in globals.css)
+  if (secundair) regels.push(`--kop-accent:${secundair}`);
   const voetTekst = tekstOp(secundair);
   if (secundair && voetTekst) {
     regels.push(`--voet-vlak:${secundair}`, `--voet-tekst:${voetTekst}`);

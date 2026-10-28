@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { API_PUBLIEK, authHeaders, isIngelogd } from "@/lib/api";
-import { startLogin } from "@/lib/oidc";
+import BeheerInlog from "../../../../beheer-inlog";
+import { Actiebalk, BeheerPagina, KaartSectie, Veld } from "../../../../beheer-ui";
 
 // Bevestigingspagina voor projectverwijdering: consequenties + slug natypen.
 export default function ProjectVerwijderPagina() {
@@ -49,26 +50,33 @@ export default function ProjectVerwijderPagina() {
     router.push(`/organisatiebeheer?melding=${encodeURIComponent(`Project "${naam}" is verwijderd.`)}`);
   }
 
-  if (ingelogd === null) return <main><h1>Project verwijderen</h1></main>;
   if (!ingelogd) {
-    return (
-      <main>
-        <h1>Project verwijderen</h1>
-        <p style={{ marginTop: "1.2rem" }}>
-          <button className="knop knop-primair" onClick={() => void startLogin(`/organisatiebeheer/${org}/${projectSlug}/verwijderen`)}>
-            Log in als organisatiebeheerder
-          </button>
-        </p>
-      </main>
-    );
+    return <BeheerInlog titel="Project verwijderen" terugNaar={`/organisatiebeheer/${org}/${projectSlug}/verwijderen`}
+                        rol="organisatiebeheerder" bekend={ingelogd === false} />;
   }
 
-  return (
-    <main>
-      <p style={{ fontSize: ".95rem" }}><a href="/organisatiebeheer">Organisatiebeheer</a> · {org}</p>
-      <h1 style={{ marginTop: ".3rem" }}>Project &ldquo;{naam || projectSlug}&rdquo; verwijderen</h1>
+  const magVerwijderen = bevestiging === projectSlug && !bezig && !!projectId;
 
-      <section className="memo" style={{ marginTop: "1.5rem", maxWidth: "42rem" }}>
+  return (
+    <BeheerPagina
+      kruimels={<><a href="/organisatiebeheer">Organisatiebeheer</a> · {org} · <a href={`/organisatiebeheer/${org}/${projectSlug}`}>{naam || projectSlug}</a></>}
+      titel={<>Project &ldquo;{naam || projectSlug}&rdquo; verwijderen</>}
+      zijbalk={
+        <Actiebalk
+          samenvatting={[
+            { label: "Slug", waarde: projectSlug },
+            { label: "Jottems", waarde: aantalJottems ?? "..." },
+          ]}
+          voet="Verwijderen kan niet ongedaan worden gemaakt."
+        >
+          <button className="knop knop-gevaar" disabled={!magVerwijderen} onClick={verwijder}>
+            Verwijder definitief
+          </button>
+          <a className="knop knop-secundair" href={`/organisatiebeheer/${org}/${projectSlug}`}>Annuleren</a>
+        </Actiebalk>
+      }
+    >
+      <div className="memo memo-blok">
         <p><strong>Weet je het zeker? Dit kan niet ongedaan worden gemaakt.</strong></p>
         <ul style={{ marginTop: ".6rem", paddingLeft: "1.2rem", lineHeight: 1.7 }}>
           <li>Het project verdwijnt van de publieke projectpagina en van de homepage.</li>
@@ -83,13 +91,12 @@ export default function ProjectVerwijderPagina() {
           , en niet als het het laatste project van de organisatie is: elke organisatie
           houdt er minstens één.
         </p>
-      </section>
+      </div>
 
-      {melding && <p className="memo" style={{ marginTop: "1rem", maxWidth: "42rem" }}>{melding}</p>}
+      {melding && <p className="memo memo-blok">{melding}</p>}
 
-      <div className="formulier" style={{ marginTop: "1.5rem" }}>
-        <div className="veld">
-          <label htmlFor="bevestiging">Typ de slug <strong>{projectSlug}</strong> om te bevestigen</label>
+      <KaartSectie titel="Bevestiging">
+        <Veld label={<>Typ de slug <strong>{projectSlug}</strong> om te bevestigen</>} htmlFor="bevestiging">
           <input
             id="bevestiging"
             type="text"
@@ -98,18 +105,8 @@ export default function ProjectVerwijderPagina() {
             placeholder={projectSlug}
             autoComplete="off"
           />
-        </div>
-        <div style={{ display: "flex", gap: ".7rem" }}>
-          <button
-            className="knop knop-gevaar"
-            disabled={bevestiging !== projectSlug || bezig || !projectId}
-            onClick={verwijder}
-          >
-            Verwijder dit project definitief
-          </button>
-          <a className="knop knop-secundair" href="/organisatiebeheer">Annuleren</a>
-        </div>
-      </div>
-    </main>
+        </Veld>
+      </KaartSectie>
+    </BeheerPagina>
   );
 }

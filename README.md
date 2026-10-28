@@ -99,6 +99,15 @@ De API migreert en seedt bij het opstarten (SAMH + project *Smaak van Gouda* +
 testaccounts voor de dev-bypass `X-Dev-Sub`: `dev-anna` (uploader), `dev-mona`
 (moderator), `dev-otto` (organisatiebeheerder)).
 
+## Beheer-UI
+
+De beheerpagina's (organisatiebeheer, platformbeheer, moderatie, profiel) delen één
+lay-out: kaarten uit de merkgids links, een plakkende actiebalk met samenvatting en
+knoppen rechts (op een telefoon onderaan). De bouwstenen staan in `web/app/beheer-ui.tsx`
+(`BeheerPagina`, `KaartSectie`, `Actiebalk`, `Veld`, `StatusPil`) en `web/app/beheer-inlog.tsx`;
+de bijbehorende klassen onder "beheerpagina's" in `web/app/globals.css`. Uitleg bij een
+veld hoort in de `hint`, niet in het label; keuzelijsten staan in `.keuzes`.
+
 ## Ontwerp
 
 - Ontwerpdocument: https://design.iotm.nl/ ([repo](https://github.com/inside-out-time-machines/design))

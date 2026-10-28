@@ -3,7 +3,8 @@
 import { use, useCallback, useEffect, useState } from "react";
 import { API_PUBLIEK, authHeaders, isIngelogd } from "@/lib/api";
 import { kopVoetCss, projectStijl } from "@/lib/kleuren";
-import { startLogin } from "@/lib/oidc";
+import BeheerInlog from "../../beheer-inlog";
+import { Actiebalk, BeheerPagina, KaartSectie, StatusPil, Veld } from "../../beheer-ui";
 import Licentie from "../../licentie";
 
 // Wat de moderator ziet is meer dan de publiekspagina toont: die bestaat pas na
@@ -118,55 +119,66 @@ export default function BeoordeelPagina({ params }: { params: Promise<{ id: stri
     </style>
   ) : null;
 
-  if (ingelogd === null) return <main><h1>Beoordelen</h1></main>;
   if (!ingelogd) {
-    return (
-      <main>
-        <h1>Beoordelen</h1>
-        <p style={{ marginTop: "1.2rem" }}>
-          <button className="knop knop-primair" onClick={() => void startLogin(`/moderatie/${id}`)}>
-            Log in als moderator
-          </button>
-        </p>
-      </main>
-    );
+    return <BeheerInlog titel="Beoordelen" terugNaar={`/moderatie/${id}`} rol="moderator" bekend={ingelogd === false} />;
   }
   if (fout) {
     return (
-      <main>
-        <p><a href="/moderatie">&larr; terug naar de wachtrij</a></p>
-        <h1>Beoordelen lukt niet</h1>
-        <p className="memo" style={{ marginTop: "1rem" }}>{fout}</p>
-      </main>
+      <BeheerPagina kruimels={<a href="/moderatie">&larr; terug naar de wachtrij</a>} titel="Beoordelen lukt niet">
+        <p className="memo memo-blok">{fout}</p>
+      </BeheerPagina>
     );
   }
-  if (!beoordeling) return <main><h1>Beoordelen</h1><p>Bezig met laden&hellip;</p></main>;
+  if (!beoordeling) {
+    return (
+      <BeheerPagina kruimels={<a href="/moderatie">&larr; terug naar de wachtrij</a>} titel="Beoordelen">
+        <p className="beheer-leeg">Bezig met laden&hellip;</p>
+      </BeheerPagina>
+    );
+  }
 
   const { detail } = beoordeling;
   const steekwoorden = detail.metadata.steekwoord;
   const overig = Object.entries(detail.metadata)
     .filter(([veld]) => veld !== "steekwoord" && !veld.endsWith("termUri") && !veld.endsWith("Uri"));
+  const ingediendOp = new Date(beoordeling.creatieDatum).toLocaleDateString("nl-NL",
+    { day: "numeric", month: "long", year: "numeric" });
 
   return (
-    <main style={kleurStijl}>
-      {kopVoetBlok}
-      <p><a href="/moderatie">&larr; terug naar de wachtrij</a></p>
-      <div style={{ display: "flex", gap: "1rem", alignItems: "baseline", flexWrap: "wrap" }}>
-        <h1>{detail.titel}</h1>
-        <span className={`status-pil status-${detail.status}`}>{detail.status}</span>
-      </div>
-      <p style={{ marginTop: ".3rem", color: "var(--grijs)", fontSize: ".95rem" }}>
-        ingezonden door {beoordeling.inzenderNaam} op{" "}
-        {new Date(beoordeling.creatieDatum).toLocaleDateString("nl-NL",
-          { day: "numeric", month: "long", year: "numeric" })}
-        {" · "}{detail.organisatie} &middot; {detail.project}
-        {!beoordeling.inzenderNaamPubliek && " · naam blijft buiten de open data"}
-      </p>
-
-      {melding && <p className="memo" style={{ marginTop: "1rem" }}>{melding}</p>}
+    <BeheerPagina
+      kruimels={<><a href="/moderatie">Moderatie</a> · {detail.organisatie} · {detail.project}</>}
+      titel={detail.titel}
+      etiket={detail.status}
+      stijl={kleurStijl}
+      hoofd={kopVoetBlok}
+      zijbalk={
+        <Actiebalk
+          samenvatting={[
+            { label: "Status", waarde: <StatusPil soort={detail.status}>{detail.status}</StatusPil> },
+            { label: "Inzender", waarde: <>{beoordeling.inzenderNaam}{!beoordeling.inzenderNaamPubliek && <span className="hint">naam blijft buiten de open data</span>}</> },
+            { label: "Ingediend", waarde: ingediendOp },
+            { label: "Herkenbaar", waarde: beoordeling.herkenbaar ? `ja, toestemming: ${beoordeling.toestemming}` : "nee" },
+          ]}
+          voet={detail.status === "goedgekeurd" ? <a href={`/jottem/${detail.mediaId}`}>Bekijk de publiekspagina</a> : undefined}
+        >
+          {detail.status === "nieuw" && (
+            <>
+              <button className="knop knop-primair" disabled={bezig} onClick={() => void beslis("goedgekeurd")}>
+                Goedkeuren
+              </button>
+              <button className="knop knop-secundair" disabled={bezig} onClick={() => setAfkeuren(true)}>
+                Afkeuren...
+              </button>
+            </>
+          )}
+          <a className="knop knop-secundair" href="/moderatie">Terug naar de wachtrij</a>
+        </Actiebalk>
+      }
+    >
+      {melding && <p className="memo memo-blok">{melding}</p>}
 
       {beoordeling.herkenbaar && (
-        <p className="memo" style={{ marginTop: "1rem" }}>
+        <p className="memo memo-blok">
           <strong>Mogelijk herkenbare personen op deze foto.</strong>{" "}
           {beoordeling.toestemming === "ja"
             ? "De inzender verklaart hun toestemming te hebben."
@@ -176,90 +188,74 @@ export default function BeoordeelPagina({ params }: { params: Promise<{ id: stri
         </p>
       )}
 
-      {detail.afbeeldingUrl && (
-        // geen IIIF-viewer: het derivaat bestaat pas na goedkeuring. Dit is het
-        // origineel via een tijdelijke link, precies wat je wilt zien om te beslissen
-        <p style={{ marginTop: "1.2rem" }}>
-          <img src={detail.afbeeldingUrl} alt={detail.titel} className="beoordeel-beeld" />
-        </p>
-      )}
-
-      {detail.beschrijving && <p style={{ marginTop: "1rem" }}>{detail.beschrijving}</p>}
-
-      <table className="lijst stapel" style={{ marginTop: "1.5rem" }}>
-        <tbody>
-          <tr><td data-label="Categorie"><strong>Categorie</strong></td><td>{detail.genre ?? "geen"}</td></tr>
-          {steekwoorden && (
-            <tr><td data-label="Steekwoorden"><strong>Steekwoorden</strong></td><td>{steekwoorden}</td></tr>
-          )}
-          {overig.map(([veld, waarde]) => (
-            <tr key={veld}>
-              <td data-label={VELDNAAM[veld] ?? veld}><strong>{VELDNAAM[veld] ?? veld}</strong></td>
-              <td>{waarde}</td>
-            </tr>
-          ))}
-          <tr>
-            <td data-label="Herkomst"><strong>Herkomst</strong></td>
-            <td>
-              {BRONNAAM[detail.bron] ?? detail.bron}
-              {detail.bronUrl && <> &middot; <a href={detail.bronUrl} target="_blank" rel="noreferrer">bron openen</a></>}
-            </td>
-          </tr>
-          <tr>
-            <td data-label="Licentie"><strong>Licentie</strong></td>
-            <td>{detail.licentie ? <Licentie url={detail.licentie} /> : "geen"}</td>
-          </tr>
-          {detail.gerelateerd.length > 0 && (
-            <tr>
-              <td data-label="Zelfde object"><strong>Zelfde object</strong></td>
-              <td>{detail.gerelateerd.map((g) => (
-                <span key={g.mediaId}><a href={`/jottem/${g.mediaId}`}>{g.titel}</a> </span>
-              ))}</td>
-            </tr>
-          )}
-          {beoordeling.afkeurReden && (
-            <tr>
-              <td data-label="Eerder afgekeurd"><strong>Eerder afgekeurd</strong></td>
-              <td>{beoordeling.afkeurReden}</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-
-      {detail.status === "nieuw" && !afkeuren && (
-        <p style={{ marginTop: "1.5rem", display: "flex", gap: ".6rem", flexWrap: "wrap" }}>
-          <button className="knop knop-primair" disabled={bezig} onClick={() => void beslis("goedgekeurd")}>
-            Goedkeuren
-          </button>
-          <button className="knop knop-secundair" onClick={() => setAfkeuren(true)}>
-            Afkeuren
-          </button>
-        </p>
-      )}
-
       {detail.status === "nieuw" && afkeuren && (
-        <div style={{ marginTop: "1.5rem" }}>
-          <label htmlFor="reden"><strong>Waarom keur je deze bijdrage af?</strong></label>
-          <p style={{ fontSize: ".9rem", color: "var(--grijs)", margin: ".2rem 0 .5rem" }}>
-            De inzender leest deze reden in de mail, met een link om het aan te passen en
-            opnieuw in te dienen. Schrijf dus wat er nodig is om het wél te laten lukken.
-          </p>
-          <textarea id="reden" rows={3} value={reden} onChange={(e) => setReden(e.target.value)} />
-          <p style={{ marginTop: ".6rem", display: "flex", gap: ".6rem", flexWrap: "wrap" }}>
+        <KaartSectie
+          titel="Afkeuren"
+          intro="De inzender leest deze reden in de mail, met een link om het aan te passen en opnieuw in te dienen. Schrijf dus wat er nodig is om het wél te laten lukken."
+        >
+          <Veld label="Waarom keur je deze bijdrage af?" htmlFor="reden">
+            <textarea id="reden" rows={3} value={reden} onChange={(e) => setReden(e.target.value)} autoFocus />
+          </Veld>
+          <div className="knoppenrij">
             <button className="knop knop-primair" disabled={bezig || !reden.trim()}
                     onClick={() => void beslis("afgekeurd")}>
               Afkeuren en mail sturen
             </button>
             <button className="knop knop-secundair" onClick={() => setAfkeuren(false)}>Annuleren</button>
-          </p>
-        </div>
+          </div>
+        </KaartSectie>
       )}
 
-      {detail.status === "goedgekeurd" && (
-        <p style={{ marginTop: "1.5rem" }}>
-          <a className="knop knop-secundair" href={`/jottem/${detail.mediaId}`}>Bekijk de publiekspagina</a>
-        </p>
-      )}
-    </main>
+      <KaartSectie titel="De bijdrage" intro={<>Ingezonden door {beoordeling.inzenderNaam} op {ingediendOp}.</>}>
+        {detail.afbeeldingUrl && (
+          // geen IIIF-viewer: het derivaat bestaat pas na goedkeuring. Dit is het
+          // origineel via een tijdelijke link, precies wat je wilt zien om te beslissen
+          <p><img src={detail.afbeeldingUrl} alt={detail.titel} className="beoordeel-beeld" /></p>
+        )}
+        {detail.beschrijving && <p>{detail.beschrijving}</p>}
+      </KaartSectie>
+
+      <KaartSectie titel="Gegevens">
+        <table className="lijst stapel">
+          <tbody>
+            <tr><td data-label="Categorie"><strong>Categorie</strong></td><td>{detail.genre ?? "geen"}</td></tr>
+            {steekwoorden && (
+              <tr><td data-label="Steekwoorden"><strong>Steekwoorden</strong></td><td>{steekwoorden}</td></tr>
+            )}
+            {overig.map(([veld, waarde]) => (
+              <tr key={veld}>
+                <td data-label={VELDNAAM[veld] ?? veld}><strong>{VELDNAAM[veld] ?? veld}</strong></td>
+                <td>{waarde}</td>
+              </tr>
+            ))}
+            <tr>
+              <td data-label="Herkomst"><strong>Herkomst</strong></td>
+              <td>
+                {BRONNAAM[detail.bron] ?? detail.bron}
+                {detail.bronUrl && <> &middot; <a href={detail.bronUrl} target="_blank" rel="noreferrer">bron openen</a></>}
+              </td>
+            </tr>
+            <tr>
+              <td data-label="Licentie"><strong>Licentie</strong></td>
+              <td>{detail.licentie ? <Licentie url={detail.licentie} /> : "geen"}</td>
+            </tr>
+            {detail.gerelateerd.length > 0 && (
+              <tr>
+                <td data-label="Zelfde object"><strong>Zelfde object</strong></td>
+                <td>{detail.gerelateerd.map((g) => (
+                  <span key={g.mediaId}><a href={`/jottem/${g.mediaId}`}>{g.titel}</a> </span>
+                ))}</td>
+              </tr>
+            )}
+            {beoordeling.afkeurReden && (
+              <tr>
+                <td data-label="Eerder afgekeurd"><strong>Eerder afgekeurd</strong></td>
+                <td>{beoordeling.afkeurReden}</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </KaartSectie>
+    </BeheerPagina>
   );
 }

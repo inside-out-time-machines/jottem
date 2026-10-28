@@ -23,9 +23,11 @@ function controle(naam, geslaagd, toelichting = "") {
 // de te bezoeken pagina's komen uit de API, zodat de test niet op vaste id's leunt
 async function vindDoelen() {
   const organisaties = await (await fetch(`${API}/organisaties`)).json();
-  const org = organisaties.find((o) => o.projecten.some((p) => p.aantalJottems > 0));
-  if (!org) throw new Error("geen organisatie met gepubliceerde jottems");
-  const project = org.projecten.find((p) => p.aantalJottems > 0);
+  // een besloten project toont zonder login geen jottems, dus alleen openbare tellen
+  const openbaar = (p) => p.aantalJottems > 0 && p.zichtbaarheid !== "besloten";
+  const org = organisaties.find((o) => o.projecten.some(openbaar));
+  if (!org) throw new Error("geen organisatie met gepubliceerde jottems in een openbaar project");
+  const project = org.projecten.find(openbaar);
   const publiek = await (
     await fetch(`${API}/organisatie/${org.slug}/project/${project.slug}/publiek`)
   ).json();

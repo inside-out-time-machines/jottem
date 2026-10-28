@@ -3,46 +3,42 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authHeaders, isIngelogd } from "@/lib/api";
-import { startLogin } from "@/lib/oidc";
-import OrganisatieFormulier, { LEGE_ORGANISATIE } from "../organisatie-formulier";
+import BeheerInlog from "../../beheer-inlog";
+import { Actiebalk, BeheerPagina } from "../../beheer-ui";
+import OrganisatieFormulier, { LEGE_ORGANISATIE, ORGANISATIE_FORMULIER_ID } from "../organisatie-formulier";
 
 export default function NieuweOrganisatiePagina() {
   const router = useRouter();
   const [ingelogd, setIngelogd] = useState<boolean | null>(null);
+  const [melding, setMelding] = useState<string | null>(null);
   const headers = { "Content-Type": "application/json", ...authHeaders() };
 
   useEffect(() => setIngelogd(isIngelogd()), []);
-  if (ingelogd === null) return <main><h1>Nieuwe organisatie</h1></main>;
   if (!ingelogd) {
-    return (
-      <main>
-        <h1>Nieuwe organisatie</h1>
-        <p style={{ marginTop: "1.2rem" }}>
-          <button className="knop knop-primair" onClick={() => void startLogin("/beheer/nieuw")}>
-            Log in als platformbeheerder
-          </button>
-        </p>
-      </main>
-    );
+    return <BeheerInlog titel="Nieuwe organisatie" terugNaar="/beheer/nieuw"
+                        rol="platformbeheerder" bekend={ingelogd === false} />;
   }
 
   return (
-    <main>
-      <p style={{ fontSize: ".95rem" }}><a href="/beheer">Platformbeheer</a></p>
-      <h1 style={{ marginTop: ".3rem" }}>Nieuwe organisatie</h1>
-      <p style={{ marginTop: ".5rem", maxWidth: "42rem" }}>
-        Er wordt automatisch een eerste project bij aangemaakt; logo en favicon kun je
-        na het aanmaken uploaden via Bewerken.
-      </p>
-      <section style={{ marginTop: "1.5rem" }}>
-        <OrganisatieFormulier
-          begin={{ ...LEGE_ORGANISATIE }}
-          bewerkSlug={null}
-          headers={headers}
-          opslaanTekst="Organisatie aanmaken"
-          onKlaar={(melding) => router.push(`/beheer?melding=${encodeURIComponent(melding)}`)}
-        />
-      </section>
-    </main>
+    <BeheerPagina
+      kruimels={<a href="/beheer">Platformbeheer</a>}
+      titel="Nieuwe organisatie"
+      intro="Er wordt automatisch een eerste project bij aangemaakt; logo en favicon kun je na het aanmaken uploaden via Bewerken."
+      zijbalk={
+        <Actiebalk voet="Na het aanmaken kom je terug op het platformbeheer.">
+          <button className="knop knop-primair" type="submit" form={ORGANISATIE_FORMULIER_ID}>Organisatie aanmaken</button>
+          <a className="knop knop-secundair" href="/beheer">Annuleren</a>
+        </Actiebalk>
+      }
+    >
+      {melding && <p className="memo memo-blok">{melding}</p>}
+      <OrganisatieFormulier
+        begin={{ ...LEGE_ORGANISATIE }}
+        bewerkSlug={null}
+        headers={headers}
+        onMelding={setMelding}
+        onKlaar={(m) => router.push(`/beheer?melding=${encodeURIComponent(m)}`)}
+      />
+    </BeheerPagina>
   );
 }
