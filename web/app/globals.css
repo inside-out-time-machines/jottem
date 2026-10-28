@@ -484,7 +484,9 @@ main.beheer {
 .kaart-sectie:nth-child(4) { animation-delay: .18s; }
 .kaart-sectie:nth-child(n+5) { animation-delay: .24s; }
 @keyframes kaart-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-.kaart-sectie > h2 { font-size: 1.35rem; }
+.kaart-sectie > h2, .kaart-kop h2 { font-size: 1.35rem; }
+.kaart-kop { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.kaart-sectie table.lijst { margin-top: 0; }
 .kaart-sectie > h3 { font-size: 1.05rem; margin-top: 1.1rem; }
 .kaart-intro { margin-top: .25rem; font-size: .95rem; color: var(--grijs); max-width: 42rem; }
 .kaart-inhoud { margin-top: 1rem; display: grid; gap: .9rem; }

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 // Bouwstenen voor de beheerpagina's (organisatiebeheer, platformbeheer, moderatie,
 // profiel): twee kolommen met kaarten links en een plakkende actiebalk rechts, zie
@@ -10,6 +10,8 @@ export function BeheerPagina({
   etiket,
   intro,
   zijbalk,
+  stijl,
+  hoofd,
   children,
 }: {
   kruimels?: ReactNode;
@@ -17,10 +19,15 @@ export function BeheerPagina({
   etiket?: ReactNode;
   intro?: ReactNode;
   zijbalk?: ReactNode;
+  /** organisatiekleuren (lib/kleuren.projectStijl) op de hele pagina */
+  stijl?: CSSProperties;
+  /** extra element vóór de kop, bijv. het <style>-blok voor header en footer */
+  hoofd?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <main className="beheer">
+    <main className="beheer" style={stijl}>
+      {hoofd}
       <header className="beheer-kop">
         {kruimels && <p className="kruimels">{kruimels}</p>}
         <h1>
@@ -39,16 +46,23 @@ export function KaartSectie({
   titel,
   intro,
   id,
+  acties,
   children,
 }: {
   titel: ReactNode;
   intro?: ReactNode;
   id?: string;
+  /** knoppen rechts naast de titel */
+  acties?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <section className="kaart-sectie" id={id}>
-      <h2>{titel}</h2>
+      {acties ? (
+        <div className="kaart-kop"><h2>{titel}</h2><div className="knoppenrij">{acties}</div></div>
+      ) : (
+        <h2>{titel}</h2>
+      )}
       {intro && <p className="kaart-intro">{intro}</p>}
       <div className="kaart-inhoud">{children}</div>
     </section>

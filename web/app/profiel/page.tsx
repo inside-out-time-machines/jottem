@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { API_PUBLIEK, authHeaders, isIngelogd } from "@/lib/api";
-import { startLogin, uitloggen } from "@/lib/oidc";
+import { uitloggen } from "@/lib/oidc";
+import BeheerInlog from "../beheer-inlog";
+import { Actiebalk, BeheerPagina, KaartSectie, Veld } from "../beheer-ui";
 
 const AUTH_INSTELLINGEN =
   (process.env.NEXT_PUBLIC_OIDC_ISSUER ?? "https://auth.dev.iotm.nl/application/o/jottem/")
@@ -64,86 +66,87 @@ export default function ProfielPagina() {
     await bijwerken({ afbeelding: objectKey }, "Je foto is bijgewerkt.");
   }
 
-  if (ingelogd === null) return <main><h1>Mijn profiel</h1></main>;
   if (!ingelogd) {
-    return (
-      <main>
-        <h1>Mijn profiel</h1>
-        <p style={{ marginTop: "1.2rem" }}>
-          <button className="knop knop-primair" onClick={() => void startLogin("/profiel")}>
-            Inloggen
-          </button>
-        </p>
-      </main>
-    );
+    return <BeheerInlog titel="Mijn profiel" terugNaar="/profiel" rol="gebruiker" bekend={ingelogd === false} />;
   }
 
   return (
-    <main>
-      <h1>Mijn profiel</h1>
-      {melding && <p className="memo" style={{ marginTop: "1rem" }}>{melding}</p>}
+    <BeheerPagina
+      titel="Mijn profiel"
+      zijbalk={
+        <Actiebalk
+          samenvatting={profiel ? [
+            { label: "Ingelogd als", waarde: profiel.email },
+            { label: "Rollen", waarde: profiel.rollen.length > 0 ? profiel.rollen.map((r) => r.rol).join(", ") : "gebruiker" },
+          ] : undefined}
+          voet="Wachtwoord, tweestapsverificatie en passkeys beheer je bij de inlogdienst."
+        >
+          <a className="knop knop-secundair" href={AUTH_INSTELLINGEN}>Wachtwoord en 2FA</a>
+          <button className="knop knop-secundair" onClick={() => uitloggen()}>Uitloggen</button>
+        </Actiebalk>
+      }
+    >
+      {melding && <p className="memo memo-blok">{melding}</p>}
       {profiel && (
-        <div className="formulier" style={{ marginTop: "1.5rem" }}>
-          <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-            {profiel.afbeeldingUrl ? (
-              <img src={profiel.afbeeldingUrl} alt="" className="avatar avatar-groot" />
-            ) : (
-              <span className="avatar avatar-groot avatar-leeg" aria-hidden="true">
-                {profiel.naam.slice(0, 1).toUpperCase()}
-              </span>
-            )}
-            <label className="knop knop-secundair" style={{ cursor: "pointer" }}>
-              Foto kiezen
-              <input
-                type="file"
-                accept="image/*"
-                style={{ display: "none" }}
-                onChange={(e) => { const b = e.target.files?.[0]; if (b) fotoKiezen(b); }}
-              />
-            </label>
-            {profiel.afbeeldingUrl && (
-              <button className="knop knop-secundair" onClick={() => bijwerken({ afbeelding: "" }, "Je foto is verwijderd.")}>
-                Foto verwijderen
+        <>
+          <KaartSectie titel="Wie ben je" intro="Je naam en foto staan bij je jottems, annotaties en reacties, als je dat hieronder toestaat.">
+            <div className="kleurstaal" style={{ gap: "1rem" }}>
+              {profiel.afbeeldingUrl ? (
+                <img src={profiel.afbeeldingUrl} alt="" className="avatar avatar-groot" />
+              ) : (
+                <span className="avatar avatar-groot avatar-leeg" aria-hidden="true">
+                  {profiel.naam.slice(0, 1).toUpperCase()}
+                </span>
+              )}
+              <label className="knop knop-secundair" style={{ cursor: "pointer" }}>
+                Foto kiezen
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={(e) => { const b = e.target.files?.[0]; if (b) fotoKiezen(b); }}
+                />
+              </label>
+              {profiel.afbeeldingUrl && (
+                <button className="knop knop-secundair" onClick={() => bijwerken({ afbeelding: "" }, "Je foto is verwijderd.")}>
+                  Foto verwijderen
+                </button>
+              )}
+            </div>
+            <Veld label="Naam" htmlFor="naam" hint="Zoals anderen die zien.">
+              <input id="naam" type="text" value={naam} onChange={(e) => setNaam(e.target.value)} />
+            </Veld>
+            <div className="knoppenrij">
+              <button className="knop knop-primair" onClick={() => bijwerken({ naam }, "Je naam is bijgewerkt.")}>
+                Naam opslaan
               </button>
-            )}
-          </div>
-          <div className="veld">
-            <label htmlFor="naam">Naam (zoals anderen die zien)</label>
-            <input id="naam" type="text" value={naam} onChange={(e) => setNaam(e.target.value)} />
-          </div>
-          <p style={{ margin: ".5rem 0" }}>
-            <button className="knop knop-primair" onClick={() => bijwerken({ naam }, "Je naam is bijgewerkt.")}>
-              Naam opslaan
-            </button>
-          </p>
-          <label style={{ fontWeight: 400 }}>
-            <input
-              type="checkbox"
-              checked={profiel.naamPubliek}
-              onChange={(e) => bijwerken({ naamPubliek: e.target.checked }, "Privacy-instelling opgeslagen.")}
-            />{" "}
-            Toon mijn naam bij mijn bijdragen en annotaties (uit = anoniem getoond)
-          </label>
-          <label style={{ fontWeight: 400 }}>
-            <input
-              type="checkbox"
-              checked={profiel.attenderingen}
-              onChange={(e) => bijwerken({ attenderingen: e.target.checked }, "Attenderingen opgeslagen.")}
-            />{" "}
-            Stuur mij een berichtje bij nieuwe annotaties of reacties op mijn jottems (max. één mail per dag)
-          </label>
-          <p style={{ fontSize: ".95rem", color: "var(--grijs)" }}>
-            Ingelogd als {profiel.email}
-            {profiel.rollen.length > 0 && ` · rollen: ${profiel.rollen.map((r) => r.rol).join(", ")}`}
-          </p>
-          <p style={{ display: "flex", gap: ".7rem", flexWrap: "wrap" }}>
-            <a className="knop knop-secundair" href={AUTH_INSTELLINGEN}>
-              Wachtwoord, 2FA en passkeys beheren
-            </a>
-            <button className="knop knop-secundair" onClick={() => uitloggen()}>Uitloggen</button>
-          </p>
-        </div>
+            </div>
+          </KaartSectie>
+
+          <KaartSectie titel="Privacy en berichten" intro="Deze keuzes worden direct opgeslagen.">
+            <div className="keuzes-kader">
+              <div className="keuzes keuzes-een">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={profiel.naamPubliek}
+                    onChange={(e) => bijwerken({ naamPubliek: e.target.checked }, "Privacy-instelling opgeslagen.")}
+                  />
+                  <span>Toon mijn naam bij mijn bijdragen en annotaties <span className="keuze-uitleg">(uit = anoniem getoond)</span></span>
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={profiel.attenderingen}
+                    onChange={(e) => bijwerken({ attenderingen: e.target.checked }, "Attenderingen opgeslagen.")}
+                  />
+                  <span>Stuur mij een berichtje bij nieuwe annotaties of reacties op mijn jottems <span className="keuze-uitleg">(maximaal één mail per dag)</span></span>
+                </label>
+              </div>
+            </div>
+          </KaartSectie>
+        </>
       )}
-    </main>
+    </BeheerPagina>
   );
 }
