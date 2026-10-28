@@ -179,7 +179,7 @@ export default function ModeratiePagina() {
   return (
     <BeheerPagina
       titel="Moderatie"
-      etiket={wachtend > 0 ? `${wachtend} wacht` : undefined}
+      etiket={wachtend > 0 ? `${wachtend} in de wacht` : undefined}
       intro={mijnOrganisaties.length > 1
         ? "Kies rechts de organisatie waarvoor je modereert."
         : <>Alle jottems van <strong>{huisstijl?.naam ?? "je organisatie"}</strong>.</>}
