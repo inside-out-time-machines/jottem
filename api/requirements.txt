@@ -1,6 +1,9 @@
 # Exacte versies: de gedraaide build moet reproduceerbaar en controleerbaar zijn.
 # Bijwerken doe je bewust, met de contract- en rooktests als vangnet (zie tests/README.md).
 fastapi==0.141.1
+# starlette expliciet: een rebuild trok op 2026-10-28 ongemerkt 1.10.0 binnen, die
+# Vary: Origin op elk antwoord zet en de contracttests brak
+starlette==1.10.0
 uvicorn[standard]==0.52.4
 sqlalchemy==2.0.52
 psycopg[binary]==3.3.4

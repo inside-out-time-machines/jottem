@@ -18,6 +18,12 @@ DESIGN = "https://design.iotm.nl/data-architectuur/frames"
 FRAMES = ["jottem", "dataset", "datacatalog", "annotatie", "annotatiecollectie"]
 
 
+def _vary(antwoord: httpx.Response) -> set[str]:
+    """Vary als verzameling tokens: volgorde, hoofdletters en spaties doen er niet toe,
+    een extra token (zoals Origin op open data) wel."""
+    return {t.strip().lower() for t in antwoord.headers.get("vary", "").split(",") if t.strip()}
+
+
 def _graaf(tekst: str, basis: str) -> Graph:
     graaf = Graph()
     graaf.parse(data=tekst, format="json-ld", base=basis)
@@ -67,7 +73,7 @@ def test_framen_verandert_de_tripels_niet(index: int, jottem_id: str, project: d
     assert "json-ld#framed" in geframed.headers["content-type"]
     assert f"/ns/frames/{naam}.frame.jsonld" in geframed.headers["content-type"]
     assert "describedby" in geframed.headers.get("link", "")
-    assert geframed.headers.get("vary") == "Accept"
+    assert _vary(geframed) == {"accept"}
 
     assert _graaf(gewoon.text, url).isomorphic(_graaf(geframed.text, url)), (
         f"{url}: framen veranderde de graaf")
@@ -92,4 +98,4 @@ def test_onderhandeling_blijft_overeind(api: httpx.Client, jottem_id: str):
         antwoord = api.get(f"/jottem/{jottem_id}", headers=kop)
         assert antwoord.headers["content-type"].startswith(verwacht)
         assert "json-ld#framed" not in antwoord.headers["content-type"]
-        assert antwoord.headers.get("vary") == "Accept"
+        assert _vary(antwoord) == {"accept"}
