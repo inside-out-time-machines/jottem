@@ -74,6 +74,15 @@ async def open_data_cors(request: Request, call_next):
     # `*` en allow-credentials sluiten elkaar uit; open data heeft geen credentials nodig
     if "access-control-allow-credentials" in response.headers:
         del response.headers["Access-Control-Allow-Credentials"]
+    # met `*` hangt het antwoord niet van Origin af; Starlette >= 1.10 zet Vary: Origin
+    # er onvoorwaardelijk bij, wat caches en harvesters een onnodige variant oplevert
+    # en de ontwerpbelofte `Vary: Accept` breekt (data-architectuur, framed profiel)
+    if "vary" in response.headers:
+        tokens = [t.strip() for t in response.headers["vary"].split(",")]
+        overig = [t for t in tokens if t and t.lower() != "origin"]
+        del response.headers["Vary"]
+        if overig:
+            response.headers["Vary"] = ", ".join(overig)
     return response
 
 app.include_router(upload.router)
