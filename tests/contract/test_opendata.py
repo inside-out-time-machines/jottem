@@ -46,6 +46,17 @@ def test_cors_op_open_data(api: httpx.Client, jottem_id: str):
     assert "access-control-allow-credentials" not in antwoord.headers
 
 
+def test_cors_op_datasetbeschrijving(project: dict):
+    """De datasetbeschrijving staat in de datacatalogus; harvesters in de browser moeten
+    erbij, en het antwoord hangt niet van Origin af."""
+    antwoord = httpx.get(f"{DATA}/project/{project['projectId']}/dataset",
+                         headers={"Accept": "application/ld+json",
+                                  "Origin": "https://harvester.example"}, timeout=30)
+    assert antwoord.status_code == 200
+    assert antwoord.headers.get("access-control-allow-origin") == "*"
+    assert "origin" not in antwoord.headers.get("vary", "").lower()
+
+
 def test_cors_preflight_beheeractie_blijft_dicht(api: httpx.Client, jottem_id: str):
     """Preflight voor een beheeractie hoort bij de gewone CORS-laag, niet bij open data."""
     antwoord = api.request(

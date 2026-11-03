@@ -23,7 +23,8 @@ Beide draaien standaard tegen dev. Andere omgeving:
 
 - `test_publiek.py` - organisaties, organisatie- en projectweergave, jottem-detail,
   paginering, verrijkingencatalogus, health.
-- `test_opendata.py` - IIIF-manifest en -collections, CORS voor externe viewers, content
+- `test_opendata.py` - IIIF-manifest en -collections, CORS voor externe viewers en harvesters
+  (ook de datasetbeschrijving, zonder Vary: Origin), content
   negotiation (JSON-LD, Turtle, RDF/XML), W3C-annotatiecollecties, RSS, Change Discovery,
   datacatalogus, datasetbeschrijving en de gzip-datadump, Termennetwerk-proxy.
 - `test_besloten.py` - besloten projecten: projectweergave zonder jottems, geen widget,
