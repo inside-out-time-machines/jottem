@@ -55,6 +55,8 @@ export default function UploadPagina() {
     mediaId: string;
     betrouwbaarheid: number | null;
     vervolg: "verder" | "indienen";
+    // true: de controle kon niet draaien; dan stellen we de vraag tóch (faalt dicht)
+    onbekend?: boolean;
   } | null>(null);
   // externe fotobron (beeldbank-permalink): alleen verwijzing, geen upload; de rechten
   // komen van de bron, niet uit de projectlicentie
@@ -187,7 +189,8 @@ export default function UploadPagina() {
       // gezaghebbende Herkenbaar-check op de server: bij herkenbare personen
       // stelt de server de toestemmingsvraag via deze 422
       if (antwoord.status === 422 && String(detail).includes("herkenbare personen") && keuze === null) {
-        setToestemmingsVraag({ mediaId, betrouwbaarheid: null, vervolg: "indienen" });
+        setToestemmingsVraag({ mediaId, betrouwbaarheid: null, vervolg: "indienen",
+                               onbekend: String(detail).includes("konden niet controleren") });
         return;
       }
       throw new Error(detail);
@@ -303,9 +306,11 @@ export default function UploadPagina() {
         herkenbaar: check.herkenbaar ?? null,
         betrouwbaarheid: check.betrouwbaarheid ?? null,
       });
-      if (check.herkenbaar === true) {
+      // ja, of de controle kon niet draaien: in beide gevallen de vraag (faalt dicht)
+      if (check.herkenbaar !== false) {
         setToestemmingsVraag({
           mediaId, betrouwbaarheid: check.betrouwbaarheid ?? null, vervolg: "verder",
+          onbekend: check.herkenbaar !== true,
         });
         setStap("toestemming");
         return;
@@ -436,9 +441,14 @@ export default function UploadPagina() {
         {kopVoetBlok}
         <h1>Staan er mensen op je foto?</h1>
         <p style={{ maxWidth: "40rem", marginTop: "1rem" }}>
-          We zien mogelijk <strong>herkenbare personen</strong> op je foto. Vanwege het
-          portretrecht en de privacy vragen we dan om toestemming van de mensen op de
-          foto (of van hun nabestaanden).
+          {toestemmingsVraag.onbekend
+            ? <>We konden nu niet automatisch controleren of er <strong>herkenbare
+              personen</strong> op je foto staan. Staan er mensen op, dan vragen we vanwege het
+              portretrecht en de privacy om toestemming van de mensen op de foto (of van hun
+              nabestaanden).</>
+            : <>We zien mogelijk <strong>herkenbare personen</strong> op je foto. Vanwege het
+              portretrecht en de privacy vragen we dan om toestemming van de mensen op de
+              foto (of van hun nabestaanden).</>}
         </p>
         <div style={{ display: "grid", gap: ".8rem", maxWidth: "34rem", marginTop: "1.5rem" }}>
           <button
@@ -446,7 +456,9 @@ export default function UploadPagina() {
             disabled={bezig}
             onClick={() => beantwoordToestemming("ja")}
           >
-            Ja, ik verklaar dat ik toestemming heb
+            {toestemmingsVraag.onbekend
+              ? "Ja: er staan geen herkenbare mensen op, of ik heb toestemming"
+              : "Ja, ik verklaar dat ik toestemming heb"}
           </button>
           <button
             className="knop knop-secundair"

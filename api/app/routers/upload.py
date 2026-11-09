@@ -182,12 +182,16 @@ def jottem_indienen(
     else:
         gevonden, score = herkenbaar.check_object(object_key)
     toestemming = Toestemming.nvt
-    if gevonden:
+    # faalt dicht: kon de controle niet draaien (gevonden is None), dan is de vraag even
+    # verplicht als bij herkenbare personen; de moderator ziet "niet gecontroleerd"
+    if gevonden or gevonden is None:
         if vraag.toestemming not in ("ja", "nee"):
             raise HTTPException(
                 422,
                 "Er zijn mogelijk herkenbare personen gedetecteerd; geef aan of je hun "
-                "toestemming hebt (toestemming: ja of nee)",
+                "toestemming hebt (toestemming: ja of nee)" if gevonden else
+                "We konden niet controleren of er herkenbare personen op je foto staan; "
+                "geef aan of je hun toestemming hebt (toestemming: ja of nee)",
             )
         toestemming = Toestemming(vraag.toestemming)
     elif vraag.toestemming in ("ja", "nee"):

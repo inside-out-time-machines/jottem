@@ -94,9 +94,9 @@ async function jottemEmbed(id: string, zoek: URLSearchParams): Promise<Response>
       : null;
   if (!beeldUrl) return fout(404, "Geen inbedbaar beeld voor deze jottem");
 
-  // dezelfde uitnodigende titel als og:title (D-5): een willekeurige actieve CTA
-  const ctas = jottem.verrijkingen?.map((verrijking) => verrijking.cta) ?? [];
-  const oproep = ctas.length ? ctas[Math.floor(Math.random() * ctas.length)] : "weet jij hier meer van?";
+  // dezelfde vaste oproep als og:title (D-5): consumers bewaren de embed, een wisselende
+  // titel zou daar toch niet wisselen
+  const oproep = "weet jij hier meer van?";
   return jsonAntwoord({
     version: "1.0",
     type: "photo",

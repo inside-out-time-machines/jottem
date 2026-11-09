@@ -44,6 +44,11 @@ celery.conf.beat_schedule = {
     # bewaartermijnen (requirements, privacy): volledige logpayloads 12 maanden, daarna
     # alleen type, tijdstip en id's; e-mailadres en reden van afgehandelde
     # verwijderverzoeken idem
+    # moderatiedigest (mail 5, MO-4): één samenvatting per dag, alleen als er iets wacht
+    "moderatiedigest": {
+        "task": "app.worker.verstuur_moderatiedigest",
+        "schedule": crontab(hour=8, minute=0),
+    },
     "bewaartermijnen": {
         "task": "app.worker.pas_bewaartermijnen_toe",
         "schedule": crontab(hour=3, minute=30),
@@ -445,3 +450,72 @@ def verwijder_creator_namen() -> dict:
     finally:
         db.close()
     return geteld
+
+
+ESCALATIE_DAGEN = 21   # verwijderverzoek open langer dan dit: ook naar de organisatiebeheerders
+
+
+@celery.task(name="app.worker.verstuur_moderatiedigest")
+def verstuur_moderatiedigest() -> int:
+    """Mail 5 (MO-4): per organisatie een samenvatting van wat er wacht, aan de moderatoren.
+
+    Staat een verwijderverzoek langer dan ESCALATIE_DAGEN open, dan krijgen ook de
+    organisatiebeheerders de mail: de wettelijke termijn is 30 dagen. Via de outbox, zodat
+    een tijdelijk onbereikbare mailserver de mail niet laat verdwijnen.
+    """
+    from sqlalchemy import func
+    from .models import (GebruikerRol, MediaStatus, Melding, Organisatie, Rol,
+                         Verwijderverzoek, WachtendeAnnotatie)
+    from .outbox import log
+
+    db = SessionLocal()
+    verstuurd = 0
+    try:
+        for organisatie in db.scalars(select(Organisatie)).all():
+            org = organisatie.organisatieId
+            wachtend = db.execute(
+                select(Media.titel, Project.naam, Media.creatieDatum)
+                .join(Project, Media.projectId == Project.projectId)
+                .where(Media.organisatieId == org, Media.status == MediaStatus.nieuw)
+                .order_by(Media.creatieDatum)
+            ).all()
+            meldingen = db.scalar(select(func.count()).select_from(Melding).join(
+                Media, Melding.mediaId == Media.mediaId).where(
+                Media.organisatieId == org, Melding.status == "nieuw")) or 0
+            verzoeken = db.execute(select(Verwijderverzoek.creatieDatum).join(
+                Media, Verwijderverzoek.mediaId == Media.mediaId).where(
+                Media.organisatieId == org, Verwijderverzoek.status == "open")).scalars().all()
+            vlakken = db.scalar(select(func.count()).select_from(WachtendeAnnotatie).join(
+                Media, WachtendeAnnotatie.mediaId == Media.mediaId).where(
+                Media.organisatieId == org, WachtendeAnnotatie.status == "wachtend")) or 0
+            if not (wachtend or meldingen or verzoeken or vlakken):
+                continue
+            oudste = (nu() - min(verzoeken)).days if verzoeken else 0
+            escalatie = oudste > ESCALATIE_DAGEN
+            rollen = [Rol.moderator] + ([Rol.organisatiebeheerder] if escalatie else [])
+            ontvangers = {g.gebruikersId: g for g in db.scalars(
+                select(Gebruiker).join(GebruikerRol,
+                                       GebruikerRol.gebruikersId == Gebruiker.gebruikersId)
+                .where(GebruikerRol.organisatieId == org, GebruikerRol.rol.in_(rollen)))}
+            context = {
+                "aantalWachtend": len(wachtend),
+                "wachtrij": [{"titel": t, "projectNaam": p,
+                              "ingediendOp": d.strftime("%d-%m-%Y")} for t, p, d in wachtend[:20]],
+                "aantalMeldingen": meldingen,
+                "aantalVerzoeken": len(verzoeken),
+                "aantalVlakken": vlakken,
+                "oudsteVerzoekDagen": oudste,
+                "escalatie": escalatie,
+                "wachtrijUrl": f"{settings().publieke_basis_url}/moderatie",
+            }
+            for gebruiker in ontvangers.values():
+                if not gebruiker.email:
+                    continue
+                log(db, "moderatie.digest", organisatie_id=org, gebruikers_id=gebruiker.gebruikersId,
+                    payload={"mail": {"template": "moderatie-digest", "aan": gebruiker.email,
+                                      "context": context | {"ontvangerNaam": gebruiker.naam}}})
+                verstuurd += 1
+            db.commit()
+    finally:
+        db.close()
+    return verstuurd

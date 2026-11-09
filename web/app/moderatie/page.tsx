@@ -320,6 +320,14 @@ export default function ModeratiePagina() {
               <tr key={jottem.mediaId}>
                 <td data-label="Titel">
                   <a href={`/moderatie/${jottem.mediaId}`}>{jottem.titel}</a>
+                  {jottem.herkenbaar === null && (
+                    <div>
+                      <span className="status-pil status-afgekeurd"
+                            title="De controle op herkenbare personen kon niet draaien">
+                        niet gecontroleerd · toestemming: {jottem.toestemming}
+                      </span>
+                    </div>
+                  )}
                   {jottem.herkenbaar && (
                     <div>
                       <span

@@ -253,7 +253,8 @@ def maak_annotatie(
 
     # een vlak bij een foto met herkenbare personen kan een naam aan een gezicht koppelen:
     # die gaat eerst langs een moderator en wordt pas bij vrijgave openbaar (MO-7)
-    if invoer.verrijking == "vlak" and media.herkenbaar:
+    # ook als de controle niet kon draaien (herkenbaar is None): de regel faalt dicht
+    if invoer.verrijking == "vlak" and media.herkenbaar is not False:
         wachtend = WachtendeAnnotatie(mediaId=media.mediaId,
                                       gebruikersId=p.gebruiker.gebruikersId,
                                       annotatie=annotatie)

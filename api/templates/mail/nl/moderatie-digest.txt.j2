@@ -1,12 +1,19 @@
 Beste {{ ontvangerNaam }},
 
-Er {% if aantalWachtend == 1 %}wacht 1 jottem{% else %}wachten {{ aantalWachtend }} jottems{% endif %} op beoordeling bij {{ organisatie.naam }}:
+Dit wacht er bij {{ organisatie.naam }}:
 
-{% for jottem in wachtrij %}
-- "{{ jottem.titel }}" - {{ jottem.projectNaam }}, ingediend {{ jottem.ingediendOp }}
+{% if aantalWachtend %}- {{ aantalWachtend }} jottem{% if aantalWachtend != 1 %}s{% endif %} in de wachtrij
+{% endif %}{% if aantalVerzoeken %}- {{ aantalVerzoeken }} verwijderverzoek{% if aantalVerzoeken != 1 %}en{% endif %} (wettelijke termijn: 30 dagen)
+{% endif %}{% if aantalVlakken %}- {{ aantalVlakken }} vlak{% if aantalVlakken != 1 %}ken{% endif %} op foto's met herkenbare personen
+{% endif %}{% if aantalMeldingen %}- {{ aantalMeldingen }} melding{% if aantalMeldingen != 1 %}en{% endif %} op annotaties of reacties
+{% endif %}
+{% if escalatie %}LET OP: een verwijderverzoek staat al {{ oudsteVerzoekDagen }} dagen open. Na 30 dagen is de
+wettelijke termijn verstreken. Deze mail gaat daarom ook naar de organisatiebeheerders.
+
+{% endif %}{% if wachtrij %}Wachtende jottems:
+{% for jottem in wachtrij %}- "{{ jottem.titel }}" - {{ jottem.projectNaam }}, ingediend {{ jottem.ingediendOp }}
 {% endfor %}
-
-Naar de moderatiewachtrij: {{ wachtrijUrl }}
+{% endif %}Naar de moderatie: {{ wachtrijUrl }}
 
 Je ontvangt deze samenvatting maximaal één keer per dag, alleen als er iets wacht.
 
