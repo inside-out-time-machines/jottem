@@ -277,6 +277,23 @@ class Melding(Base):
     afhandelDatum: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class WachtendeAnnotatie(Base):
+    """Vlak-annotatie bij een jottem met herkenbare personen die eerst langs een moderator
+    gaat (MO-7). Zo'n vlak kan een naam aan een gezicht koppelen, terwijl de foto zelf alleen
+    met toestemming openbaar werd. De voorgestelde W3C-annotatie staat hier tot de moderator
+    hem vrijgeeft; pas dan wordt hij in AnnoRepo geschreven en krijgt hij een IRI."""
+    __tablename__ = "wachtende_annotatie"
+
+    wachtendeAnnotatieId: Mapped[int] = mapped_column(Integer, primary_key=True)
+    mediaId: Mapped[uuid.UUID] = mapped_column(ForeignKey("media.mediaId"), index=True)
+    gebruikersId: Mapped[int] = mapped_column(ForeignKey("gebruiker.gebruikersId"))
+    annotatie: Mapped[dict] = mapped_column(JSON)
+    status: Mapped[str] = mapped_column(String(20), default="wachtend")  # wachtend | vrijgegeven | afgewezen
+    annotatieIri: Mapped[str | None] = mapped_column(String(500))       # gezet bij vrijgeven
+    creatieDatum: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=nu)
+    afhandelDatum: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class Gebeurtenislog(Base):
     """Gebeurtenislog en transactional outbox in één (zie systeemarchitectuur):
     mutaties schrijven hier binnen dezelfde transactie een regel; workers verwerken

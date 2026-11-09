@@ -31,7 +31,8 @@ Beide draaien standaard tegen dev. Andere omgeving:
 - `test_besloten.py` - besloten projecten: projectweergave zonder jottems, geen widget,
   jottem-detail vraagt login, open data van hetzelfde project blijft 200. Slaat over als
   de omgeving geen besloten project heeft.
-- `test_afscherming.py` - elke beheerroute geeft 401 zonder token, en de dev-bypass
+- `test_afscherming.py` - elke beheerroute geeft 401 zonder token (ook de wachtrij met vlakken
+  bij herkenbare personen), en de dev-bypass
   (`X-Dev-Sub`) werkt niet. Deze tests vallen om zodra `DEV_AUTH=1` blijft staan na een
   handmatige test: dat is opzet.
 

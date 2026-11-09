@@ -392,6 +392,20 @@ class MeldingUit(BaseModel):
     annotatie: dict | None = None        # inhoud uit AnnoRepo (voor de moderator)
 
 
+class WachtendeAnnotatieUit(BaseModel):
+    wachtendeAnnotatieId: int
+    mediaId: uuid.UUID
+    jottemTitel: str
+    status: str
+    creatieDatum: datetime
+    annotatie: dict                      # de voorgestelde W3C-annotatie (vlak + tekst)
+
+
+class WachtendeAnnotatieBesluit(BaseModel):
+    besluit: str = Field(pattern="^(vrijgegeven|afgewezen)$")
+    toelichting: str | None = Field(default=None, max_length=2000)
+
+
 class MeldingBesluit(BaseModel):
     besluit: str = Field(pattern="^(verwijderd|verborgen|afgewezen)$")
     toelichting: str | None = None

@@ -43,7 +43,17 @@ type MeldingRij = {
   } | null;
 };
 
-function annotatieTekst(rij: MeldingRij): string {
+// vlak-annotatie bij een jottem met herkenbare personen die op vrijgave wacht (MO-7)
+type WachtendeRij = {
+  wachtendeAnnotatieId: number;
+  mediaId: string;
+  jottemTitel: string;
+  status: string;
+  creatieDatum: string;
+  annotatie: MeldingRij["annotatie"];
+};
+
+function annotatieTekst(rij: { annotatie: MeldingRij["annotatie"] }): string {
   const body = rij.annotatie?.body;
   const lijst = Array.isArray(body) ? body : body ? [body] : [];
   const tekst = lijst.find((b) => b.type === "TextualBody" && b.value)?.value;
@@ -53,6 +63,7 @@ function annotatieTekst(rij: MeldingRij): string {
 export default function ModeratiePagina() {
   const [jottems, setJottems] = useState<Jottem[]>([]);
   const [meldingen, setMeldingen] = useState<MeldingRij[]>([]);
+  const [wachtende, setWachtende] = useState<WachtendeRij[]>([]);
   const [melding, setMelding] = useState<string | null>(null);
   const [ingelogd, setIngelogd] = useState<boolean | null>(null);
   const [organisatie, setOrganisatie] = useState<string | null>(null);
@@ -119,6 +130,10 @@ export default function ModeratiePagina() {
       .then((r) => (r.ok ? r.json() : []))
       .then(setMeldingen)
       .catch(() => {});
+    fetch(`${API_PUBLIEK}/organisatie/${organisatie}/wachtende-annotaties`, { headers })
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setWachtende)
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organisatie]);
 
@@ -161,6 +176,24 @@ export default function ModeratiePagina() {
     laden();
   }
 
+  async function besluitWachtend(rij: WachtendeRij, besluit: "vrijgegeven" | "afgewezen") {
+    const r = await fetch(`${API_PUBLIEK}/wachtende-annotatie/${rij.wachtendeAnnotatieId}`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({ besluit }),
+    });
+    if (!r.ok) {
+      setMelding(`Afhandelen mislukt: ${(await r.json()).detail ?? r.statusText}`);
+      return;
+    }
+    setMelding(
+      besluit === "vrijgegeven"
+        ? "Vrijgegeven; het vlak staat nu op de foto."
+        : "Afgewezen; het vlak wordt niet openbaar.",
+    );
+    laden();
+  }
+
   const kleurStijl = projectStijl(huisstijl?.kleurPrimair, huisstijl?.kleurSecundair);
   const kopVoet = kopVoetCss(huisstijl?.kleurPrimair, huisstijl?.kleurSecundair);
   // Geen href/precedence hier: React hijst zo'n stijl naar de head en dedupliceert op
@@ -190,6 +223,7 @@ export default function ModeratiePagina() {
           samenvatting={[
             { label: "Wachtrij", waarde: wachtend },
             { label: "Meldingen", waarde: openMeldingen },
+            { label: "Vlakken", waarde: wachtende.length },
             { label: "Totaal", waarde: jottems.length },
           ]}
           voet={organisatie ? <a href={`/organisatie/${organisatie}`} target="_blank" rel="noopener noreferrer">Publieke organisatiepagina</a> : undefined}
@@ -211,6 +245,7 @@ export default function ModeratiePagina() {
           )}
           <a className="knop knop-secundair" href="#wachtrij">Naar de wachtrij</a>
           <a className="knop knop-secundair" href="#meldingen">Naar de meldingen</a>
+          <a className="knop knop-secundair" href="#vlakken">Naar de vlakken</a>
         </Actiebalk>
       }
     >
@@ -267,6 +302,46 @@ export default function ModeratiePagina() {
             ))}
             {jottems.length === 0 && (
               <tr><td colSpan={4} className="beheer-leeg">Geen jottems in de wachtrij.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </KaartSectie>
+
+      <KaartSectie
+        id="vlakken"
+        titel="Vlakken op foto's met herkenbare personen"
+        intro="Een vlak met een naam erbij kan iemand identificeren. Op foto's waarop herkenbare personen staan, verschijnt zo'n vlak pas als jij het vrijgeeft."
+      >
+        <table className="lijst stapel">
+          <thead>
+            <tr>
+              <th>Bijdrage</th>
+              <th>Jottem</th>
+              <th>Geplaatst op</th>
+              <th>Actie</th>
+            </tr>
+          </thead>
+          <tbody>
+            {wachtende.map((rij) => (
+              <tr key={rij.wachtendeAnnotatieId}>
+                <td data-label="Bijdrage" style={{ maxWidth: "22rem" }}>
+                  <em>&ldquo;{annotatieTekst(rij).slice(0, 160)}&rdquo;</em>
+                  {rij.annotatie?.creator?.name && (
+                    <div className="hint">door {rij.annotatie.creator.name}</div>
+                  )}
+                </td>
+                <td data-label="Jottem"><a href={`/moderatie/${rij.mediaId}`}>{rij.jottemTitel}</a></td>
+                <td data-label="Geplaatst op">{new Date(rij.creatieDatum).toLocaleDateString("nl-NL")}</td>
+                <td>
+                  <span className="knoppenrij">
+                    <button className="knop knop-primair" onClick={() => besluitWachtend(rij, "vrijgegeven")}>Geef vrij</button>
+                    <button className="knop knop-secundair" onClick={() => besluitWachtend(rij, "afgewezen")}>Wijs af</button>
+                  </span>
+                </td>
+              </tr>
+            ))}
+            {wachtende.length === 0 && (
+              <tr><td colSpan={4} className="beheer-leeg">Geen vlakken die wachten.</td></tr>
             )}
           </tbody>
         </table>

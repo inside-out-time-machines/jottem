@@ -32,6 +32,9 @@ def test_organisatiebeheer_zonder_token(api: httpx.Client, organisatie: dict):
     assert api.get(f"/organisatie/{slug}/projecten").status_code == 401
     assert api.get(f"/organisatie/{slug}/moderatie/jottems").status_code == 401
     assert api.get(f"/organisatie/{slug}/gebruikers").status_code == 401
+    # vlakken bij herkenbare personen die op vrijgave wachten (MO-7)
+    assert api.get(f"/organisatie/{slug}/wachtende-annotaties").status_code == 401
+    assert api.put("/wachtende-annotatie/1", json={"besluit": "vrijgegeven"}).status_code == 401
 
 
 def test_ledenbeheer_zonder_token(api: httpx.Client, project: dict):

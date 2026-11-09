@@ -312,6 +312,12 @@ export default function Interactief({ detail }: { detail: Detail }) {
       return;
     }
     sluitDialoog();
+    // 202: een vlak op een foto met herkenbare personen wacht eerst op een moderator (MO-7)
+    if (r.status === 202) {
+      const inhoud = await r.json().catch(() => ({}));
+      setMelding(inhoud.melding ?? "Bedankt! Een moderator bekijkt je bijdrage eerst.");
+      return;
+    }
     laadAnnotaties();
   }
 

@@ -1,6 +1,10 @@
 """Annotaties (verrijkingen): schrijven via de backend naar AnnoRepo, plus melden en
 moderatie van meldingen.
 
+Uitzondering op "direct naar AnnoRepo": een vlak-annotatie bij een jottem met herkenbare
+personen wacht als WachtendeAnnotatie op een moderator (MO-7) en wordt pas bij vrijgave
+geschreven; zie het ontwerp, verrijkingen "Moderatie vooraf bij herkenbare personen".
+
 De backend is de enige schrijfroute (AN-4, V-7): zij valideert de verrijking tegen de
 projectinstellingen (V-1), bouwt de W3C-annotatie (creator, created, jottem:aard) en
 bewaakt eigenaarschap. Elke mutatie gaat met volledige payload het Gebeurtenislog in
@@ -12,6 +16,7 @@ from datetime import datetime, timezone
 
 import redis
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -20,9 +25,10 @@ from .. import anno, toegang
 from ..auth import Principal, eis_rol, principal
 from ..config import settings
 from ..db import get_db
-from ..models import Gebruiker, Media, MediaStatus, Melding, Project, Rol
+from ..models import Gebruiker, Media, MediaStatus, Melding, Project, Rol, WachtendeAnnotatie
 from ..outbox import log
-from ..schemas import HTTP_URL, MeldingBesluit, MeldingIn, MeldingUit
+from ..schemas import (HTTP_URL, MeldingBesluit, MeldingIn, MeldingUit,
+                       WachtendeAnnotatieBesluit, WachtendeAnnotatieUit)
 from .. import relaties
 from ..verrijkingen import PER_SLEUTEL, REAGEREN_MOTIVATION, actieve_sleutels
 from .jottem import canvas_iri
@@ -246,6 +252,26 @@ def maak_annotatie(
     media, project = _media_gepubliceerd(db, media_id)
     toegang.eis_project_toegang(db, project, p)
     annotatie = _bouw_annotatie(media, project, p.gebruiker, invoer)
+
+    # een vlak bij een foto met herkenbare personen kan een naam aan een gezicht koppelen:
+    # die gaat eerst langs een moderator en wordt pas bij vrijgave openbaar (MO-7)
+    if invoer.verrijking == "vlak" and media.herkenbaar:
+        wachtend = WachtendeAnnotatie(mediaId=media.mediaId,
+                                      gebruikersId=p.gebruiker.gebruikersId,
+                                      annotatie=annotatie)
+        db.add(wachtend)
+        db.flush()
+        log(db, "annotatie-wachtend", organisatie_id=media.organisatieId,
+            project_id=media.projectId, gebruikers_id=p.gebruiker.gebruikersId,
+            payload={"wachtendeAnnotatieId": wachtend.wachtendeAnnotatieId,
+                     "mediaId": str(media.mediaId), "annotatie": annotatie})
+        db.commit()
+        return JSONResponse(
+            {"status": "wachtend",
+             "melding": "Bedankt! Op deze foto staan herkenbare personen, daarom bekijkt een "
+                        "moderator je bijdrage eerst. Daarna verschijnt hij op de foto."},
+            status_code=202)
+
     opgeslagen = anno.maak_annotatie(str(media.mediaId), f"Annotaties bij {media.titel}", annotatie)
 
     extra: dict = {}
@@ -422,4 +448,77 @@ def handel_melding_af(
         annotatieIri=melding.annotatieIri, reden=melding.reden,
         toelichting=melding.toelichting, status=melding.status,
         creatieDatum=melding.creatieDatum,
+    )
+
+
+def _organisatie_als_moderator(db: Session, slug: str, p: Principal):
+    from ..models import Organisatie
+    organisatie = db.scalar(select(Organisatie).where(Organisatie.slug == slug))
+    if not organisatie:
+        raise HTTPException(404, "Organisatie onbekend")
+    if not p.heeft_rol(Rol.moderator, organisatie.organisatieId):
+        raise HTTPException(403, "Geen moderator van deze organisatie")
+    return organisatie
+
+
+@router.get("/organisatie/{slug}/wachtende-annotaties", response_model=list[WachtendeAnnotatieUit])
+def wachtende_annotaties(
+    slug: str,
+    p: Principal = Depends(eis_rol(Rol.moderator)),
+    db: Session = Depends(get_db),
+):
+    """Vlak-annotaties bij jottems met herkenbare personen die op vrijgave wachten (MO-7)."""
+    organisatie = _organisatie_als_moderator(db, slug, p)
+    rijen = db.execute(
+        select(WachtendeAnnotatie, Media.titel)
+        .join(Media, WachtendeAnnotatie.mediaId == Media.mediaId)
+        .where(Media.organisatieId == organisatie.organisatieId,
+               WachtendeAnnotatie.status == "wachtend")
+        .order_by(WachtendeAnnotatie.creatieDatum)
+    ).all()
+    return [WachtendeAnnotatieUit(
+        wachtendeAnnotatieId=w.wachtendeAnnotatieId, mediaId=w.mediaId, jottemTitel=titel,
+        status=w.status, creatieDatum=w.creatieDatum, annotatie=w.annotatie,
+    ) for w, titel in rijen]
+
+
+@router.put("/wachtende-annotatie/{wachtende_id}", response_model=WachtendeAnnotatieUit)
+def beslis_wachtende_annotatie(
+    wachtende_id: int,
+    besluit: WachtendeAnnotatieBesluit,
+    p: Principal = Depends(eis_rol(Rol.moderator)),
+    db: Session = Depends(get_db),
+):
+    """Vrijgeven (wordt een W3C-annotatie in AnnoRepo) of afwijzen (wordt nooit openbaar)."""
+    wachtend = db.get(WachtendeAnnotatie, wachtende_id)
+    if not wachtend:
+        raise HTTPException(404, "Wachtende annotatie onbekend")
+    media = db.get(Media, wachtend.mediaId)
+    if not p.heeft_rol(Rol.moderator, media.organisatieId):
+        raise HTTPException(403, "Geen moderator van deze organisatie")
+    if wachtend.status != "wachtend":
+        raise HTTPException(409, "Al afgehandeld")
+
+    if besluit.besluit == "vrijgegeven":
+        if media.status != MediaStatus.goedgekeurd:
+            raise HTTPException(409, "De jottem is niet (meer) gepubliceerd")
+        opgeslagen = anno.maak_annotatie(str(media.mediaId), f"Annotaties bij {media.titel}",
+                                         wachtend.annotatie)
+        wachtend.annotatieIri = opgeslagen.get("id")
+        # als "aangemaakt" gelogd op naam van de annoteerder: dan lopen versiegeschiedenis,
+        # attendering (mail 10) en RDF-hersync precies zoals bij een gewone annotatie
+        _log_annotatie(db, "annotatie-aangemaakt", media, wachtend.gebruikersId, opgeslagen,
+                       {"vrijgegevenDoor": p.gebruiker.gebruikersId})
+    wachtend.status = besluit.besluit
+    wachtend.afhandelDatum = datetime.now(timezone.utc)
+    log(db, f"annotatie-{besluit.besluit}", organisatie_id=media.organisatieId,
+        project_id=media.projectId, gebruikers_id=p.gebruiker.gebruikersId,
+        payload={"wachtendeAnnotatieId": wachtend.wachtendeAnnotatieId,
+                 "mediaId": str(media.mediaId), "annotatieIri": wachtend.annotatieIri,
+                 "toelichting": besluit.toelichting})
+    db.commit()
+    return WachtendeAnnotatieUit(
+        wachtendeAnnotatieId=wachtend.wachtendeAnnotatieId, mediaId=wachtend.mediaId,
+        jottemTitel=media.titel, status=wachtend.status, creatieDatum=wachtend.creatieDatum,
+        annotatie=wachtend.annotatie,
     )
