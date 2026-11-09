@@ -127,6 +127,12 @@ def _dataset_jsonld(db: Session, project: Project) -> dict:
              "contentUrl": f"{cfg.api_basis_url}/project/{project.projectId}/activity-stream"},
         ],
     }
+    # wat in deze omgeving uit staat, hoort niet als distributie in het register
+    dataset["distribution"] = [
+        d for d in dataset["distribution"]
+        if not (d["contentUrl"].endswith("/sparql") and not cfg.sparql_publiek)
+        and not (d["contentUrl"].endswith("/activity-stream") and not cfg.change_discovery)
+    ]
     return {sleutel: waarde for sleutel, waarde in dataset.items() if waarde is not None}
 
 

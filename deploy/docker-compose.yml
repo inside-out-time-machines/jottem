@@ -221,7 +221,11 @@ services:
     restart: unless-stopped
     volumes:
       - ../../data:/usr/share/nginx/html:ro
-      - ./datapagina/default.conf:/etc/nginx/conf.d/default.conf:ro
+      # als sjabloon: de nginx-entrypoint vult ${SPARQL_PUBLIEK} in (alleen variabelen die
+      # in de omgeving bestaan, dus nginx' eigen $host en $args blijven staan)
+      - ./datapagina/default.conf:/etc/nginx/templates/default.conf.template:ro
+    environment:
+      SPARQL_PUBLIEK: ${SPARQL_PUBLIEK:-1}
     labels:
       - traefik.enable=true
       - traefik.docker.network=jottem_default
@@ -352,6 +356,10 @@ services:
       JOTTEM_HERKENBAAR_URL: http://herkenbaar:4050
       # beeldbanken waaruit permalinks als jottem mogen (kommagescheiden hostnamen)
       JOTTEM_BEELDBANK_HOSTS: ${BEELDBANK_HOSTS:-samh.nl}
+      # tijdens de pilot in productie uit (realisatieplan): 0 = 404 op die uitgangen
+      JOTTEM_CHANGE_DISCOVERY: ${CHANGE_DISCOVERY:-1}
+      JOTTEM_AGGREGATEN: ${AGGREGATEN:-1}
+      JOTTEM_SPARQL_PUBLIEK: ${SPARQL_PUBLIEK:-1}
       # standaard leeg = suggestiedienst uit (vereist in productie, zie de AI-toets); dev zet
       # SUGGESTIES_URL=http://suggesties:4060 in .env. ":-" vult een lege waarde aan met de
       # standaard, dus de standaard moet zelf leeg zijn om de dienst uit te kunnen zetten.
@@ -533,6 +541,8 @@ services:
       GF_SMTP_HOST: ${SMTP_HOST:-mailpit}:${SMTP_PORT:-1025}
       GF_SMTP_FROM_ADDRESS: ${MONITORING_AFZENDER:-grafana@iotm.nl}
       GF_SMTP_FROM_NAME: Jottem-monitoring
+      # ontvanger van de alerts: een rol-adres uit .env, geen persoonlijk adres in git
+      ALERT_ONTVANGER: ${ALERT_ONTVANGER:-postmaster@iotm.nl}
       GF_SMTP_SKIP_VERIFY: "true"
       GF_AUTH_GENERIC_OAUTH_ENABLED: "true"
       GF_AUTH_GENERIC_OAUTH_NAME: Authentik

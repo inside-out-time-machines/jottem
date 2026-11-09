@@ -1,4 +1,4 @@
-import { API_PUBLIEK } from "@/lib/api";
+import { API_PUBLIEK, OMGEVING } from "@/lib/api";
 import { apiServer } from "@/lib/api-server";
 import { notFound } from "next/navigation";
 import OpenGraph from "../../open-graph";
@@ -33,7 +33,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       description: organisatie.beschrijving ?? undefined,
       alternates: {
         canonical: `/organisatie/${slug}`,
-        types: {
+        // de feed per organisatie staat tijdens de pilot in productie uit (AGGREGATEN=0)
+        types: OMGEVING === "productie" ? undefined : {
           "application/rss+xml": [{
             url: `${API_PUBLIEK}/organisatie/${slug}/rss`,
             title: `Nieuwe jottems van ${organisatie.naam}`,

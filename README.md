@@ -73,6 +73,12 @@ docker compose --profile prod up -d     # productie (externe S3 en MTA via .env)
 Vooraf controleren wat een `.env` oplevert kan zonder iets te starten:
 `docker compose --profile prod config | grep -E 'Host\(|JOTTEM_'`.
 
+**Uitgangen die tijdens de pilot in productie uit staan.** Met `CHANGE_DISCOVERY=0`,
+`AGGREGATEN=0` en `SPARQL_PUBLIEK=0` in `.env` geven de activity-streams, de collectie,
+annotaties en RSS per organisatie, de platform-RSS en het publieke SPARQL-endpoint een 404,
+en verdwijnen ze uit de datasetbeschrijving (realisatieplan, MVP-scope). Standaard staan ze
+aan, zoals op dev. De ontvanger van de monitoring-alerts komt uit `ALERT_ONTVANGER`.
+
 **Verwijderverzoeken, wissen en de wislijst.** Een moderator handelt een verwijderverzoek
 af met depubliceren (origineel blijft als archiefexemplaar), wissen of afwijzen. Wissen
 verwijdert origineel, derivaat, metadata, annotaties en de logpayloads, en zet de jottem op

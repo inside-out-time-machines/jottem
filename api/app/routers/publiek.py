@@ -292,6 +292,8 @@ def project_annotaties(project_id: uuid.UUID, request: Request,
 @router.get("/organisatie/{slug}/annotations")
 def organisatie_annotaties(slug: str, request: Request,
                            db: Session = Depends(get_db)):
+    if not settings().aggregaten:
+        raise HTTPException(404, "De annotaties per organisatie staan in deze omgeving uit")
     organisatie = db.scalar(select(Organisatie).where(Organisatie.slug == slug))
     if not organisatie:
         raise HTTPException(404, "Organisatie onbekend")
