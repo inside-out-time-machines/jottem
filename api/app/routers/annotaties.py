@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .. import anno, toegang
+from .. import anno, namen, toegang
 from ..auth import Principal, eis_rol, principal
 from ..config import settings
 from ..db import get_db
@@ -36,9 +36,6 @@ from .jottem import canvas_iri
 router = APIRouter(tags=["Annotaties"])
 
 _valkey = redis.Redis.from_url(settings().valkey_url, decode_responses=True)
-
-ANONIEM = "Een deelnemer"
-
 
 class Vlak(BaseModel):
     x: int = Field(ge=0)
@@ -72,10 +69,11 @@ class AnnotatieIn(BaseModel):
 
 
 def _creator(gebruiker: Gebruiker) -> dict:
+    # alleen de stabiele IRI: de naam wordt pas bij het lezen ingevuld (app/namen.py), zodat
+    # een naamswijziging nooit annotaties hoeft te herschrijven
     return {
         "id": f"urn:uuid:{gebruiker.publiekeId}",
         "type": "Person",
-        "name": gebruiker.naam if gebruiker.naamPubliek else ANONIEM,
     }
 
 
@@ -406,7 +404,7 @@ def meldingen(
         uit.append(MeldingUit(
             meldingId=m.meldingId, mediaId=m.mediaId, annotatieIri=m.annotatieIri,
             reden=m.reden, toelichting=m.toelichting, status=m.status,
-            creatieDatum=m.creatieDatum, annotatie=inhoud,
+            creatieDatum=m.creatieDatum, annotatie=namen.vul_naam_in(db, inhoud),
         ))
     return uit
 
@@ -478,7 +476,8 @@ def wachtende_annotaties(
     ).all()
     return [WachtendeAnnotatieUit(
         wachtendeAnnotatieId=w.wachtendeAnnotatieId, mediaId=w.mediaId, jottemTitel=titel,
-        status=w.status, creatieDatum=w.creatieDatum, annotatie=w.annotatie,
+        status=w.status, creatieDatum=w.creatieDatum,
+        annotatie=namen.vul_naam_in(db, w.annotatie),
     ) for w, titel in rijen]
 
 

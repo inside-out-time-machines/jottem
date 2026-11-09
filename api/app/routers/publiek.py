@@ -237,6 +237,10 @@ def _aggregatie(db: Session, media_ids: list[uuid.UUID], collectie_id: str, labe
     items: list[dict] = []
     for media_id in media_ids:
         items.extend(anno.alle_annotaties(str(media_id)))
+    # de annotatieserver kent geen namen (late binding): hier vullen we ze in; door de
+    # cache van vijf minuten is een naamswijziging hier binnen vijf minuten zichtbaar
+    from .. import namen
+    items = namen.vul_namen_in(db, items)
     collectie = {
         # dezelfde context als op de losse annotatie, uit dezelfde definitie: zonder de
         # jottem-prefix zijn jottem:verrijking en jottem:aard hier geen resolvebare termen

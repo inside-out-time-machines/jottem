@@ -108,7 +108,8 @@ def profiel_bewerken(
             raise HTTPException(422, "Ongeldige verwijzing naar een profielafbeelding")
         gebruiker.afbeelding = vraag.afbeelding or None
     if naam_geraakt:
-        # de worker werkt creator.name bij in alle annotaties van deze gebruiker (GE-2)
+        # alleen een logregel: namen bij annotaties worden bij het lezen ingevuld
+        # (app/namen.py), dus er hoeft niets herschreven te worden (GE-2)
         from ..outbox import log
         log(db, "gebruiker-naam-gewijzigd", gebruikers_id=gebruiker.gebruikersId,
             payload={"publiekeId": str(gebruiker.publiekeId)})

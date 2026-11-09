@@ -96,9 +96,8 @@ def _verwerk_regel(db, regel: Gebeurtenislog) -> None:
         context = basis_context(db, regel.organisatieId, regel.projectId)
         context.update(mail.get("context", {}))
         verstuur(mail["template"], mail["aan"], context)
-    # 3. naamsync: creator.name bijwerken in de annotatieserver (GE-2)
-    if regel.type == "gebruiker-naam-gewijzigd" and regel.gebruikersId:
-        sync_creator_naam(db, regel.gebruikersId)
+    # 3. (vervallen) naamsync: de annotatieserver bevat geen namen meer; die worden bij het
+    #    lezen ingevuld (app/namen.py). "gebruiker-naam-gewijzigd" blijft als logregel.
 
 
 @worker_ready.connect
@@ -281,43 +280,6 @@ def maak_annotatiecontainer(db, media_id: str) -> None:
         pass
 
 
-def sync_creator_naam(db, gebruikers_id: int) -> int:
-    """Werk creator.name bij in alle annotaties van een gebruiker in AnnoRepo,
-    na een naam- of naamPubliek-wijziging (idempotent)."""
-    from . import anno
-
-    gebruiker = db.get(Gebruiker, gebruikers_id)
-    if not gebruiker:
-        return 0
-    creator_iri = f"urn:uuid:{gebruiker.publiekeId}"
-    naam = gebruiker.naam if gebruiker.naamPubliek else "Een deelnemer"
-    media_ids = {
-        (regel.payload or {}).get("mediaId")
-        for regel in db.scalars(
-            select(Gebeurtenislog).where(
-                Gebeurtenislog.type == "annotatie-aangemaakt",
-                Gebeurtenislog.gebruikersId == gebruikers_id,
-            )
-        )
-    }
-    bijgewerkt = 0
-    for media_id in filter(None, media_ids):
-        for annotatie in anno.alle_annotaties(media_id):
-            if (annotatie.get("creator") or {}).get("id") != creator_iri:
-                continue
-            if annotatie["creator"].get("name") == naam:
-                continue
-            annotatie["creator"]["name"] = naam
-            iri = annotatie["id"]
-            annotatie.pop("id", None)
-            try:
-                anno.vervang_annotatie(iri, annotatie)
-                bijgewerkt += 1
-            except Exception:  # noqa: BLE001 - volgende run probeert opnieuw
-                pass
-    return bijgewerkt
-
-
 @celery.task(name="app.worker.verstuur_attenderingen")
 def verstuur_attenderingen() -> int:
     """Dagelijkse bundel van notificaties 10 (nieuwe annotatie/reactie op jouw jottem)
@@ -443,6 +405,43 @@ def herhaal_wislijst() -> dict:
                 db.rollback()
                 geteld["mislukt"] += 1
                 print(f"wislijst: {regel.mediaId} mislukt: {fout}")
+    finally:
+        db.close()
+    return geteld
+
+
+@celery.task(name="app.worker.verwijder_creator_namen")
+def verwijder_creator_namen() -> dict:
+    """Haal de namen uit bestaande annotaties (eenmalig, na de overstap op late binding).
+
+    Elke annotatie wordt op haar eigen IRI gelezen en niet uit de containerlijst, om de
+    context niet kwijt te raken (zie anno.vervang_annotatie en migreer_annotatiecontext).
+    Handmatig: docker compose exec worker celery -A app.worker call app.worker.verwijder_creator_namen
+    """
+    from . import anno
+    from .models import Media
+
+    db = SessionLocal()
+    geteld = {"bekeken": 0, "bijgewerkt": 0, "mislukt": 0}
+    try:
+        for media_id in db.scalars(select(Media.mediaId)):
+            for kort in anno.alle_annotaties(str(media_id)):
+                iri = kort.get("id")
+                if not iri:
+                    continue
+                geteld["bekeken"] += 1
+                try:
+                    volledig = anno.haal_annotatie(iri)
+                    creator = volledig.get("creator")
+                    if not isinstance(creator, dict) or "name" not in creator:
+                        continue
+                    zonder = {s: w for s, w in volledig.items() if s != "id"}
+                    zonder["creator"] = {k: v for k, v in creator.items() if k != "name"}
+                    anno.vervang_annotatie(iri, zonder)
+                    geteld["bijgewerkt"] += 1
+                except Exception as fout:  # noqa: BLE001 - één annotatie mag de rest niet ophouden
+                    geteld["mislukt"] += 1
+                    print(f"creatornaam: {iri} mislukt: {fout}")
     finally:
         db.close()
     return geteld
