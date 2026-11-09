@@ -35,7 +35,7 @@ Altijd beschikbaar: `organisatie.naam`, `organisatie.logoUrl`, `organisatie.kleu
 | `uitnodiging-projectlid` | `uitnodigerNaam`, `projectNaam`, `projectUrl`, `wachtwoordUrl`, `alBekend` (true = al eens ingelogd: "log in" in plaats van de wachtwoordlink) |
 | `jottem-goedgekeurd` | `jottemTitel`, `jottemUrl`, `projectNaam` |
 | `jottem-afgekeurd` | `jottemTitel`, `afkeurReden`, `herindienUrl` |
-| `moderatie-digest` | `aantalWachtend`, `wachtrij[]` (`titel`, `projectNaam`, `ingediendOp`), `wachtrijUrl` |
+| `moderatie-digest` | `aantalWachtend`, `wachtrij[]` (`titel`, `projectNaam`, `ingediendOp`), `aantalMeldingen`, `aantalVerzoeken`, `aantalVlakken`, `oudsteVerzoekDagen`, `escalatie`, `wachtrijUrl` |
 | `verwijderverzoek-bevestiging` | `jottemTitel`, `verzoekNummer`, `termijnDagen` |
 | `verwijderverzoek-melding` | `jottemTitel`, `verzoekNummer`, `reden`, `termijnDagen`, `afhandelUrl` |
 | `verwijderverzoek-uitkomst` | `jottemTitel`, `verzoekNummer`, `uitkomst` (gehonoreerd/afgewezen), `toelichting` |
@@ -45,15 +45,14 @@ Altijd beschikbaar: `organisatie.naam`, `organisatie.logoUrl`, `organisatie.kleu
 
 ## Welke sjablonen worden al verstuurd?
 
-Vijf sjablonen staan klaar voor functies die nog niet gebouwd zijn en hebben dus (nog)
-geen afzender in de code: `export-gereed`, `moderatie-digest`,
-`verwijderverzoek-bevestiging`, `verwijderverzoek-melding` en
-`verwijderverzoek-uitkomst`. Ze zijn bewust bewaard: het realisatieplan plant die
-functies, en de teksten zijn al op B1-niveau geredigeerd. Wie op zoek is naar dode code:
-dit is grondwerk, geen restant.
+Eén sjabloon staat klaar voor een functie die nog niet gebouwd is en heeft dus (nog)
+geen afzender in de code: `export-gereed` (e-depot-export, fase 2). Het is bewust bewaard: het realisatieplan plant die functie, en de tekst is al op
+B1-niveau geredigeerd. Wie op zoek is naar dode code: dit is grondwerk, geen restant.
 
-De rest wordt wél verstuurd, vanuit `api/app/routers/moderatie.py`,
-`api/app/routers/organisatiebeheer.py` en `api/app/worker.py`.
+De rest wordt wél verstuurd (`moderatie-digest` dagelijks om 08:00 door de worker), vanuit `api/app/routers/moderatie.py`,
+`api/app/routers/organisatiebeheer.py`, `api/app/routers/verwijderverzoeken.py` (mails 6-8)
+en `api/app/worker.py`. Bij `verwijderverzoek-uitkomst` is `uitkomst` "gehonoreerd" voor
+zowel depubliceren als wissen.
 
 ## Regels
 

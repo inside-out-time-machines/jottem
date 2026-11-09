@@ -73,7 +73,9 @@ class Organisatie(Base):
 
 # de vier manieren om materiaal aan te leveren; de organisatiebeheerder schakelt ze
 # per project in of uit, met altijd minstens één actief
-UPLOAD_WIJZEN = ("bestand", "camera", "beeldbank", "url")
+# "url" (losse foto-URL) is vervallen: zo'n beeld kan na de moderatie ongemerkt
+# veranderen; een oude waarde in Project.uploadWijzen wordt hieronder weggefilterd
+UPLOAD_WIJZEN = ("bestand", "camera", "beeldbank")
 
 
 def actieve_upload_wijzen(project: "Project") -> list[str]:
@@ -244,21 +246,32 @@ class Favoriet(Base):
 
 
 class Verwijderverzoek(Base):
-    """Voorbereid datamodel voor de verwijderverzoeken-flow; nog geen endpoints.
+    """Verzoek om een jottem te verwijderen (BE-4, MO-5); zie routers/verwijderverzoeken.py.
 
-    De bijbehorende mailsjablonen staan al in api/templates/mail/. Depubliceren zelf kan
-    inmiddels wel: zie DELETE /jottem/{id}/publicatie in de moderatierouter.
+    Een moderator kiest depubliceren (origineel blijft als archiefexemplaar) of wissen
+    (alles weg, op de wislijst), of wijst af met een toelichting.
     """
     __tablename__ = "verwijderverzoek"
 
     verzoekId: Mapped[int] = mapped_column(Integer, primary_key=True)
     mediaId: Mapped[uuid.UUID] = mapped_column(ForeignKey("media.mediaId"))
+    # eigen-materiaal | herkenbaar | auteursrecht | anders
+    soort: Mapped[str] = mapped_column(String(30), default="anders")
     reden: Mapped[str] = mapped_column(Text)
     email: Mapped[str] = mapped_column(String(320))
-    status: Mapped[str] = mapped_column(String(20), default="open")  # open | gehonoreerd | afgewezen
+    status: Mapped[str] = mapped_column(String(20), default="open")  # open | gedepubliceerd | gewist | afgewezen
     toelichting: Mapped[str | None] = mapped_column(Text)
     creatieDatum: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=nu)
     afhandelDatum: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Wislijst(Base):
+    """Gewiste jottems. Na het terugzetten van een back-up wordt deze lijst opnieuw
+    afgespeeld (worker.herhaal_wislijst), zodat gewist materiaal niet terugkomt."""
+    __tablename__ = "wislijst"
+
+    mediaId: Mapped[uuid.UUID] = mapped_column(primary_key=True)
+    gewistOp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=nu)
 
 
 class Melding(Base):
@@ -271,6 +284,23 @@ class Melding(Base):
     reden: Mapped[str] = mapped_column(String(40))
     toelichting: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(20), default="nieuw")  # nieuw | verwijderd | verborgen | afgewezen
+    creatieDatum: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=nu)
+    afhandelDatum: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class WachtendeAnnotatie(Base):
+    """Vlak-annotatie bij een jottem met herkenbare personen die eerst langs een moderator
+    gaat (MO-7). Zo'n vlak kan een naam aan een gezicht koppelen, terwijl de foto zelf alleen
+    met toestemming openbaar werd. De voorgestelde W3C-annotatie staat hier tot de moderator
+    hem vrijgeeft; pas dan wordt hij in AnnoRepo geschreven en krijgt hij een IRI."""
+    __tablename__ = "wachtende_annotatie"
+
+    wachtendeAnnotatieId: Mapped[int] = mapped_column(Integer, primary_key=True)
+    mediaId: Mapped[uuid.UUID] = mapped_column(ForeignKey("media.mediaId"), index=True)
+    gebruikersId: Mapped[int] = mapped_column(ForeignKey("gebruiker.gebruikersId"))
+    annotatie: Mapped[dict] = mapped_column(JSON)
+    status: Mapped[str] = mapped_column(String(20), default="wachtend")  # wachtend | vrijgegeven | afgewezen
+    annotatieIri: Mapped[str | None] = mapped_column(String(500))       # gezet bij vrijgeven
     creatieDatum: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=nu)
     afhandelDatum: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

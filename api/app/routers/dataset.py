@@ -127,6 +127,12 @@ def _dataset_jsonld(db: Session, project: Project) -> dict:
              "contentUrl": f"{cfg.api_basis_url}/project/{project.projectId}/activity-stream"},
         ],
     }
+    # wat in deze omgeving uit staat, hoort niet als distributie in het register
+    dataset["distribution"] = [
+        d for d in dataset["distribution"]
+        if not (d["contentUrl"].endswith("/sparql") and not cfg.sparql_publiek)
+        and not (d["contentUrl"].endswith("/activity-stream") and not cfg.change_discovery)
+    ]
     return {sleutel: waarde for sleutel, waarde in dataset.items() if waarde is not None}
 
 
@@ -215,6 +221,19 @@ def aanmelden(
             "details": validatie.text[:2000],
         })
 
+    # een aanmelding is definitief (het register kent geen afmelding), en REGISTER_API is
+    # het productieregister: buiten productie alleen valideren, anders staan er voorgoed
+    # URL's van een testomgeving in het landelijke register
+    if settings().omgeving != "productie":
+        log(db, "dataset.gevalideerd", organisatie_id=organisatie.organisatieId,
+            project_id=project.projectId, gebruikers_id=p.gebruiker.gebruikersId,
+            payload={"datasetUrl": dataset_url})
+        db.commit()
+        return JSONResponse({"status": "gevalideerd", "datasetUrl": dataset_url,
+                             "melding": "Gevalideerd. Buiten de productieomgeving wordt niet "
+                                        "aangemeld: een aanmelding is definitief."},
+                            status_code=200)
+
     # stap 2: aanmelden met de publieke URL van de datasetbeschrijving
     aanmelding = httpx.post(
         f"{REGISTER_API}/datasets",
@@ -236,26 +255,3 @@ def aanmelden(
         payload={"datasetUrl": dataset_url})
     db.commit()
     return {"status": "aangemeld", "datasetUrl": dataset_url}
-
-
-@router.delete("/project/{project_id}/datasetbeschrijving/aanmelden", status_code=204)
-def afmelden(
-    project_id: uuid.UUID,
-    p: Principal = Depends(principal),
-    db: Session = Depends(get_db),
-):
-    project, organisatie = project_met_rechten(db, project_id, p)
-    dataset_url = f"{settings().api_basis_url}/project/{project.projectId}/dataset"
-    try:
-        httpx.request(
-            "DELETE", f"{REGISTER_API}/datasets",
-            json={"@id": dataset_url},
-            headers={"Content-Type": "application/ld+json"},
-            timeout=60,
-        )
-    except httpx.HTTPError:
-        pass  # afmelden bij een onbereikbaar register mag lokaal niet blokkeren
-    project.datasetAangemeld = None
-    log(db, "dataset.afgemeld", organisatie_id=organisatie.organisatieId,
-        project_id=project.projectId, gebruikers_id=p.gebruiker.gebruikersId, payload={})
-    db.commit()

@@ -41,7 +41,21 @@ celery.conf.beat_schedule = {
         "task": "app.worker.hersync_rdf",
         "schedule": crontab(hour=4, minute=30),
     },
+    # bewaartermijnen (requirements, privacy): volledige logpayloads 12 maanden, daarna
+    # alleen type, tijdstip en id's; e-mailadres en reden van afgehandelde
+    # verwijderverzoeken idem
+    # moderatiedigest (mail 5, MO-4): één samenvatting per dag, alleen als er iets wacht
+    "moderatiedigest": {
+        "task": "app.worker.verstuur_moderatiedigest",
+        "schedule": crontab(hour=8, minute=0),
+    },
+    "bewaartermijnen": {
+        "task": "app.worker.pas_bewaartermijnen_toe",
+        "schedule": crontab(hour=3, minute=30),
+    },
 }
+
+BEWAARTERMIJN_DAGEN = 365
 celery.conf.timezone = "Europe/Amsterdam"
 
 _valkey = redis.Redis.from_url(settings().valkey_url, decode_responses=True)
@@ -69,6 +83,13 @@ def _verwerk_regel(db, regel: Gebeurtenislog) -> None:
     if regel.type == "jottem.gedepubliceerd" and payload.get("mediaId"):
         from .beeldcache import schoon_beeldketen
         schoon_beeldketen(uuid.UUID(payload["mediaId"]))
+    # 1c. wissen (MO-5): origineel, derivaat en annotaties weg, daarna de payloads van de
+    #     inmiddels verwerkte regels over deze jottem inkorten (zie app/wissen.py)
+    if regel.type == "jottem.gewist" and payload.get("mediaId"):
+        from . import wissen
+        media_id = uuid.UUID(payload["mediaId"])
+        print(f"wissen: mediaId={media_id} {wissen.wis_opslag(media_id)}")
+        wissen.schoon_logpayloads(db, media_id, behalve=regel.logId)
     # koppelingen (V-9): de afgeleide linking-annotaties gelijktrekken met de database,
     # aan beide kanten, zowel bij publiceren als bij depubliceren
     if regel.type in ("jottem.goedgekeurd", "jottem.gedepubliceerd") and payload.get("mediaId"):
@@ -80,9 +101,8 @@ def _verwerk_regel(db, regel: Gebeurtenislog) -> None:
         context = basis_context(db, regel.organisatieId, regel.projectId)
         context.update(mail.get("context", {}))
         verstuur(mail["template"], mail["aan"], context)
-    # 3. naamsync: creator.name bijwerken in de annotatieserver (GE-2)
-    if regel.type == "gebruiker-naam-gewijzigd" and regel.gebruikersId:
-        sync_creator_naam(db, regel.gebruikersId)
+    # 3. (vervallen) naamsync: de annotatieserver bevat geen namen meer; die worden bij het
+    #    lezen ingevuld (app/namen.py). "gebruiker-naam-gewijzigd" blijft als logregel.
 
 
 @worker_ready.connect
@@ -265,43 +285,6 @@ def maak_annotatiecontainer(db, media_id: str) -> None:
         pass
 
 
-def sync_creator_naam(db, gebruikers_id: int) -> int:
-    """Werk creator.name bij in alle annotaties van een gebruiker in AnnoRepo,
-    na een naam- of naamPubliek-wijziging (idempotent)."""
-    from . import anno
-
-    gebruiker = db.get(Gebruiker, gebruikers_id)
-    if not gebruiker:
-        return 0
-    creator_iri = f"urn:uuid:{gebruiker.publiekeId}"
-    naam = gebruiker.naam if gebruiker.naamPubliek else "Een deelnemer"
-    media_ids = {
-        (regel.payload or {}).get("mediaId")
-        for regel in db.scalars(
-            select(Gebeurtenislog).where(
-                Gebeurtenislog.type == "annotatie-aangemaakt",
-                Gebeurtenislog.gebruikersId == gebruikers_id,
-            )
-        )
-    }
-    bijgewerkt = 0
-    for media_id in filter(None, media_ids):
-        for annotatie in anno.alle_annotaties(media_id):
-            if (annotatie.get("creator") or {}).get("id") != creator_iri:
-                continue
-            if annotatie["creator"].get("name") == naam:
-                continue
-            annotatie["creator"]["name"] = naam
-            iri = annotatie["id"]
-            annotatie.pop("id", None)
-            try:
-                anno.vervang_annotatie(iri, annotatie)
-                bijgewerkt += 1
-            except Exception:  # noqa: BLE001 - volgende run probeert opnieuw
-                pass
-    return bijgewerkt
-
-
 @celery.task(name="app.worker.verstuur_attenderingen")
 def verstuur_attenderingen() -> int:
     """Dagelijkse bundel van notificaties 10 (nieuwe annotatie/reactie op jouw jottem)
@@ -362,6 +345,177 @@ def verstuur_attenderingen() -> int:
         verstuurd += stuur(per_uploader, "attendering-jottem")
         verstuurd += stuur(per_annoteerder, "attendering-annotatie")
         _valkey.set("attendering:laatste", datetime.now(timezone.utc).isoformat())
+    finally:
+        db.close()
+    return verstuurd
+
+
+@celery.task(name="app.worker.pas_bewaartermijnen_toe")
+def pas_bewaartermijnen_toe() -> dict:
+    """Kort logpayloads en verzoekgegevens in die ouder zijn dan de bewaartermijn."""
+    from . import wissen
+    from .models import Verwijderverzoek
+
+    grens = nu() - timedelta(days=BEWAARTERMIJN_DAGEN)
+    db = SessionLocal()
+    geteld = {"logregels": 0, "verzoeken": 0}
+    try:
+        while True:
+            regels = db.scalars(
+                select(Gebeurtenislog).where(Gebeurtenislog.tijdstip < grens,
+                                             Gebeurtenislog.verwerktOp.is_not(None))
+                .order_by(Gebeurtenislog.logId).limit(500)
+            ).all()
+            te_doen = [r for r in regels if not (r.payload or {}).get("ingekort")]
+            if not te_doen:
+                break
+            for regel in te_doen:
+                regel.payload = wissen.kale_payload(regel.payload)
+            geteld["logregels"] += len(te_doen)
+            db.commit()
+        for verzoek in db.scalars(select(Verwijderverzoek).where(
+                Verwijderverzoek.status != "open", Verwijderverzoek.afhandelDatum < grens,
+                Verwijderverzoek.email != "")):
+            verzoek.email = ""
+            verzoek.reden = "[ingekort na bewaartermijn]"
+            geteld["verzoeken"] += 1
+        db.commit()
+    finally:
+        db.close()
+    return geteld
+
+
+@celery.task(name="app.worker.herhaal_wislijst")
+def herhaal_wislijst() -> dict:
+    """Speel de wislijst opnieuw af. Verplicht na het terugzetten van een back-up: een
+    back-up van vóór een wisbesluit brengt het gewiste materiaal anders terug.
+
+    Handmatig: docker compose exec worker celery -A app.worker call app.worker.herhaal_wislijst
+    """
+    from . import wissen
+    from .models import Wislijst
+
+    db = SessionLocal()
+    geteld = {"jottems": 0, "mislukt": 0}
+    try:
+        for regel in db.scalars(select(Wislijst)).all():
+            media = db.get(Media, regel.mediaId)
+            try:
+                if media:
+                    wissen.wis_database(db, media)
+                    db.commit()
+                wissen.wis_opslag(regel.mediaId)
+                geteld["jottems"] += 1
+            except Exception as fout:  # noqa: BLE001 - één jottem mag de rest niet ophouden
+                db.rollback()
+                geteld["mislukt"] += 1
+                print(f"wislijst: {regel.mediaId} mislukt: {fout}")
+    finally:
+        db.close()
+    return geteld
+
+
+@celery.task(name="app.worker.verwijder_creator_namen")
+def verwijder_creator_namen() -> dict:
+    """Haal de namen uit bestaande annotaties (eenmalig, na de overstap op late binding).
+
+    Elke annotatie wordt op haar eigen IRI gelezen en niet uit de containerlijst, om de
+    context niet kwijt te raken (zie anno.vervang_annotatie en migreer_annotatiecontext).
+    Handmatig: docker compose exec worker celery -A app.worker call app.worker.verwijder_creator_namen
+    """
+    from . import anno
+    from .models import Media
+
+    db = SessionLocal()
+    geteld = {"bekeken": 0, "bijgewerkt": 0, "mislukt": 0}
+    try:
+        for media_id in db.scalars(select(Media.mediaId)):
+            for kort in anno.alle_annotaties(str(media_id)):
+                iri = kort.get("id")
+                if not iri:
+                    continue
+                geteld["bekeken"] += 1
+                try:
+                    volledig = anno.haal_annotatie(iri)
+                    creator = volledig.get("creator")
+                    if not isinstance(creator, dict) or "name" not in creator:
+                        continue
+                    zonder = {s: w for s, w in volledig.items() if s != "id"}
+                    zonder["creator"] = {k: v for k, v in creator.items() if k != "name"}
+                    anno.vervang_annotatie(iri, zonder)
+                    geteld["bijgewerkt"] += 1
+                except Exception as fout:  # noqa: BLE001 - één annotatie mag de rest niet ophouden
+                    geteld["mislukt"] += 1
+                    print(f"creatornaam: {iri} mislukt: {fout}")
+    finally:
+        db.close()
+    return geteld
+
+
+ESCALATIE_DAGEN = 21   # verwijderverzoek open langer dan dit: ook naar de organisatiebeheerders
+
+
+@celery.task(name="app.worker.verstuur_moderatiedigest")
+def verstuur_moderatiedigest() -> int:
+    """Mail 5 (MO-4): per organisatie een samenvatting van wat er wacht, aan de moderatoren.
+
+    Staat een verwijderverzoek langer dan ESCALATIE_DAGEN open, dan krijgen ook de
+    organisatiebeheerders de mail: de wettelijke termijn is 30 dagen. Via de outbox, zodat
+    een tijdelijk onbereikbare mailserver de mail niet laat verdwijnen.
+    """
+    from sqlalchemy import func
+    from .models import (GebruikerRol, MediaStatus, Melding, Organisatie, Rol,
+                         Verwijderverzoek, WachtendeAnnotatie)
+    from .outbox import log
+
+    db = SessionLocal()
+    verstuurd = 0
+    try:
+        for organisatie in db.scalars(select(Organisatie)).all():
+            org = organisatie.organisatieId
+            wachtend = db.execute(
+                select(Media.titel, Project.naam, Media.creatieDatum)
+                .join(Project, Media.projectId == Project.projectId)
+                .where(Media.organisatieId == org, Media.status == MediaStatus.nieuw)
+                .order_by(Media.creatieDatum)
+            ).all()
+            meldingen = db.scalar(select(func.count()).select_from(Melding).join(
+                Media, Melding.mediaId == Media.mediaId).where(
+                Media.organisatieId == org, Melding.status == "nieuw")) or 0
+            verzoeken = db.execute(select(Verwijderverzoek.creatieDatum).join(
+                Media, Verwijderverzoek.mediaId == Media.mediaId).where(
+                Media.organisatieId == org, Verwijderverzoek.status == "open")).scalars().all()
+            vlakken = db.scalar(select(func.count()).select_from(WachtendeAnnotatie).join(
+                Media, WachtendeAnnotatie.mediaId == Media.mediaId).where(
+                Media.organisatieId == org, WachtendeAnnotatie.status == "wachtend")) or 0
+            if not (wachtend or meldingen or verzoeken or vlakken):
+                continue
+            oudste = (nu() - min(verzoeken)).days if verzoeken else 0
+            escalatie = oudste > ESCALATIE_DAGEN
+            rollen = [Rol.moderator] + ([Rol.organisatiebeheerder] if escalatie else [])
+            ontvangers = {g.gebruikersId: g for g in db.scalars(
+                select(Gebruiker).join(GebruikerRol,
+                                       GebruikerRol.gebruikersId == Gebruiker.gebruikersId)
+                .where(GebruikerRol.organisatieId == org, GebruikerRol.rol.in_(rollen)))}
+            context = {
+                "aantalWachtend": len(wachtend),
+                "wachtrij": [{"titel": t, "projectNaam": p,
+                              "ingediendOp": d.strftime("%d-%m-%Y")} for t, p, d in wachtend[:20]],
+                "aantalMeldingen": meldingen,
+                "aantalVerzoeken": len(verzoeken),
+                "aantalVlakken": vlakken,
+                "oudsteVerzoekDagen": oudste,
+                "escalatie": escalatie,
+                "wachtrijUrl": f"{settings().publieke_basis_url}/moderatie",
+            }
+            for gebruiker in ontvangers.values():
+                if not gebruiker.email:
+                    continue
+                log(db, "moderatie.digest", organisatie_id=org, gebruikers_id=gebruiker.gebruikersId,
+                    payload={"mail": {"template": "moderatie-digest", "aan": gebruiker.email,
+                                      "context": context | {"ontvangerNaam": gebruiker.naam}}})
+                verstuurd += 1
+            db.commit()
     finally:
         db.close()
     return verstuurd

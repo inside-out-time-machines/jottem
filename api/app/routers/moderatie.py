@@ -15,9 +15,9 @@ from .. import relaties
 from ..auth import Principal, eis_rol, principal
 from ..config import settings
 from ..db import get_db
-from ..models import Gebruiker, Media, MediaStatus, Organisatie, Rol
+from ..models import Gebruiker, Media, MediaMetadata, MediaStatus, Organisatie, Rol
 from ..outbox import log
-from ..schemas import JottemKort, JottemModeratie, ModeratieBesluit
+from ..schemas import JottemCorrectie, JottemKort, JottemModeratie, ModeratieBesluit
 from .jottem import bouw_detail
 
 router = APIRouter(tags=["Moderatie"])
@@ -147,15 +147,84 @@ def depubliceren(
         raise HTTPException(403, "Geen moderator van deze organisatie")
     if media.status != MediaStatus.goedgekeurd:
         raise HTTPException(409, "Alleen een gepubliceerde jottem kan worden gedepubliceerd")
+    depubliceer(db, media, p.gebruiker.gebruikersId)
+    db.commit()
+    return {"status": media.status.value}
+
+
+def _momentopname(media: Media) -> dict:
+    """Wat een correctie kan raken, als vergelijkbare waarden voor het Gebeurtenislog."""
+    metadata = {r.veld: r.waarde for r in media.metadataRijen
+                if r.veld not in ("steekwoord", "rechtenvermelding")}
+    return {"titel": media.titel, "beschrijving": media.beschrijving, "genre": media.genre,
+            "metadata": metadata,
+            "steekwoorden": [r.waarde for r in media.metadataRijen if r.veld == "steekwoord"]}
+
+
+@router.put("/jottem/{media_id}/metadata")
+def corrigeer(
+    media_id: uuid.UUID,
+    correctie: JottemCorrectie,
+    p: Principal = Depends(eis_rol(Rol.moderator)),
+    db: Session = Depends(get_db),
+):
+    """Gegevens van een gepubliceerde jottem corrigeren (MO-8).
+
+    De inzender kan een gepubliceerde jottem niet zelf bewerken (UP-3), en een
+    correctie-annotatie bereikt kaart, RDF en IIIF niet: die lezen de metadata. Deze route
+    is dus de enige weg waarlangs een fout (ook in de startset uit een beeldbank) uit de
+    open data verdwijnt. Oude en nieuwe waarden gaan het Gebeurtenislog in.
+    """
+    media = db.get(Media, media_id)
+    if not media:
+        raise HTTPException(404, "Jottem onbekend")
+    if not p.heeft_rol(Rol.moderator, media.organisatieId):
+        raise HTTPException(403, "Geen moderator van deze organisatie")
+    if media.status != MediaStatus.goedgekeurd:
+        raise HTTPException(409, "Alleen een gepubliceerde jottem is hier te corrigeren")
+
+    oud = _momentopname(media)
+    if correctie.titel is not None:
+        media.titel = correctie.titel.strip()
+    if correctie.beschrijving is not None:
+        media.beschrijving = correctie.beschrijving.strip() or None
+    if correctie.genre is not None:
+        media.genre = correctie.genre.strip() or None
+    for veld, waarde in (correctie.metadata or {}).items():
+        for rij in [r for r in media.metadataRijen if r.veld == veld]:
+            db.delete(rij)
+        if waarde.strip():
+            db.add(MediaMetadata(mediaId=media.mediaId, veld=veld, waarde=waarde.strip()))
+    if correctie.steekwoorden is not None:
+        for rij in [r for r in media.metadataRijen if r.veld == "steekwoord"]:
+            db.delete(rij)
+        for woord in {w.strip() for w in correctie.steekwoorden if w.strip()}:
+            db.add(MediaMetadata(mediaId=media.mediaId, veld="steekwoord", waarde=woord))
+    db.flush()
+    db.refresh(media)
+    nieuw = _momentopname(media)
+    if nieuw == oud:
+        return {"mediaId": str(media.mediaId), "gewijzigd": False}
+    media.wijzigingsDatum = datetime.now(timezone.utc)
+    _dump_cache_leeg(media.projectId)
+    log(db, "jottem.gecorrigeerd",
+        organisatie_id=media.organisatieId, project_id=media.projectId,
+        gebruikers_id=p.gebruiker.gebruikersId,
+        payload={"mediaId": str(media.mediaId), "oud": oud, "nieuw": nieuw})
+    db.commit()
+    return {"mediaId": str(media.mediaId), "gewijzigd": True}
+
+
+def depubliceer(db: Session, media: Media, gebruikers_id: int) -> None:
+    """Status gedepubliceerd plus de schoning via de outbox; de aanroeper commit.
+    Gedeeld met de afhandeling van verwijderverzoeken."""
     media.status = MediaStatus.gedepubliceerd
     _raak_partners_aan(db, media)
     _dump_cache_leeg(media.projectId)
     log(db, "jottem.gedepubliceerd",
         organisatie_id=media.organisatieId, project_id=media.projectId,
-        gebruikers_id=p.gebruiker.gebruikersId,
+        gebruikers_id=gebruikers_id,
         payload={"mediaId": str(media.mediaId)})
-    db.commit()
-    return {"status": media.status.value}
 
 
 @router.put("/jottem/{media_id}/status")

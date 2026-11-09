@@ -86,8 +86,15 @@ def _collection(collectie_id: str, label: str, beschrijving: str | None,
     return JSONResponse(collectie, media_type=IIIF_MEDIA_TYPE)
 
 
+def _eis_aan(schakelaar: bool, wat: str) -> None:
+    """Een uitgang die in deze omgeving uit staat geeft 404 (realisatieplan, MVP-scope)."""
+    if not schakelaar:
+        raise HTTPException(404, f"{wat} staat in deze omgeving uit")
+
+
 @router.get("/organisatie/{slug}/jottems/iiif/collection")
 def organisatie_collection(slug: str, db: Session = Depends(get_db)):
+    _eis_aan(settings().aggregaten, "De collectie per organisatie")
     organisatie = _organisatie(db, slug)
     return _collection(
         f"{settings().api_basis_url}/organisatie/{slug}/jottems/iiif/collection",
@@ -174,6 +181,7 @@ def _activity_stream(activiteiten: list[dict], basis: str, pagina: int | None) -
 def activity_stream(slug: str, pagina: int | None = Query(default=None, alias="page", ge=0),
                           db: Session = Depends(get_db)):
     """Activity-stream van alle jottems van een organisatie (Change Discovery)."""
+    _eis_aan(settings().change_discovery, "Change Discovery")
     organisatie = _organisatie(db, slug)
     return _activity_stream(
         _activiteiten(db, organisatie_id=organisatie.organisatieId),
@@ -186,6 +194,7 @@ def project_activity_stream(project_id: uuid.UUID,
                                   db: Session = Depends(get_db)):
     """Activity-stream van één project (Change Discovery); ook de distributie waarnaar
     de projectdatasetbeschrijving verwijst."""
+    _eis_aan(settings().change_discovery, "Change Discovery")
     project = db.get(Project, project_id)
     if not project:
         raise HTTPException(404, "Project onbekend")
@@ -236,6 +245,7 @@ def _rss_jottem_item(m: Media) -> str:
 @router.get("/rss")
 def platform_rss(db: Session = Depends(get_db)):
     """Platformbrede feed: de aangesloten organisaties (data-architectuur, sectie RSS)."""
+    _eis_aan(settings().aggregaten, "De platformfeed")
     cfg = settings()
     items = "".join(
         "<item>\n"
@@ -252,6 +262,7 @@ def platform_rss(db: Session = Depends(get_db)):
 
 @router.get("/organisatie/{slug}/rss")
 def organisatie_rss(slug: str, db: Session = Depends(get_db)):
+    _eis_aan(settings().aggregaten, "De feed per organisatie")
     organisatie = _organisatie(db, slug)
     media = _gepubliceerd(db, organisatie_id=organisatie.organisatieId)[:50]
     return _rss(

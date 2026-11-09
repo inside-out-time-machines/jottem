@@ -43,7 +43,38 @@ type MeldingRij = {
   } | null;
 };
 
-function annotatieTekst(rij: MeldingRij): string {
+// verwijderverzoek (MO-5): depubliceren, wissen of afwijzen met toelichting
+type VerzoekRij = {
+  verzoekId: number;
+  mediaId: string;
+  jottemTitel: string;
+  soort: string;
+  reden: string;
+  email: string;
+  status: string;
+  toelichting: string | null;
+  creatieDatum: string;
+  afhandelDatum: string | null;
+};
+
+const SOORT: Record<string, string> = {
+  herkenbaar: "staat op de foto",
+  "eigen-materiaal": "eigen materiaal, trekt in",
+  auteursrecht: "auteursrecht",
+  anders: "anders",
+};
+
+// vlak-annotatie bij een jottem met herkenbare personen die op vrijgave wacht (MO-7)
+type WachtendeRij = {
+  wachtendeAnnotatieId: number;
+  mediaId: string;
+  jottemTitel: string;
+  status: string;
+  creatieDatum: string;
+  annotatie: MeldingRij["annotatie"];
+};
+
+function annotatieTekst(rij: { annotatie: MeldingRij["annotatie"] }): string {
   const body = rij.annotatie?.body;
   const lijst = Array.isArray(body) ? body : body ? [body] : [];
   const tekst = lijst.find((b) => b.type === "TextualBody" && b.value)?.value;
@@ -53,6 +84,8 @@ function annotatieTekst(rij: MeldingRij): string {
 export default function ModeratiePagina() {
   const [jottems, setJottems] = useState<Jottem[]>([]);
   const [meldingen, setMeldingen] = useState<MeldingRij[]>([]);
+  const [wachtende, setWachtende] = useState<WachtendeRij[]>([]);
+  const [verzoeken, setVerzoeken] = useState<VerzoekRij[]>([]);
   const [melding, setMelding] = useState<string | null>(null);
   const [ingelogd, setIngelogd] = useState<boolean | null>(null);
   const [organisatie, setOrganisatie] = useState<string | null>(null);
@@ -119,6 +152,14 @@ export default function ModeratiePagina() {
       .then((r) => (r.ok ? r.json() : []))
       .then(setMeldingen)
       .catch(() => {});
+    fetch(`${API_PUBLIEK}/organisatie/${organisatie}/wachtende-annotaties`, { headers })
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setWachtende)
+      .catch(() => {});
+    fetch(`${API_PUBLIEK}/organisatie/${organisatie}/verwijderverzoeken`, { headers })
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setVerzoeken)
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organisatie]);
 
@@ -161,6 +202,49 @@ export default function ModeratiePagina() {
     laden();
   }
 
+  async function besluitWachtend(rij: WachtendeRij, besluit: "vrijgegeven" | "afgewezen") {
+    const r = await fetch(`${API_PUBLIEK}/wachtende-annotatie/${rij.wachtendeAnnotatieId}`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({ besluit }),
+    });
+    if (!r.ok) {
+      setMelding(`Afhandelen mislukt: ${(await r.json()).detail ?? r.statusText}`);
+      return;
+    }
+    setMelding(
+      besluit === "vrijgegeven"
+        ? "Vrijgegeven; het vlak staat nu op de foto."
+        : "Afgewezen; het vlak wordt niet openbaar.",
+    );
+    laden();
+  }
+
+  async function besluitVerzoek(rij: VerzoekRij, besluit: "depubliceren" | "wissen" | "afgewezen") {
+    let toelichting: string | null = null;
+    if (besluit === "afgewezen") {
+      toelichting = window.prompt("Waarom wijs je dit verzoek af? De indiener krijgt deze toelichting per mail.");
+      if (!toelichting || !toelichting.trim()) return;
+    }
+    if (besluit === "wissen" && !window.confirm(
+      `"${rij.jottemTitel}" wissen? Het origineel, de metadata en alle annotaties worden definitief verwijderd. Dit kan niet ongedaan worden gemaakt.`)) return;
+    const r = await fetch(`${API_PUBLIEK}/verwijderverzoek/${rij.verzoekId}`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({ besluit, toelichting }),
+    });
+    if (!r.ok) {
+      setMelding(`Afhandelen mislukt: ${(await r.json()).detail ?? r.statusText}`);
+      return;
+    }
+    setMelding({
+      depubliceren: "Gedepubliceerd; het origineel blijft als archiefexemplaar bewaard. De indiener krijgt de uitkomst per mail.",
+      wissen: "Gewist; de jottem staat op de wislijst. De indiener krijgt de uitkomst per mail.",
+      afgewezen: "Afgewezen; de indiener krijgt je toelichting per mail.",
+    }[besluit]);
+    laden();
+  }
+
   const kleurStijl = projectStijl(huisstijl?.kleurPrimair, huisstijl?.kleurSecundair);
   const kopVoet = kopVoetCss(huisstijl?.kleurPrimair, huisstijl?.kleurSecundair);
   // Geen href/precedence hier: React hijst zo'n stijl naar de head en dedupliceert op
@@ -175,6 +259,7 @@ export default function ModeratiePagina() {
 
   const wachtend = jottems.filter((j) => j.status === "nieuw").length;
   const openMeldingen = meldingen.filter((m) => m.status === "nieuw").length;
+  const openVerzoeken = verzoeken.filter((v) => v.status === "open").length;
 
   return (
     <BeheerPagina
@@ -190,6 +275,8 @@ export default function ModeratiePagina() {
           samenvatting={[
             { label: "Wachtrij", waarde: wachtend },
             { label: "Meldingen", waarde: openMeldingen },
+            { label: "Vlakken", waarde: wachtende.length },
+            { label: "Verwijderverzoeken", waarde: openVerzoeken },
             { label: "Totaal", waarde: jottems.length },
           ]}
           voet={organisatie ? <a href={`/organisatie/${organisatie}`} target="_blank" rel="noopener noreferrer">Publieke organisatiepagina</a> : undefined}
@@ -211,6 +298,8 @@ export default function ModeratiePagina() {
           )}
           <a className="knop knop-secundair" href="#wachtrij">Naar de wachtrij</a>
           <a className="knop knop-secundair" href="#meldingen">Naar de meldingen</a>
+          <a className="knop knop-secundair" href="#vlakken">Naar de vlakken</a>
+          <a className="knop knop-secundair" href="#verwijderverzoeken">Naar de verwijderverzoeken</a>
         </Actiebalk>
       }
     >
@@ -231,6 +320,14 @@ export default function ModeratiePagina() {
               <tr key={jottem.mediaId}>
                 <td data-label="Titel">
                   <a href={`/moderatie/${jottem.mediaId}`}>{jottem.titel}</a>
+                  {jottem.herkenbaar === null && (
+                    <div>
+                      <span className="status-pil status-afgekeurd"
+                            title="De controle op herkenbare personen kon niet draaien">
+                        niet gecontroleerd · toestemming: {jottem.toestemming}
+                      </span>
+                    </div>
+                  )}
                   {jottem.herkenbaar && (
                     <div>
                       <span
@@ -267,6 +364,89 @@ export default function ModeratiePagina() {
             ))}
             {jottems.length === 0 && (
               <tr><td colSpan={4} className="beheer-leeg">Geen jottems in de wachtrij.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </KaartSectie>
+
+      <KaartSectie
+        id="verwijderverzoeken"
+        titel="Verwijderverzoeken"
+        intro="Handel elk verzoek binnen 30 dagen af. Depubliceren haalt de jottem overal weg maar bewaart het origineel; wissen verwijdert ook origineel, metadata en annotaties, definitief."
+      >
+        <table className="lijst stapel">
+          <thead>
+            <tr>
+              <th>Jottem en verzoek</th>
+              <th>Ingediend</th>
+              <th>Status / actie</th>
+            </tr>
+          </thead>
+          <tbody>
+            {verzoeken.map((rij) => (
+              <tr key={rij.verzoekId}>
+                <td data-label="Jottem en verzoek" style={{ maxWidth: "26rem" }}>
+                  <a href={`/moderatie/${rij.mediaId}`}>{rij.jottemTitel}</a>
+                  <div className="hint">kenmerk {rij.verzoekId} · {SOORT[rij.soort] ?? rij.soort} · {rij.email}</div>
+                  <div><em>&ldquo;{rij.reden.slice(0, 300)}&rdquo;</em></div>
+                  {rij.toelichting && <div className="hint">besluit: {rij.toelichting}</div>}
+                </td>
+                <td data-label="Ingediend">{new Date(rij.creatieDatum).toLocaleDateString("nl-NL")}</td>
+                <td>
+                  {rij.status === "open" ? (
+                    <span className="knoppenrij">
+                      <button className="knop knop-secundair" onClick={() => besluitVerzoek(rij, "depubliceren")}>Depubliceer</button>
+                      <button className="knop knop-secundair" onClick={() => besluitVerzoek(rij, "wissen")}>Wis</button>
+                      <button className="knop knop-secundair" onClick={() => besluitVerzoek(rij, "afgewezen")}>Wijs af</button>
+                    </span>
+                  ) : (
+                    <span className="status-pil status-gedepubliceerd">{rij.status}</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {verzoeken.length === 0 && (
+              <tr><td colSpan={3} className="beheer-leeg">Geen verwijderverzoeken.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </KaartSectie>
+
+      <KaartSectie
+        id="vlakken"
+        titel="Vlakken op foto's met herkenbare personen"
+        intro="Een vlak met een naam erbij kan iemand identificeren. Op foto's waarop herkenbare personen staan, verschijnt zo'n vlak pas als jij het vrijgeeft."
+      >
+        <table className="lijst stapel">
+          <thead>
+            <tr>
+              <th>Bijdrage</th>
+              <th>Jottem</th>
+              <th>Geplaatst op</th>
+              <th>Actie</th>
+            </tr>
+          </thead>
+          <tbody>
+            {wachtende.map((rij) => (
+              <tr key={rij.wachtendeAnnotatieId}>
+                <td data-label="Bijdrage" style={{ maxWidth: "22rem" }}>
+                  <em>&ldquo;{annotatieTekst(rij).slice(0, 160)}&rdquo;</em>
+                  {rij.annotatie?.creator?.name && (
+                    <div className="hint">door {rij.annotatie.creator.name}</div>
+                  )}
+                </td>
+                <td data-label="Jottem"><a href={`/moderatie/${rij.mediaId}`}>{rij.jottemTitel}</a></td>
+                <td data-label="Geplaatst op">{new Date(rij.creatieDatum).toLocaleDateString("nl-NL")}</td>
+                <td>
+                  <span className="knoppenrij">
+                    <button className="knop knop-primair" onClick={() => besluitWachtend(rij, "vrijgegeven")}>Geef vrij</button>
+                    <button className="knop knop-secundair" onClick={() => besluitWachtend(rij, "afgewezen")}>Wijs af</button>
+                  </span>
+                </td>
+              </tr>
+            ))}
+            {wachtende.length === 0 && (
+              <tr><td colSpan={4} className="beheer-leeg">Geen vlakken die wachten.</td></tr>
             )}
           </tbody>
         </table>

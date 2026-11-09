@@ -1,11 +1,15 @@
-"""Externe fotobronnen: beeldbank-permalinks (IIIF) en directe foto-URL's.
+"""Externe fotobronnen: beeldbank-permalinks (IIIF).
 
 De resolver bepaalt server-side (gezaghebbend, de client wordt niet vertrouwd) wat er
-achter een opgegeven URL zit:
-- beeldbank: een permalink wordt herleid tot een IIIF Manifest of info.json; die URL
-  wordt opgeslagen en getoond. Herkenning start met samh.nl (Memorix); nieuwe
-  beeldbanken zijn een extra regel in PERMALINK_PATRONEN.
-- foto-URL: de URL moet een werkende afbeelding opleveren (statuscode + content-type).
+achter een opgegeven URL zit: een permalink wordt herleid tot een IIIF Manifest of
+info.json; die URL wordt opgeslagen en getoond. Alleen beeldbanken op de ingestelde lijst
+(`beeldbank_hosts`, te beginnen met samh.nl/Memorix) worden aanvaard; nieuwe beeldbanken
+zijn een configuratieregel plus, voor een eigen permalinkvorm, een regel in
+PERMALINK_PATRONEN. Een losse foto-URL van een willekeurige website kan niet meer: zo'n
+beeld kan na de moderatie ongemerkt worden vervangen of verdwijnen.
+
+De rechten komen bij beeldbankmateriaal uit het manifest (`rights`, en `requiredStatement`
+als rechtenvermelding): het is werk van de bronorganisatie, niet van de inzender.
 
 Er wordt uitsluitend verwezen, niets gekopieerd. SSRF-bescherming: alleen http(s), geen
 private, loopback-, link-local-, CGNAT- of metadata-adressen, en **elke redirect-hop
@@ -24,9 +28,8 @@ import httpx
 from fastapi import HTTPException
 
 from . import iiif
+from .config import settings
 
-FOTO_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp", "image/tiff"}
-MAX_FOTO_BYTES = 20 * 1024 * 1024
 MAX_REDIRECTS = 5
 # één melding voor elke afwijzing: anders verraadt het verschil tussen "host onbekend",
 # "verbinding geweigerd" en "niet toegestaan" wat er in het interne netwerk draait
@@ -55,6 +58,9 @@ class ExterneBron:
     titel: str | None = None
     beschrijving: str | None = None
     metadata: dict[str, str] | None = None
+    # rechten volgens de bron: IIIF `rights` (URI) en `requiredStatement` (tekst)
+    rechten: str | None = None
+    rechtenvermelding: str | None = None
 
 
 def _adres_toegestaan(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
@@ -143,6 +149,9 @@ MANIFEST_VELDEN = {
 BESCHRIJVING_LABELS = ("beschrijving", "omschrijving", "titel", "onderwerp")
 
 # sommige beeldbanken vullen het label met een plaatsaanduiding in plaats van een titel
+# labels waaronder een beeldbank de rechten vermeldt als requiredStatement ontbreekt
+RECHTEN_LABELS = ("auteursrecht", "rechten", "licentie", "copyright")
+
 GEEN_TITEL = {"no title", "zonder titel", "untitled", "geen titel", ""}
 
 
@@ -198,6 +207,33 @@ def _bruikbare_titel(*kandidaten: str | None) -> str | None:
     return None
 
 
+def _rechten_uri(waarde) -> str | None:
+    """IIIF 3 `rights` is één URI (CC of RightsStatements); alles anders negeren we."""
+    if isinstance(waarde, str) and waarde.startswith(("http://", "https://")):
+        return waarde.strip()[:200]
+    return None
+
+
+def _rechtenvermelding(manifest: dict) -> str | None:
+    """De rechtenvermelding van de bron: `requiredStatement`, anders een metadataregel."""
+    verplicht = manifest.get("requiredStatement") or {}
+    tekst = _tekst(verplicht.get("value")) if isinstance(verplicht, dict) else None
+    if not tekst:
+        for regel in manifest.get("metadata") or []:
+            label = (_tekst(regel.get("label")) or "").strip().lower().rstrip(":")
+            if label in RECHTEN_LABELS:
+                tekst = _tekst(regel.get("value"))
+                break
+    return tekst.strip()[:500] if tekst else None
+
+
+def _host_toegestaan(url: str) -> bool:
+    """Staat de host van deze URL (of een bovenliggend domein) op de beeldbanklijst?"""
+    host = (urlparse(url.strip()).hostname or "").lower()
+    lijst = [h.strip().lower() for h in settings().beeldbank_hosts.split(",") if h.strip()]
+    return any(host == h or host.endswith("." + h) for h in lijst)
+
+
 def _uit_manifest(manifest: dict, manifest_url: str, media_uuid: str | None) -> ExterneBron:
     canvases = manifest.get("items") or []
     if not canvases:
@@ -225,11 +261,17 @@ def _uit_manifest(manifest: dict, manifest_url: str, media_uuid: str | None) -> 
         # de beeldbank heeft het materiaal al beschreven; die beschrijving overnemen
         # scheelt de inzender werk en levert betere metadata dan een leeg veld
         titel=titel, beschrijving=beschrijving, metadata=velden or None,
+        rechten=_rechten_uri(manifest.get("rights")),
+        rechtenvermelding=_rechtenvermelding(manifest),
     )
 
 
 def resolve_beeldbank(url: str) -> ExterneBron:
     _eis_publieke_url(url)
+    if not _host_toegestaan(url):
+        raise HTTPException(
+            422, "Deze beeldbank staat (nog) niet op de lijst van beeldbanken waaruit je "
+                 "foto's kunt toevoegen; upload de foto als bestand of vraag de beheerder")
     with httpx.Client(timeout=20) as client:
         # 1. bekende permalink-patronen -> manifest-URL afleiden
         for patroon, sjabloon in PERMALINK_PATRONEN:
@@ -263,40 +305,11 @@ def resolve_beeldbank(url: str) -> ExterneBron:
              "info.json-links")
 
 
-def resolve_foto_url(url: str) -> ExterneBron:
-    _eis_publieke_url(url)
-    try:
-        with httpx.Client(timeout=20) as client:
-            antwoord = veilig_ophalen(client, url)
-    except HTTPException:
-        raise
-    except Exception as fout:  # noqa: BLE001
-        raise HTTPException(422, GEWEIGERD) from fout
-    if antwoord.status_code != 200:
-        raise HTTPException(422, "De URL levert geen werkende afbeelding op")
-    content_type = (antwoord.headers.get("Content-Type") or "").split(";")[0].strip().lower()
-    if content_type not in FOTO_TYPES:
-        raise HTTPException(422, f"De URL levert geen afbeelding op (type: {content_type or 'onbekend'})")
-    data = antwoord.content
-    if len(data) > MAX_FOTO_BYTES:
-        raise HTTPException(422, "Deze afbeelding is groter dan 20 MB")
-    breedte = hoogte = None
-    try:
-        import pyvips
-        beeld = pyvips.Image.new_from_buffer(data, "")
-        breedte, hoogte = beeld.width, beeld.height
-    except Exception:  # noqa: BLE001 - afmetingen zijn welkom maar niet verplicht
-        pass
-    return ExterneBron(
-        bron="url", bronUrl=url.strip(), previewUrl=url.strip(),
-        breedte=breedte, hoogte=hoogte, mimeType=content_type,
-    )
-
-
 def resolve(soort: str, url: str) -> ExterneBron:
-    if soort == "beeldbank":
-        return resolve_beeldbank(url)
-    return resolve_foto_url(url)
+    if soort != "beeldbank":
+        raise HTTPException(422, "Een foto-URL van een website kan niet meer; upload de "
+                                 "foto als bestand of geef een beeldbank-permalink")
+    return resolve_beeldbank(url)
 
 
 def haal_beeld_bytes(bron: ExterneBron) -> bytes | None:

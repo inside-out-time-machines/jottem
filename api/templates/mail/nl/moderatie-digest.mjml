@@ -5,16 +5,22 @@
       <mj-column>
         <mj-text font-size="15px" line-height="1.6">
           <p>Beste {{ ontvangerNaam }},</p>
-          <p>Er {% if aantalWachtend == 1 %}wacht <strong>1 jottem</strong>{% else %}wachten
-          <strong>{{ aantalWachtend }} jottems</strong>{% endif %} op beoordeling bij
-          {{ organisatie.naam }}:</p>
+          <p>Dit wacht er bij {{ organisatie.naam }}:</p>
+          <ul>
+          {% if aantalWachtend %}<li><strong>{{ aantalWachtend }}</strong> jottem{% if aantalWachtend != 1 %}s{% endif %} in de wachtrij</li>{% endif %}
+          {% if aantalVerzoeken %}<li><strong>{{ aantalVerzoeken }}</strong> verwijderverzoek{% if aantalVerzoeken != 1 %}en{% endif %} (wettelijke termijn: 30 dagen)</li>{% endif %}
+          {% if aantalVlakken %}<li><strong>{{ aantalVlakken }}</strong> vlak{% if aantalVlakken != 1 %}ken{% endif %} op foto's met herkenbare personen</li>{% endif %}
+          {% if aantalMeldingen %}<li><strong>{{ aantalMeldingen }}</strong> melding{% if aantalMeldingen != 1 %}en{% endif %} op annotaties of reacties</li>{% endif %}
+          </ul>
+          {% if escalatie %}<p><strong>Let op:</strong> een verwijderverzoek staat al {{ oudsteVerzoekDagen }} dagen open. Na 30 dagen is de wettelijke termijn verstreken. Deze mail gaat daarom ook naar de organisatiebeheerders.</p>{% endif %}
+          {% if wachtrij %}<p>Wachtende jottems:</p>
           <ul>
           {% for jottem in wachtrij %}
             <li>"{{ jottem.titel }}" - {{ jottem.projectNaam }}, ingediend {{ jottem.ingediendOp }}</li>
           {% endfor %}
-          </ul>
+          </ul>{% endif %}
         </mj-text>
-        <mj-button href="{{ wachtrijUrl }}" background-color="{{ organisatie.kleurPrimair }}" font-size="15px">Naar de moderatiewachtrij</mj-button>
+        <mj-button href="{{ wachtrijUrl }}" background-color="{{ organisatie.kleurPrimair }}" font-size="15px">Naar de moderatie</mj-button>
         <mj-text font-size="13px" color="#777777">Je ontvangt deze samenvatting maximaal één keer per dag, alleen als er iets wacht.</mj-text>
       </mj-column>
     </mj-section>

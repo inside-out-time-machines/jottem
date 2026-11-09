@@ -7,7 +7,7 @@ import gzip
 import httpx
 import pytest
 
-from tests.conftest import DATA
+from tests.conftest import API, DATA
 
 
 def test_iiif_manifest(api: httpx.Client, jottem_id: str):
@@ -89,6 +89,21 @@ def test_content_negotiation(api: httpx.Client, jottem_id: str):
     rdfxml = api.get(f"/jottem/{jottem_id}", headers={"Accept": "application/rdf+xml"})
     assert rdfxml.status_code == 200
     assert rdfxml.text.lstrip().startswith("<?xml")
+
+
+def test_content_negotiation_duurzame_url(site: httpx.Client, jottem_id: str):
+    """De duurzame URL op de webhost is het RDF-onderwerp: RDF-verzoeken gaan met een 303
+    naar de API (web/proxy.ts), een browser krijgt de pagina."""
+    for accept in ("text/turtle", "application/ld+json", "application/rdf+xml",
+                   'application/ld+json;profile="http://www.w3.org/ns/json-ld#framed"'):
+        antwoord = site.get(f"/jottem/{jottem_id}", headers={"Accept": accept})
+        assert antwoord.status_code == 303, accept
+        assert antwoord.headers["location"].endswith(f"/jottem/{jottem_id}"), accept
+        assert antwoord.headers["location"].startswith(API), accept
+
+    html = site.get(f"/jottem/{jottem_id}", headers={"Accept": "text/html,*/*;q=0.8"})
+    assert html.status_code == 200
+    assert html.headers["content-type"].startswith("text/html")
 
 
 def test_annotatiecontainer(api: httpx.Client, jottem_id: str):

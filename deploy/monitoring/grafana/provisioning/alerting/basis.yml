@@ -7,7 +7,8 @@ contactPoints:
       - uid: beheer-mail
         type: email
         settings:
-          addresses: bob.coret@gmail.com
+          # uit .env via de compose-omgeving (Grafana vult $-variabelen in bij provisioning)
+          addresses: ${ALERT_ONTVANGER}
 policies:
   - orgId: 1
     receiver: beheer-mail

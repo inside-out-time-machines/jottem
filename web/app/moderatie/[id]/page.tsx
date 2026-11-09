@@ -6,6 +6,7 @@ import { kopVoetCss, projectStijl } from "@/lib/kleuren";
 import BeheerInlog from "../../beheer-inlog";
 import { Actiebalk, BeheerPagina, KaartSectie, StatusPil, Veld } from "../../beheer-ui";
 import Licentie from "../../licentie";
+import Correctie from "./correctie";
 
 // Wat de moderator ziet is meer dan de publiekspagina toont: die bestaat pas na
 // goedkeuring, en laat de inzender alleen zien als die dat zelf heeft aangezet.
@@ -54,6 +55,7 @@ const VELDNAAM: Record<string, string> = {
   jaarTot: "Tot jaar",
   vervaardiger: "Vervaardiger",
   archiefbron: "Bron",
+  rechtenvermelding: "Rechten",
   persoon: "Persoon",
   gebouw: "Gebouw",
   bedrijf: "Bedrijf",
@@ -157,7 +159,9 @@ export default function BeoordeelPagina({ params }: { params: Promise<{ id: stri
             { label: "Status", waarde: <StatusPil soort={detail.status}>{detail.status}</StatusPil> },
             { label: "Inzender", waarde: <>{beoordeling.inzenderNaam}{!beoordeling.inzenderNaamPubliek && <span className="hint">naam blijft buiten de open data</span>}</> },
             { label: "Ingediend", waarde: ingediendOp },
-            { label: "Herkenbaar", waarde: beoordeling.herkenbaar ? `ja, toestemming: ${beoordeling.toestemming}` : "nee" },
+            { label: "Herkenbaar", waarde: beoordeling.herkenbaar === null
+                ? `niet gecontroleerd, toestemming: ${beoordeling.toestemming}`
+                : beoordeling.herkenbaar ? `ja, toestemming: ${beoordeling.toestemming}` : "nee" },
           ]}
           voet={detail.status === "goedgekeurd" ? <a href={`/jottem/${detail.mediaId}`}>Bekijk de publiekspagina</a> : undefined}
         >
@@ -214,6 +218,11 @@ export default function BeoordeelPagina({ params }: { params: Promise<{ id: stri
         )}
         {detail.beschrijving && <p>{detail.beschrijving}</p>}
       </KaartSectie>
+
+      {detail.status === "goedgekeurd" && (
+        <Correctie key={JSON.stringify(detail.metadata) + detail.titel} gegevens={detail}
+                   onOpgeslagen={(m) => { setMelding(m); laden(); }} />
+      )}
 
       <KaartSectie titel="Gegevens">
         <table className="lijst stapel">

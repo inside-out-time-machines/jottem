@@ -237,6 +237,10 @@ def _aggregatie(db: Session, media_ids: list[uuid.UUID], collectie_id: str, labe
     items: list[dict] = []
     for media_id in media_ids:
         items.extend(anno.alle_annotaties(str(media_id)))
+    # de annotatieserver kent geen namen (late binding): hier vullen we ze in; door de
+    # cache van vijf minuten is een naamswijziging hier binnen vijf minuten zichtbaar
+    from .. import namen
+    items = namen.vul_namen_in(db, items)
     collectie = {
         # dezelfde context als op de losse annotatie, uit dezelfde definitie: zonder de
         # jottem-prefix zijn jottem:verrijking en jottem:aard hier geen resolvebare termen
@@ -288,6 +292,8 @@ def project_annotaties(project_id: uuid.UUID, request: Request,
 @router.get("/organisatie/{slug}/annotations")
 def organisatie_annotaties(slug: str, request: Request,
                            db: Session = Depends(get_db)):
+    if not settings().aggregaten:
+        raise HTTPException(404, "De annotaties per organisatie staan in deze omgeving uit")
     organisatie = db.scalar(select(Organisatie).where(Organisatie.slug == slug))
     if not organisatie:
         raise HTTPException(404, "Organisatie onbekend")

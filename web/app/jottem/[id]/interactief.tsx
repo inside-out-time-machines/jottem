@@ -56,6 +56,8 @@ export default function Interactief({ detail }: { detail: Detail }) {
   const besturingRef = useRef<ViewerBesturing | null>(null);
   // profielfoto's bij de creator-IRI's van de annotaties op deze pagina
   const [fotos, setFotos] = useState<Record<string, string | null>>({});
+  // namen staan niet in de annotatieserver (late binding): ook die komen uit /deelnemers
+  const [namen, setNamen] = useState<Record<string, string>>({});
   const dialoogRef = useRef<HTMLDialogElement>(null);
 
   const headers = { "Content-Type": "application/json", ...authHeaders() };
@@ -110,13 +112,20 @@ export default function Interactief({ detail }: { detail: Detail }) {
     if (ids.length === 0) return;
     fetch(`${API_PUBLIEK}/deelnemers?ids=${ids.join(",")}`)
       .then((r) => (r.ok ? r.json() : []))
-      .then((rijen: { publiekeId: string; afbeeldingUrl: string | null }[]) =>
-        setFotos(Object.fromEntries(rijen.map((r) => [r.publiekeId, r.afbeeldingUrl]))))
+      .then((rijen: { publiekeId: string; naam: string; afbeeldingUrl: string | null }[]) => {
+        setFotos(Object.fromEntries(rijen.map((r) => [r.publiekeId, r.afbeeldingUrl])));
+        setNamen(Object.fromEntries(rijen.map((r) => [r.publiekeId, r.naam])));
+      })
       .catch(() => {});
   }, [annotaties]);
 
   const foto = (a: W3CAnnotatie) =>
     fotos[(a.creator?.id ?? "").replace("urn:uuid:", "")] ?? null;
+  // wie zijn naam niet publiek deelt staat niet in /deelnemers: dan de anonieme weergave.
+  // Bewust geen terugval op een naam die nog in een oude annotatie staat: die kan van
+  // iemand zijn die zijn naam inmiddels niet meer publiek deelt.
+  const naam = (a: W3CAnnotatie) =>
+    namen[(a.creator?.id ?? "").replace("urn:uuid:", "")] ?? null;
 
   // Termennetwerk-zoek met kleine debounce (OB-3: beperkt tot de projectbronnen)
   useEffect(() => {
@@ -146,7 +155,7 @@ export default function Interactief({ detail }: { detail: Detail }) {
           </p>
         ))}
         <p className="kader-popup-voet">
-          <Deelnemer naam={a.creator?.name} afbeeldingUrl={foto(a)} datum={a.created} />
+          <Deelnemer naam={naam(a)} afbeeldingUrl={foto(a)} datum={a.created} />
           {" · "}
           <a href={`#${naamUitIri(a.id)}`}>lees verder</a>
         </p>
@@ -312,6 +321,12 @@ export default function Interactief({ detail }: { detail: Detail }) {
       return;
     }
     sluitDialoog();
+    // 202: een vlak op een foto met herkenbare personen wacht eerst op een moderator (MO-7)
+    if (r.status === 202) {
+      const inhoud = await r.json().catch(() => ({}));
+      setMelding(inhoud.melding ?? "Bedankt! Een moderator bekijkt je bijdrage eerst.");
+      return;
+    }
     laadAnnotaties();
   }
 
@@ -452,7 +467,7 @@ export default function Interactief({ detail }: { detail: Detail }) {
                   </p>
                 ))}
                 <p className="annotatie-voet">
-                  <Deelnemer naam={a.creator?.name} afbeeldingUrl={foto(a)} datum={a.created} />
+                  <Deelnemer naam={naam(a)} afbeeldingUrl={foto(a)} datum={a.created} />
                   <button className="annotatie-actie" onClick={() => startReactie(a)}>reageer</button>
                   <button className="annotatie-actie" onClick={() => startMelding(a)}>meld</button>
                   {isEigen(a) && (
@@ -466,7 +481,7 @@ export default function Interactief({ detail }: { detail: Detail }) {
                   <div className="annotatie-reactie" key={reactie.id}>
                     {weergave(reactie, catalogus).teksten.map((t, i) => <p key={i}>{t}</p>)}
                     <p className="annotatie-voet">
-                      <Deelnemer naam={reactie.creator?.name} afbeeldingUrl={foto(reactie)}
+                      <Deelnemer naam={naam(reactie)} afbeeldingUrl={foto(reactie)}
                                  datum={reactie.created} />
                       <button className="annotatie-actie" onClick={() => startMelding(reactie)}>meld</button>
                       {isEigen(reactie) && (

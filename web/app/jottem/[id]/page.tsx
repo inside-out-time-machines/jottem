@@ -5,6 +5,7 @@ import Deelnemer from "../../deelnemer";
 import { kopVoetCss, projectStijl } from "@/lib/kleuren";
 import Interactief, { Detail as InteractiefDetail } from "./interactief";
 import DeelKnop from "./deel-knop";
+import Verwijderverzoek from "./verwijderverzoek";
 import Licentie from "../../licentie";
 import { SITE_URL } from "@/lib/api";
 
@@ -71,6 +72,7 @@ const VELDNAAM: Record<string, string> = {
   vervaardiger: "Vervaardiger",
   adres: "Adres",
   archiefbron: "Bron",
+  rechtenvermelding: "Rechten",
   persoon: "Persoon",
   gebouw: "Gebouw",
   bedrijf: "Bedrijf",
@@ -98,13 +100,16 @@ function ogBeschrijving(jottem: Detail) {
     ?? `Een jottem uit het project ${jottem.project} van ${jottem.organisatie}.`;
 }
 
-// De oproep achter de titel in og:title en de Web Share-tekst: een willekeurige,
-// binnen het project actieve verrijkings-CTA (D-5), zodat een gedeelde link meteen
-// om een concrete bijdrage vraagt en per deelmoment varieert. Zonder actieve
-// verrijkingen valt de oproep terug op de vaste tekst.
+// De oproep in de Web Share-tekst: een willekeurige, binnen het project actieve
+// verrijkings-CTA (D-5), zodat een gedeelde link meteen om een concrete bijdrage vraagt;
+// het deelmenu maakt die tekst per deelmoment, dus hij varieert echt. og:title gebruikt de
+// vaste oproep: platforms bewaren de preview van een URL, een wisselende titel wisselt daar
+// niet. Zonder actieve verrijkingen valt ook de deeltekst terug op de vaste oproep.
+const VASTE_OPROEP = "weet jij hier meer van?";
+
 function deelOproep(jottem: Detail): string {
   const ctas = jottem.verrijkingen?.map((verrijking) => verrijking.cta) ?? [];
-  return ctas.length ? ctas[Math.floor(Math.random() * ctas.length)] : "weet jij hier meer van?";
+  return ctas.length ? ctas[Math.floor(Math.random() * ctas.length)] : VASTE_OPROEP;
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
@@ -164,7 +169,7 @@ export default async function JottemPagina({
 
   // header en footer staan in de root-layout: kleuren via CSS-variabelen in de head
   const kopVoet = kopVoetCss(jottem.organisatieKleurPrimair, jottem.organisatieKleurSecundair);
-  // wat het deelmenu van het apparaat meekrijgt (zelfde oproep als in de preview)
+  // wat het deelmenu van het apparaat meekrijgt (wisselende oproep; de preview is vast)
   const deelUrl = `${SITE_URL}/jottem/${id}`;
   const oproep = deelOproep(jottem);
   const deelTekst = `${jottem.titel} - ${oproep}`;
@@ -180,8 +185,8 @@ export default async function JottemPagina({
       {jottem.status === "goedgekeurd" && (
         <OpenGraph
           type="article"
-          // uitnodigende titel in tijdlijnen: de jottem plus een verrijkings-CTA (D-5)
-          titel={deelTekst}
+          // titel in tijdlijnen: de jottem plus de vaste oproep (D-5)
+          titel={`${jottem.titel} - ${VASTE_OPROEP}`}
           beschrijving={ogBeschrijving(jottem)}
           pad={`/jottem/${id}`}
           beeld={ogBeeld(jottem)}
@@ -248,6 +253,9 @@ export default async function JottemPagina({
           <DeelKnop titel={jottem.titel} tekst={deelTekst} url={deelUrl} />
         </p>
       </div>
+      <p style={{ marginTop: "2rem" }}>
+        <Verwijderverzoek mediaId={jottem.mediaId} />
+      </p>
     </main>
   );
 }

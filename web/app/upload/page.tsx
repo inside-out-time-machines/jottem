@@ -55,12 +55,15 @@ export default function UploadPagina() {
     mediaId: string;
     betrouwbaarheid: number | null;
     vervolg: "verder" | "indienen";
+    // true: de controle kon niet draaien; dan stellen we de vraag tóch (faalt dicht)
+    onbekend?: boolean;
   } | null>(null);
-  // externe fotobron (beeldbank-permalink of foto-URL): alleen verwijzing, geen upload
+  // externe fotobron (beeldbank-permalink): alleen verwijzing, geen upload; de rechten
+  // komen van de bron, niet uit de projectlicentie
   const [externeBron, setExterneBron] = useState<{
-    soort: "beeldbank" | "url"; url: string; bronUrl: string; previewUrl: string;
+    soort: "beeldbank"; url: string; bronUrl: string; previewUrl: string;
+    rechten: string | null; rechtenvermelding: string | null;
   } | null>(null);
-  const [urlSoort, setUrlSoort] = useState<"beeldbank" | "url">("beeldbank");
   const [urlInvoer, setUrlInvoer] = useState("");
   const [urlFout, setUrlFout] = useState<string | null>(null);
   const [urlBezig, setUrlBezig] = useState(false);
@@ -136,9 +139,9 @@ export default function UploadPagina() {
     : undefined;
   // per project ingeschakelde uploadwijzen (organisatiebeheerder); de server dwingt
   // ze bij het indienen ook af
-  const wijzen = gekozen?.uploadWijzen ?? ["bestand", "camera", "beeldbank", "url"];
+  const wijzen = gekozen?.uploadWijzen ?? ["bestand", "camera", "beeldbank"];
   const heeftEigenFoto = wijzen.includes("bestand") || wijzen.includes("camera");
-  const heeftVerwijzing = wijzen.includes("beeldbank") || wijzen.includes("url");
+  const heeftVerwijzing = wijzen.includes("beeldbank");
 
   // een onbekend project (verlopen link, typefout) hoort ook terug naar de start
   useEffect(() => {
@@ -186,7 +189,8 @@ export default function UploadPagina() {
       // gezaghebbende Herkenbaar-check op de server: bij herkenbare personen
       // stelt de server de toestemmingsvraag via deze 422
       if (antwoord.status === 422 && String(detail).includes("herkenbare personen") && keuze === null) {
-        setToestemmingsVraag({ mediaId, betrouwbaarheid: null, vervolg: "indienen" });
+        setToestemmingsVraag({ mediaId, betrouwbaarheid: null, vervolg: "indienen",
+                               onbekend: String(detail).includes("konden niet controleren") });
         return;
       }
       throw new Error(detail);
@@ -302,9 +306,11 @@ export default function UploadPagina() {
         herkenbaar: check.herkenbaar ?? null,
         betrouwbaarheid: check.betrouwbaarheid ?? null,
       });
-      if (check.herkenbaar === true) {
+      // ja, of de controle kon niet draaien: in beide gevallen de vraag (faalt dicht)
+      if (check.herkenbaar !== false) {
         setToestemmingsVraag({
           mediaId, betrouwbaarheid: check.betrouwbaarheid ?? null, vervolg: "verder",
+          onbekend: check.herkenbaar !== true,
         });
         setStap("toestemming");
         return;
@@ -335,8 +341,8 @@ export default function UploadPagina() {
 
   async function versturen(e: React.FormEvent) {
     e.preventDefault();
-    if (!gekozen || !titel || !licentieAkkoord) {
-      setMelding("Vul een titel in en bevestig de licentie.");
+    if (!gekozen || !titel || (!externeBron && !licentieAkkoord)) {
+      setMelding(externeBron ? "Vul een titel in." : "Vul een titel in en bevestig de licentie.");
       return;
     }
     setBezig(true);
@@ -357,8 +363,7 @@ export default function UploadPagina() {
     }
   }
 
-  function openUrlDialoog(soort: "beeldbank" | "url") {
-    setUrlSoort(soort);
+  function openUrlDialoog() {
     setUrlInvoer("");
     setUrlFout(null);
     urlDialoog.current?.showModal();
@@ -372,7 +377,7 @@ export default function UploadPagina() {
       const antwoord = await fetch(`${API_PUBLIEK}/upload/externe-bron`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ soort: urlSoort, url: urlInvoer.trim() }),
+        body: JSON.stringify({ soort: "beeldbank", url: urlInvoer.trim() }),
       });
       const inhoud = await antwoord.json();
       if (!antwoord.ok) {
@@ -380,8 +385,9 @@ export default function UploadPagina() {
         return;
       }
       setExterneBron({
-        soort: urlSoort, url: urlInvoer.trim(),
+        soort: "beeldbank", url: urlInvoer.trim(),
         bronUrl: inhoud.bronUrl, previewUrl: inhoud.previewUrl,
+        rechten: inhoud.rechten ?? null, rechtenvermelding: inhoud.rechtenvermelding ?? null,
       });
       // de beeldbank heeft het materiaal al beschreven: die gegevens overnemen als
       // voorstel, zolang de inzender zelf nog niets heeft ingevuld
@@ -435,9 +441,14 @@ export default function UploadPagina() {
         {kopVoetBlok}
         <h1>Staan er mensen op je foto?</h1>
         <p style={{ maxWidth: "40rem", marginTop: "1rem" }}>
-          We zien mogelijk <strong>herkenbare personen</strong> op je foto. Vanwege het
-          portretrecht en de privacy vragen we dan om toestemming van de mensen op de
-          foto (of van hun nabestaanden).
+          {toestemmingsVraag.onbekend
+            ? <>We konden nu niet automatisch controleren of er <strong>herkenbare
+              personen</strong> op je foto staan. Staan er mensen op, dan vragen we vanwege het
+              portretrecht en de privacy om toestemming van de mensen op de foto (of van hun
+              nabestaanden).</>
+            : <>We zien mogelijk <strong>herkenbare personen</strong> op je foto. Vanwege het
+              portretrecht en de privacy vragen we dan om toestemming van de mensen op de
+              foto (of van hun nabestaanden).</>}
         </p>
         <div style={{ display: "grid", gap: ".8rem", maxWidth: "34rem", marginTop: "1.5rem" }}>
           <button
@@ -445,7 +456,9 @@ export default function UploadPagina() {
             disabled={bezig}
             onClick={() => beantwoordToestemming("ja")}
           >
-            Ja, ik verklaar dat ik toestemming heb
+            {toestemmingsVraag.onbekend
+              ? "Ja: er staan geen herkenbare mensen op, of ik heb toestemming"
+              : "Ja, ik verklaar dat ik toestemming heb"}
           </button>
           <button
             className="knop knop-secundair"
@@ -540,18 +553,9 @@ export default function UploadPagina() {
               <button
                 type="button"
                 className="knop knop-secundair"
-                onClick={() => openUrlDialoog("beeldbank")}
+                onClick={() => openUrlDialoog()}
               >
                 <span className="icoon" aria-hidden="true">🏛️</span> Of geef een permalink uit een beeldbank
-              </button>
-            )}
-            {wijzen.includes("url") && (
-              <button
-                type="button"
-                className="knop knop-secundair"
-                onClick={() => openUrlDialoog("url")}
-              >
-                <span className="icoon" aria-hidden="true">🔗</span> Of geef een foto-URL van een website
               </button>
             )}
           </div>
@@ -565,7 +569,7 @@ export default function UploadPagina() {
               />
               <div style={{ fontSize: ".9rem", color: "var(--grijs)", wordBreak: "break-all" }}>
                 Gekozen: {externeBron.bronUrl}
-                {externeBron.soort === "beeldbank" && " (IIIF, uit een beeldbank)"}
+                {" (IIIF, uit een beeldbank)"}
               </div>
             </div>
           )}
@@ -728,6 +732,18 @@ export default function UploadPagina() {
         </div>
         {/* de licentie staat naast het label, niet erin: een klik op de link of de (i)
             mag het vinkje niet zetten, en de dialoog hoort niet in een <label> */}
+        {externeBron ? (
+          // beeldbankmateriaal is werk van de bronorganisatie: geen projectlicentie
+          // bevestigen, maar tonen welke rechten de bron opgeeft
+          <div style={{ fontSize: ".95rem" }}>
+            Deze foto komt uit een beeldbank. De rechten blijven zoals de bron ze opgeeft
+            {externeBron.rechten || externeBron.rechtenvermelding ? ": " : "."}
+            {externeBron.rechten && <Licentie url={externeBron.rechten} />}
+            {externeBron.rechtenvermelding && (
+              <span> {externeBron.rechtenvermelding}</span>
+            )}
+          </div>
+        ) : (
         <div>
           <label style={{ fontWeight: 400 }}>
             <input
@@ -742,6 +758,7 @@ export default function UploadPagina() {
             <> <Licentie url={gekozen.datasetLicentie} /></>
           )}
         </div>
+        )}
         <button className="knop knop-primair" type="submit" disabled={bezig}>
           {bezig ? "Bezig..." : "Verstuur je jottem"}
         </button>
@@ -752,13 +769,11 @@ export default function UploadPagina() {
 
       <dialog ref={urlDialoog} className="dialoog">
         <form onSubmit={urlControleren}>
-          <h2>
-            {urlSoort === "beeldbank" ? "Foto uit een beeldbank" : "Foto-URL van een website"}
-          </h2>
+          <h2>Foto uit een beeldbank</h2>
           <p style={{ marginTop: ".5rem", fontSize: ".95rem" }}>
-            {urlSoort === "beeldbank"
-              ? "Plak de permalink van de foto uit de beeldbank; we zoeken er de IIIF-versie bij en verwijzen daarnaar (we kopiëren niets). Op dit moment ondersteunen we de beeldbank van samh.nl en directe IIIF-links."
-              : "Plak het adres van een foto op een website; we controleren of de link echt een afbeelding oplevert en verwijzen ernaar (we kopiëren niets)."}
+            Plak de permalink van de foto uit de beeldbank; we zoeken er de IIIF-versie bij
+            en verwijzen daarnaar (we kopiëren niets). Op dit moment ondersteunen we de
+            beeldbank van samh.nl.
           </p>
           <div className="veld" style={{ marginTop: ".8rem" }}>
             <label htmlFor="bron-url">URL</label>
@@ -767,9 +782,7 @@ export default function UploadPagina() {
               type="url"
               required
               value={urlInvoer}
-              placeholder={urlSoort === "beeldbank"
-                ? "https://samh.nl/bronnen/beeldbank/detail/..."
-                : "https://voorbeeld.nl/foto.jpg"}
+              placeholder="https://samh.nl/bronnen/beeldbank/detail/..."
               onChange={(e) => setUrlInvoer(e.target.value)}
               style={{ font: "inherit", padding: ".45rem .6rem", border: "1px solid var(--kartonrand)", borderRadius: ".3rem", width: "100%" }}
             />
