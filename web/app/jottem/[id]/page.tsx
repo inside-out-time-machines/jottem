@@ -5,6 +5,7 @@ import Deelnemer from "../../deelnemer";
 import { kopVoetCss, projectStijl } from "@/lib/kleuren";
 import Interactief, { Detail as InteractiefDetail } from "./interactief";
 import DeelKnop from "./deel-knop";
+import Verwijderverzoek from "./verwijderverzoek";
 import Licentie from "../../licentie";
 import { SITE_URL } from "@/lib/api";
 
@@ -249,6 +250,9 @@ export default async function JottemPagina({
           <DeelKnop titel={jottem.titel} tekst={deelTekst} url={deelUrl} />
         </p>
       </div>
+      <p style={{ marginTop: "2rem" }}>
+        <Verwijderverzoek mediaId={jottem.mediaId} />
+      </p>
     </main>
   );
 }

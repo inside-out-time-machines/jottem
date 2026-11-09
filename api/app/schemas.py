@@ -392,6 +392,31 @@ class MeldingUit(BaseModel):
     annotatie: dict | None = None        # inhoud uit AnnoRepo (voor de moderator)
 
 
+class VerwijderverzoekIn(BaseModel):
+    jottemId: uuid.UUID
+    soort: str = Field(pattern="^(eigen-materiaal|herkenbaar|auteursrecht|anders)$")
+    reden: str = Field(min_length=3, max_length=4000)
+    email: str = Field(max_length=320, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+class VerwijderverzoekUit(BaseModel):
+    verzoekId: int
+    mediaId: uuid.UUID
+    jottemTitel: str
+    soort: str
+    reden: str
+    email: str
+    status: str
+    toelichting: str | None
+    creatieDatum: datetime
+    afhandelDatum: datetime | None
+
+
+class VerwijderverzoekBesluit(BaseModel):
+    besluit: str = Field(pattern="^(depubliceren|wissen|afgewezen)$")
+    toelichting: str | None = Field(default=None, max_length=4000)
+
+
 class WachtendeAnnotatieUit(BaseModel):
     wachtendeAnnotatieId: int
     mediaId: uuid.UUID

@@ -246,21 +246,32 @@ class Favoriet(Base):
 
 
 class Verwijderverzoek(Base):
-    """Voorbereid datamodel voor de verwijderverzoeken-flow; nog geen endpoints.
+    """Verzoek om een jottem te verwijderen (BE-4, MO-5); zie routers/verwijderverzoeken.py.
 
-    De bijbehorende mailsjablonen staan al in api/templates/mail/. Depubliceren zelf kan
-    inmiddels wel: zie DELETE /jottem/{id}/publicatie in de moderatierouter.
+    Een moderator kiest depubliceren (origineel blijft als archiefexemplaar) of wissen
+    (alles weg, op de wislijst), of wijst af met een toelichting.
     """
     __tablename__ = "verwijderverzoek"
 
     verzoekId: Mapped[int] = mapped_column(Integer, primary_key=True)
     mediaId: Mapped[uuid.UUID] = mapped_column(ForeignKey("media.mediaId"))
+    # eigen-materiaal | herkenbaar | auteursrecht | anders
+    soort: Mapped[str] = mapped_column(String(30), default="anders")
     reden: Mapped[str] = mapped_column(Text)
     email: Mapped[str] = mapped_column(String(320))
-    status: Mapped[str] = mapped_column(String(20), default="open")  # open | gehonoreerd | afgewezen
+    status: Mapped[str] = mapped_column(String(20), default="open")  # open | gedepubliceerd | gewist | afgewezen
     toelichting: Mapped[str | None] = mapped_column(Text)
     creatieDatum: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=nu)
     afhandelDatum: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Wislijst(Base):
+    """Gewiste jottems. Na het terugzetten van een back-up wordt deze lijst opnieuw
+    afgespeeld (worker.herhaal_wislijst), zodat gewist materiaal niet terugkomt."""
+    __tablename__ = "wislijst"
+
+    mediaId: Mapped[uuid.UUID] = mapped_column(primary_key=True)
+    gewistOp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=nu)
 
 
 class Melding(Base):

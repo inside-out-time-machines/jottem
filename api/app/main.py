@@ -9,7 +9,7 @@ from .config import settings
 from .db import engine
 from .routers import (
     annotaties, dataset, jottem, mijn, moderatie, ns, opendata, organisatiebeheer,
-    projectbeheer, publiek, termennetwerk, upload,
+    projectbeheer, publiek, termennetwerk, upload, verwijderverzoeken,
 )
 
 # De dev-bypass (X-Dev-Sub) omzeilt authenticatie volledig. Buiten een dev-omgeving mag
@@ -98,6 +98,7 @@ app.include_router(jottem.router)
 app.include_router(mijn.router)
 app.include_router(publiek.router)
 app.include_router(annotaties.router)
+app.include_router(verwijderverzoeken.router)
 app.include_router(opendata.router)
 app.include_router(ns.router)
 

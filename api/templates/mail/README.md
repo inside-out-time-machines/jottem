@@ -45,15 +45,15 @@ Altijd beschikbaar: `organisatie.naam`, `organisatie.logoUrl`, `organisatie.kleu
 
 ## Welke sjablonen worden al verstuurd?
 
-Vijf sjablonen staan klaar voor functies die nog niet gebouwd zijn en hebben dus (nog)
-geen afzender in de code: `export-gereed`, `moderatie-digest`,
-`verwijderverzoek-bevestiging`, `verwijderverzoek-melding` en
-`verwijderverzoek-uitkomst`. Ze zijn bewust bewaard: het realisatieplan plant die
-functies, en de teksten zijn al op B1-niveau geredigeerd. Wie op zoek is naar dode code:
-dit is grondwerk, geen restant.
+Twee sjablonen staan klaar voor functies die nog niet gebouwd zijn en hebben dus (nog)
+geen afzender in de code: `export-gereed` (e-depot-export, fase 2) en `moderatie-digest`.
+Ze zijn bewust bewaard: het realisatieplan plant die functies, en de teksten zijn al op
+B1-niveau geredigeerd. Wie op zoek is naar dode code: dit is grondwerk, geen restant.
 
 De rest wordt wél verstuurd, vanuit `api/app/routers/moderatie.py`,
-`api/app/routers/organisatiebeheer.py` en `api/app/worker.py`.
+`api/app/routers/organisatiebeheer.py`, `api/app/routers/verwijderverzoeken.py` (mails 6-8)
+en `api/app/worker.py`. Bij `verwijderverzoek-uitkomst` is `uitkomst` "gehonoreerd" voor
+zowel depubliceren als wissen.
 
 ## Regels
 

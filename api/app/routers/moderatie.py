@@ -147,15 +147,21 @@ def depubliceren(
         raise HTTPException(403, "Geen moderator van deze organisatie")
     if media.status != MediaStatus.goedgekeurd:
         raise HTTPException(409, "Alleen een gepubliceerde jottem kan worden gedepubliceerd")
+    depubliceer(db, media, p.gebruiker.gebruikersId)
+    db.commit()
+    return {"status": media.status.value}
+
+
+def depubliceer(db: Session, media: Media, gebruikers_id: int) -> None:
+    """Status gedepubliceerd plus de schoning via de outbox; de aanroeper commit.
+    Gedeeld met de afhandeling van verwijderverzoeken."""
     media.status = MediaStatus.gedepubliceerd
     _raak_partners_aan(db, media)
     _dump_cache_leeg(media.projectId)
     log(db, "jottem.gedepubliceerd",
         organisatie_id=media.organisatieId, project_id=media.projectId,
-        gebruikers_id=p.gebruiker.gebruikersId,
+        gebruikers_id=gebruikers_id,
         payload={"mediaId": str(media.mediaId)})
-    db.commit()
-    return {"status": media.status.value}
 
 
 @router.put("/jottem/{media_id}/status")

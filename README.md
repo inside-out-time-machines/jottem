@@ -73,6 +73,18 @@ docker compose --profile prod up -d     # productie (externe S3 en MTA via .env)
 Vooraf controleren wat een `.env` oplevert kan zonder iets te starten:
 `docker compose --profile prod config | grep -E 'Host\(|JOTTEM_'`.
 
+**Verwijderverzoeken, wissen en de wislijst.** Een moderator handelt een verwijderverzoek
+af met depubliceren (origineel blijft als archiefexemplaar), wissen of afwijzen. Wissen
+verwijdert origineel, derivaat, metadata, annotaties en de logpayloads, en zet de jottem op
+de tabel `wislijst`. Volledige logpayloads worden na 12 maanden ingekort (worker-taak
+`pas_bewaartermijnen_toe`, dagelijks 03:30); back-ups worden 35 dagen bewaard. **Na het
+terugzetten van een back-up altijd de wislijst opnieuw afspelen**, anders komt gewist
+materiaal terug:
+`docker compose exec worker celery -A app.worker call app.worker.herhaal_wislijst`.
+Een wisbesluit uit de laatste uren vóór de back-up staat niet in die back-up; de worker
+schrijft bij elk wisbesluit een regel `wissen: mediaId=...` in zijn log, zodat zo'n jottem
+na een restore alsnog met de hand op de wislijst kan.
+
 Secrets staan uitsluitend in `.env` (buiten git); de deploy-configuratie zelf is
 publiek en hoort dus nooit geheimen te bevatten.
 

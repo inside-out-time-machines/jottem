@@ -41,7 +41,16 @@ celery.conf.beat_schedule = {
         "task": "app.worker.hersync_rdf",
         "schedule": crontab(hour=4, minute=30),
     },
+    # bewaartermijnen (requirements, privacy): volledige logpayloads 12 maanden, daarna
+    # alleen type, tijdstip en id's; e-mailadres en reden van afgehandelde
+    # verwijderverzoeken idem
+    "bewaartermijnen": {
+        "task": "app.worker.pas_bewaartermijnen_toe",
+        "schedule": crontab(hour=3, minute=30),
+    },
 }
+
+BEWAARTERMIJN_DAGEN = 365
 celery.conf.timezone = "Europe/Amsterdam"
 
 _valkey = redis.Redis.from_url(settings().valkey_url, decode_responses=True)
@@ -69,6 +78,13 @@ def _verwerk_regel(db, regel: Gebeurtenislog) -> None:
     if regel.type == "jottem.gedepubliceerd" and payload.get("mediaId"):
         from .beeldcache import schoon_beeldketen
         schoon_beeldketen(uuid.UUID(payload["mediaId"]))
+    # 1c. wissen (MO-5): origineel, derivaat en annotaties weg, daarna de payloads van de
+    #     inmiddels verwerkte regels over deze jottem inkorten (zie app/wissen.py)
+    if regel.type == "jottem.gewist" and payload.get("mediaId"):
+        from . import wissen
+        media_id = uuid.UUID(payload["mediaId"])
+        print(f"wissen: mediaId={media_id} {wissen.wis_opslag(media_id)}")
+        wissen.schoon_logpayloads(db, media_id, behalve=regel.logId)
     # koppelingen (V-9): de afgeleide linking-annotaties gelijktrekken met de database,
     # aan beide kanten, zowel bij publiceren als bij depubliceren
     if regel.type in ("jottem.goedgekeurd", "jottem.gedepubliceerd") and payload.get("mediaId"):
@@ -365,3 +381,68 @@ def verstuur_attenderingen() -> int:
     finally:
         db.close()
     return verstuurd
+
+
+@celery.task(name="app.worker.pas_bewaartermijnen_toe")
+def pas_bewaartermijnen_toe() -> dict:
+    """Kort logpayloads en verzoekgegevens in die ouder zijn dan de bewaartermijn."""
+    from . import wissen
+    from .models import Verwijderverzoek
+
+    grens = nu() - timedelta(days=BEWAARTERMIJN_DAGEN)
+    db = SessionLocal()
+    geteld = {"logregels": 0, "verzoeken": 0}
+    try:
+        while True:
+            regels = db.scalars(
+                select(Gebeurtenislog).where(Gebeurtenislog.tijdstip < grens,
+                                             Gebeurtenislog.verwerktOp.is_not(None))
+                .order_by(Gebeurtenislog.logId).limit(500)
+            ).all()
+            te_doen = [r for r in regels if not (r.payload or {}).get("ingekort")]
+            if not te_doen:
+                break
+            for regel in te_doen:
+                regel.payload = wissen.kale_payload(regel.payload)
+            geteld["logregels"] += len(te_doen)
+            db.commit()
+        for verzoek in db.scalars(select(Verwijderverzoek).where(
+                Verwijderverzoek.status != "open", Verwijderverzoek.afhandelDatum < grens,
+                Verwijderverzoek.email != "")):
+            verzoek.email = ""
+            verzoek.reden = "[ingekort na bewaartermijn]"
+            geteld["verzoeken"] += 1
+        db.commit()
+    finally:
+        db.close()
+    return geteld
+
+
+@celery.task(name="app.worker.herhaal_wislijst")
+def herhaal_wislijst() -> dict:
+    """Speel de wislijst opnieuw af. Verplicht na het terugzetten van een back-up: een
+    back-up van vóór een wisbesluit brengt het gewiste materiaal anders terug.
+
+    Handmatig: docker compose exec worker celery -A app.worker call app.worker.herhaal_wislijst
+    """
+    from . import wissen
+    from .models import Wislijst
+
+    db = SessionLocal()
+    geteld = {"jottems": 0, "mislukt": 0}
+    try:
+        for regel in db.scalars(select(Wislijst)).all():
+            media = db.get(Media, regel.mediaId)
+            try:
+                if media:
+                    wissen.wis_database(db, media)
+                    db.commit()
+                wissen.wis_opslag(regel.mediaId)
+                geteld["jottems"] += 1
+            except Exception as fout:  # noqa: BLE001 - één jottem mag de rest niet ophouden
+                db.rollback()
+                geteld["mislukt"] += 1
+                print(f"wislijst: {regel.mediaId} mislukt: {fout}")
+    finally:
+        db.close()
+    return geteld
