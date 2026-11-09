@@ -95,8 +95,8 @@ export default function ProjectBewerkPagina() {
   );
 }
 
-// Datasetbeschrijving: tonen, valideren/aanmelden bij en afmelden van het NDE
-// Datasetregister (OB-4).
+// Datasetbeschrijving: tonen en valideren/aanmelden bij het NDE Datasetregister (OB-4).
+// Een aanmelding is definitief; buiten productie valideert de API alleen.
 function DatasetSectie({ project, headers, onMelding, herlaad }: {
   project: ProjectUit; headers: Record<string, string>;
   onMelding: (m: string | null) => void; herlaad: () => Promise<void>;
@@ -114,14 +114,10 @@ function DatasetSectie({ project, headers, onMelding, herlaad }: {
       method: "POST", headers,
     });
     const inhoud = await r.json().catch(() => ({}));
-    if (r.ok) onMelding("Gevalideerd en aangemeld bij het Datasetregister.");
+    if (r.ok) onMelding(inhoud.status === "gevalideerd"
+      ? (inhoud.melding ?? "Gevalideerd; buiten productie wordt niet aangemeld.")
+      : "Gevalideerd en aangemeld bij het Datasetregister.");
     else onMelding(`${inhoud.detail?.melding ?? inhoud.detail ?? "Aanmelden mislukt"} ${JSON.stringify(inhoud.detail?.details ?? "").slice(0, 300)}`);
-    herlaad();
-  }
-
-  async function meldAf() {
-    await fetch(`${API_PUBLIEK}/project/${project.projectId}/datasetbeschrijving/aanmelden`, { method: "DELETE", headers });
-    onMelding("Afgemeld bij het Datasetregister.");
     herlaad();
   }
 
@@ -134,9 +130,6 @@ function DatasetSectie({ project, headers, onMelding, herlaad }: {
       <div className="knoppenrij">
         <button className="knop knop-secundair" onClick={toonDataset}>Toon de beschrijving</button>
         <button className="knop knop-primair" onClick={meldAan}>Valideer en meld aan</button>
-        {project.datasetAangemeld && (
-          <button className="knop knop-secundair" onClick={meldAf}>Afmelden</button>
-        )}
       </div>
       {dataset !== null && (
         <pre className="codeblok" style={{ maxHeight: "16rem" }}>{JSON.stringify(dataset, null, 2)}</pre>

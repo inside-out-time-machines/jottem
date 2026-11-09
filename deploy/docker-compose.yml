@@ -113,7 +113,9 @@ services:
 
   herkenbaar:
     # detectie van herkenbare personen (portretrecht) - aparte AGPL-dienst, eigen repo
-    build: https://github.com/inside-out-time-machines/herkenbaar-api.git
+    # vastgepind op een commit: een rebuild pakt niet ongemerkt wat er op main staat;
+    # bijwerken = de hash hieronder bewust ophogen
+    build: https://github.com/inside-out-time-machines/herkenbaar-api.git#b90c2c43c74a3b1f7348d5581c6671d892db7222
     restart: unless-stopped
 
   suggesties:
@@ -121,7 +123,9 @@ services:
     # het platform: de modellen zijn MIT en Apache-2.0, dus anders dan bij Herkenbaar werkt
     # er geen AGPL door. Alleen in het dev-profiel zolang de dienst wordt beproefd (V-5).
     profiles: ["dev"]
-    build: https://github.com/inside-out-time-machines/suggesties-api.git
+    # vastgepind op een commit: een rebuild pakt niet ongemerkt wat er op main staat;
+    # bijwerken = de hash hieronder bewust ophogen
+    build: https://github.com/inside-out-time-machines/suggesties-api.git#beede0a70334fc7c7656c95dee8e953f7f3635bd
     restart: unless-stopped
     environment:
       # meer threads is hier langzamer; zes is op deze machine gemeten het snelst
@@ -333,6 +337,9 @@ services:
       JOTTEM_PUBLIEKE_BASIS_URL: ${WEB_PUBLIEK:-https://${WEB_HOST:-${BASISDOMEIN}}}
       JOTTEM_API_BASIS_URL: ${API_PUBLIEK:-https://api.${BASISDOMEIN}}
       JOTTEM_OIDC_ISSUER: ${OIDC_ISSUER:-https://auth.${BASISDOMEIN}/application/o/jottem/}
+      # de API weigert te starten met DEV_AUTH=1 buiten dev; daarvoor moet hij weten
+      # in welke omgeving hij draait (anders geldt de standaard "dev" en vangt de check niets)
+      JOTTEM_OMGEVING: ${OMGEVING:-dev}
       JOTTEM_DEV_AUTH: ${DEV_AUTH:-0}
       # bij een lege database wordt dit adres platformbeheerder (uitnodigingspatroon)
       JOTTEM_BOOTSTRAP_BEHEERDER: ${BOOTSTRAP_BEHEERDER:-}
@@ -345,7 +352,10 @@ services:
       JOTTEM_HERKENBAAR_URL: http://herkenbaar:4050
       # beeldbanken waaruit permalinks als jottem mogen (kommagescheiden hostnamen)
       JOTTEM_BEELDBANK_HOSTS: ${BEELDBANK_HOSTS:-samh.nl}
-      JOTTEM_SUGGESTIES_URL: ${SUGGESTIES_URL:-http://suggesties:4060}
+      # standaard leeg = suggestiedienst uit (vereist in productie, zie de AI-toets); dev zet
+      # SUGGESTIES_URL=http://suggesties:4060 in .env. ":-" vult een lege waarde aan met de
+      # standaard, dus de standaard moet zelf leeg zijn om de dienst uit te kunnen zetten.
+      JOTTEM_SUGGESTIES_URL: ${SUGGESTIES_URL:-}
       JOTTEM_ANNO_URL: http://annorepo:8080
       JOTTEM_ANNO_BASIS_URL: ${ANNO_PUBLIEK:-https://anno.${BASISDOMEIN}}
       JOTTEM_ANNO_API_KEY: ${ANNO_API_KEY}
@@ -380,6 +390,7 @@ services:
     restart: unless-stopped
     command: celery -A app.worker worker --beat --loglevel=info
     environment:
+      JOTTEM_OMGEVING: ${OMGEVING:-dev}
       JOTTEM_DATABASE_URL: postgresql+psycopg://jottem:${POSTGRES_WACHTWOORD}@postgres:5432/jottem
       JOTTEM_VALKEY_URL: redis://valkey:6379/0
       JOTTEM_S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
