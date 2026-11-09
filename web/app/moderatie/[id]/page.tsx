@@ -6,6 +6,7 @@ import { kopVoetCss, projectStijl } from "@/lib/kleuren";
 import BeheerInlog from "../../beheer-inlog";
 import { Actiebalk, BeheerPagina, KaartSectie, StatusPil, Veld } from "../../beheer-ui";
 import Licentie from "../../licentie";
+import Correctie from "./correctie";
 
 // Wat de moderator ziet is meer dan de publiekspagina toont: die bestaat pas na
 // goedkeuring, en laat de inzender alleen zien als die dat zelf heeft aangezet.
@@ -215,6 +216,11 @@ export default function BeoordeelPagina({ params }: { params: Promise<{ id: stri
         )}
         {detail.beschrijving && <p>{detail.beschrijving}</p>}
       </KaartSectie>
+
+      {detail.status === "goedgekeurd" && (
+        <Correctie key={JSON.stringify(detail.metadata) + detail.titel} gegevens={detail}
+                   onOpgeslagen={(m) => { setMelding(m); laden(); }} />
+      )}
 
       <KaartSectie titel="Gegevens">
         <table className="lijst stapel">

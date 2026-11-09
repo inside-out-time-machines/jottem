@@ -392,6 +392,30 @@ class MeldingUit(BaseModel):
     annotatie: dict | None = None        # inhoud uit AnnoRepo (voor de moderator)
 
 
+class JottemCorrectie(BaseModel):
+    """Correctie van een gepubliceerde jottem door een moderator (MO-8). Alleen meegegeven
+    velden veranderen; in `metadata` betekent een lege waarde: veld verwijderen."""
+    titel: str | None = Field(default=None, min_length=1, max_length=300)
+    beschrijving: str | None = Field(default=None, max_length=MAX_METADATA_WAARDE)
+    genre: str | None = Field(default=None, max_length=200)
+    metadata: dict[str, str] | None = None
+    steekwoorden: list[str] | None = Field(default=None, max_length=MAX_STEEKWOORDEN)
+
+    @field_validator("metadata")
+    @classmethod
+    def _metadata_binnen_de_perken(cls, waarde: dict[str, str] | None) -> dict[str, str] | None:
+        if waarde is None:
+            return None
+        if len(waarde) > MAX_METADATA_VELDEN:
+            raise ValueError(f"Maximaal {MAX_METADATA_VELDEN} metadatavelden")
+        for sleutel, inhoud in waarde.items():
+            if len(sleutel) > MAX_METADATA_SLEUTEL or len(inhoud) > MAX_METADATA_WAARDE:
+                raise ValueError("Metadataveld te lang")
+            if sleutel in ("steekwoord", "rechtenvermelding"):
+                raise ValueError(f"{sleutel} is hier niet te bewerken")
+        return waarde
+
+
 class VerwijderverzoekIn(BaseModel):
     jottemId: uuid.UUID
     soort: str = Field(pattern="^(eigen-materiaal|herkenbaar|auteursrecht|anders)$")

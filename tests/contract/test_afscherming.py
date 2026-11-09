@@ -61,6 +61,8 @@ def test_beoordeelweergave_zonder_token(api: httpx.Client, jottem_id: str):
 def test_schrijfacties_zonder_token(api: httpx.Client, jottem_id: str):
     assert api.put(f"/jottem/{jottem_id}/status",
                    json={"besluit": "goedgekeurd"}).status_code == 401
+    # gegevens van een gepubliceerde jottem corrigeren is moderatorwerk (MO-8)
+    assert api.put(f"/jottem/{jottem_id}/metadata", json={"titel": "x"}).status_code == 401
     assert api.post("/upload-url", json={"bestandsnaam": "x.jpg",
                                          "contentType": "image/jpeg",
                                          "grootte": 1024}).status_code == 401
