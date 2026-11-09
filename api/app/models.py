@@ -73,7 +73,9 @@ class Organisatie(Base):
 
 # de vier manieren om materiaal aan te leveren; de organisatiebeheerder schakelt ze
 # per project in of uit, met altijd minstens één actief
-UPLOAD_WIJZEN = ("bestand", "camera", "beeldbank", "url")
+# "url" (losse foto-URL) is vervallen: zo'n beeld kan na de moderatie ongemerkt
+# veranderen; een oude waarde in Project.uploadWijzen wordt hieronder weggefilterd
+UPLOAD_WIJZEN = ("bestand", "camera", "beeldbank")
 
 
 def actieve_upload_wijzen(project: "Project") -> list[str]:

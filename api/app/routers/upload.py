@@ -48,8 +48,9 @@ def upload_url(vraag: UploadUrlVraag, p: Principal = Depends(principal)):
 
 @router.post("/upload/externe-bron")
 def externe_bron(vraag: ExterneBronVraag, p: Principal = Depends(principal)):
-    """Valideer een beeldbank-permalink (IIIF) of foto-URL en geef terug wat er
-    opgeslagen en getoond gaat worden (voor de popup in het uploadformulier)."""
+    """Valideer een beeldbank-permalink (IIIF) en geef terug wat er opgeslagen en
+    getoond gaat worden (voor de popup in het uploadformulier), inclusief de rechten
+    volgens de bron."""
     resultaat = bronnen.resolve(vraag.soort, vraag.url)
     return {
         "bron": resultaat.bron,
@@ -61,6 +62,8 @@ def externe_bron(vraag: ExterneBronVraag, p: Principal = Depends(principal)):
         "titel": resultaat.titel,
         "beschrijving": resultaat.beschrijving,
         "metadata": resultaat.metadata or {},
+        "rechten": resultaat.rechten,
+        "rechtenvermelding": resultaat.rechtenvermelding,
     }
 
 
@@ -140,7 +143,9 @@ def jottem_indienen(
     project = db.get(Project, vraag.projectId)
     if not project:
         raise HTTPException(404, "Project onbekend; de projectkeuze is verplicht")
-    if not vraag.licentieBevestigd:
+    # de projectlicentie geldt voor eigen werk; beeldbankmateriaal is werk van de
+    # bronorganisatie en draagt de rechten uit het manifest
+    if not vraag.externeBron and not vraag.licentieBevestigd:
         raise HTTPException(422, "Bevestig de licentie van het project")
     # besloten project: alleen leden, beheerders en moderatoren dragen bij (GE-5)
     toegang.eis_project_toegang(db, project, p)
@@ -150,7 +155,7 @@ def jottem_indienen(
     # samen als de bestandsroute
     wijzen = actieve_upload_wijzen(project)
     if vraag.externeBron:
-        toegestaan = vraag.externeBron.soort in wijzen   # "beeldbank" of "url"
+        toegestaan = vraag.externeBron.soort in wijzen   # alleen "beeldbank"
     else:
         toegestaan = "bestand" in wijzen or "camera" in wijzen
     if not toegestaan:
@@ -196,7 +201,8 @@ def jottem_indienen(
         titel=vraag.titel,
         beschrijving=vraag.beschrijving,
         genre=vraag.genre,
-        licentie=project.datasetLicentie,   # bevestigde projectlicentie
+        # eigen werk: de bevestigde projectlicentie; beeldbank: de rechten van de bron
+        licentie=externe.rechten if externe else project.datasetLicentie,
         bron=externe.bron if externe else "upload",
         bronUrl=externe.bronUrl if externe else None,
         externeIiifService=externe.service if externe else None,
@@ -224,7 +230,12 @@ def jottem_indienen(
                             aard=relaties.AARD, gebruikersId=p.gebruiker.gebruikersId))
 
     for veld, waarde in vraag.metadata.items():
+        if veld == "rechtenvermelding":
+            continue   # komt van de bron, niet van de inzender
         db.add(MediaMetadata(mediaId=media.mediaId, veld=veld, waarde=waarde))
+    if externe and externe.rechtenvermelding:
+        db.add(MediaMetadata(mediaId=media.mediaId, veld="rechtenvermelding",
+                             waarde=externe.rechtenvermelding))
     for woord in vraag.steekwoorden:
         db.add(MediaMetadata(mediaId=media.mediaId, veld="steekwoord", waarde=woord))
     log(db, "jottem.ingediend",

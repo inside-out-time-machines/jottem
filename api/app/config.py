@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     # RDF/SPARQL (Fuseki): intern schrijven, publiek alleen /sparql via Traefik
     fuseki_url: str = "http://fuseki:3030/ds"
     data_basis_url: str = "https://data.dev.iotm.nl"
+    # beeldbanken waarvan een permalink of IIIF-document als jottem mag worden opgenomen
+    # (kommagescheiden hostnamen; een subdomein telt mee)
+    beeldbank_hosts: str = "samh.nl"
 
     # authenticatie (Authentik OIDC)
     oidc_issuer: str = "https://auth.dev.iotm.nl/application/o/jottem/"

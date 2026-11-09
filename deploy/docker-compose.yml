@@ -343,6 +343,8 @@ services:
       JOTTEM_VARNISH_URL: http://varnish
       JOTTEM_VARNISH_SLEUTEL: ${VARNISH_BEHEERSLEUTEL}
       JOTTEM_HERKENBAAR_URL: http://herkenbaar:4050
+      # beeldbanken waaruit permalinks als jottem mogen (kommagescheiden hostnamen)
+      JOTTEM_BEELDBANK_HOSTS: ${BEELDBANK_HOSTS:-samh.nl}
       JOTTEM_SUGGESTIES_URL: ${SUGGESTIES_URL:-http://suggesties:4060}
       JOTTEM_ANNO_URL: http://annorepo:8080
       JOTTEM_ANNO_BASIS_URL: ${ANNO_PUBLIEK:-https://anno.${BASISDOMEIN}}

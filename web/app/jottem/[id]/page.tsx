@@ -71,6 +71,7 @@ const VELDNAAM: Record<string, string> = {
   vervaardiger: "Vervaardiger",
   adres: "Adres",
   archiefbron: "Bron",
+  rechtenvermelding: "Rechten",
   persoon: "Persoon",
   gebouw: "Gebouw",
   bedrijf: "Bedrijf",

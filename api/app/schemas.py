@@ -32,7 +32,7 @@ class UploadUrlAntwoord(BaseModel):
 
 
 class ExterneBronVraag(BaseModel):
-    soort: str = Field(pattern="^(beeldbank|url)$")
+    soort: str = Field(pattern="^beeldbank$")
     url: str = Field(min_length=8, max_length=1000, pattern=HTTP_URL)
 
 

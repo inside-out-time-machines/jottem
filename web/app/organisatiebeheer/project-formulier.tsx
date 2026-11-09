@@ -19,12 +19,12 @@ export const LEEG_PROJECT: ProjectVorm = {
   uploadWijzen: null, zichtbaarheid: "openbaar",
 };
 
-// de vier manieren om materiaal aan te leveren (zelfde sleutels als de API)
+// de drie manieren om materiaal aan te leveren (zelfde sleutels als de API); de losse
+// foto-URL is vervallen, omdat zo'n beeld na de moderatie ongemerkt kan veranderen
 export const UPLOAD_WIJZEN = [
   { sleutel: "bestand", label: "Bestand kiezen" },
   { sleutel: "camera", label: "Foto maken met de camera" },
   { sleutel: "beeldbank", label: "Permalink uit een beeldbank" },
-  { sleutel: "url", label: "Foto-URL van een website" },
 ];
 
 // id van het formulier: de Opslaan-knop staat in de actiebalk, buiten het <form>,
