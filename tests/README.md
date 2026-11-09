@@ -25,7 +25,8 @@ Beide draaien standaard tegen dev. Andere omgeving:
   paginering, verrijkingencatalogus, health.
 - `test_opendata.py` - IIIF-manifest en -collections, CORS voor externe viewers en harvesters
   (ook de datasetbeschrijving, zonder Vary: Origin), content
-  negotiation (JSON-LD, Turtle, RDF/XML), W3C-annotatiecollecties, RSS, Change Discovery,
+  negotiation (JSON-LD, Turtle, RDF/XML; op de API én op de duurzame www-URL, die RDF-verzoeken
+  met een 303 naar de API stuurt), W3C-annotatiecollecties, RSS, Change Discovery,
   datacatalogus, datasetbeschrijving en de gzip-datadump, Termennetwerk-proxy.
 - `test_besloten.py` - besloten projecten: projectweergave zonder jottems, geen widget,
   jottem-detail vraagt login, open data van hetzelfde project blijft 200. Slaat over als
