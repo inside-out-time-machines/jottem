@@ -144,6 +144,7 @@ try {
       annotaties: document.querySelectorAll(".annotatie").length,
       deelnemer: document.querySelectorAll(".deelnemer").length,
       deelknoppen: document.querySelectorAll(".knop-delen").length,
+      deeltekst: document.querySelector(".knop-delen")?.textContent ?? "",
       ogBeeld: document.querySelector('meta[property="og:image"]')?.content,
       ogBreedte: document.querySelector('meta[property="og:image:width"]')?.content,
       annotatieRand: document.querySelector(".annotatie")
@@ -155,8 +156,10 @@ try {
     controle("jottem: herkomstregel", meting.deelnemer > 0, `${meting.deelnemer}`);
     controle("jottem: og:image met afmetingen",
       Boolean(meting.ogBeeld) && Boolean(meting.ogBreedte), meting.ogBreedte ?? "");
-    controle("jottem: geen deelknop zonder Share API", meting.deelknoppen === 0,
-      `${meting.deelknoppen}`);
+    // zonder Share API (headless Chromium) wordt de Delen-knop een kopieerknop (BE-6)
+    controle("jottem: deelknop valt terug op link kopiëren",
+      meting.deelknoppen > 0 && meting.deeltekst.includes("Kopieer"),
+      `${meting.deelknoppen} knop(pen), tekst: ${meting.deeltekst}`);
     await pagina.close();
   }
 
