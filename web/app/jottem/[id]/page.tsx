@@ -253,9 +253,11 @@ export default async function JottemPagina({
           <DeelKnop titel={jottem.titel} tekst={deelTekst} url={deelUrl} />
         </p>
       </div>
-      <p style={{ marginTop: "2rem" }}>
+      {/* div, geen p: het component rendert een <dialog>, en dat mag niet in een alinea
+          (de browser sluit de <p> dan vroegtijdig en de hydratatie mislukt, React #418) */}
+      <div style={{ marginTop: "2rem" }}>
         <Verwijderverzoek mediaId={jottem.mediaId} />
-      </p>
+      </div>
     </main>
   );
 }
